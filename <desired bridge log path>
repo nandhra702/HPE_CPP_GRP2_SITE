@@ -1,0 +1,601 @@
+INFO 2025-05-27 07:05:17,044 daemon Exiting due to SIGINT
+INFO 2025-06-01 07:44:01,770 daemon Exiting due to SIGINT
+INFO 2025-06-01 07:57:27,952 daemon Exiting due to SIGINT
+INFO 2025-06-02 06:27:15,774 daemon Exiting due to SIGINT
+INFO 2025-06-18 17:38:11,265 daemon Exiting due to SIGINT
+INFO 2025-06-18 17:38:40,309 judge_handler Judge connected from: ('172.24.0.1', 51904)
+INFO 2025-06-18 17:38:40,312 base_handler Disconnecting client due to too-large message size (1195725856 bytes): ('172.24.0.1', 51904)
+INFO 2025-06-18 17:38:40,315 judge_handler Judge disconnected from: ('172.24.0.1', 51904) with name None
+INFO 2025-06-18 17:38:40,316 judge_handler Judge connected from: ('172.24.0.1', 51905)
+INFO 2025-06-18 17:38:41,310 base_handler Disconnecting client due to too-large message size (1195725856 bytes): ('172.24.0.1', 51905)
+INFO 2025-06-18 17:38:41,312 judge_handler Judge connected from: ('172.24.0.1', 51906)
+INFO 2025-06-18 17:38:41,313 judge_handler Judge disconnected from: ('172.24.0.1', 51905) with name None
+INFO 2025-06-18 17:38:41,317 base_handler Disconnecting client due to too-large message size (1195725856 bytes): ('172.24.0.1', 51906)
+INFO 2025-06-18 17:38:41,318 judge_handler Judge disconnected from: ('172.24.0.1', 51906) with name None
+INFO 2025-06-18 17:38:41,329 judge_handler Judge connected from: ('172.24.0.1', 51907)
+INFO 2025-06-18 17:38:41,330 base_handler Disconnecting client due to too-large message size (1195725856 bytes): ('172.24.0.1', 51907)
+INFO 2025-06-18 17:38:41,330 judge_handler Judge disconnected from: ('172.24.0.1', 51907) with name None
+INFO 2025-06-18 17:43:22,158 base_handler Disconnecting client due to too-large message size (1195725856 bytes): ('127.0.0.1', 49082)
+INFO 2025-06-18 17:43:23,221 base_handler Disconnecting client due to too-large message size (1195725856 bytes): ('127.0.0.1', 49098)
+INFO 2025-06-18 17:53:10,690 judge_handler Judge connected from: ('172.17.0.2', 59114)
+INFO 2025-06-18 17:53:10,697 judge_handler Judge authenticated: ('172.17.0.2', 59114) (test_judge_1)
+INFO 2025-06-18 17:53:10,697 judge_list Minimum tier changed from None to 1
+INFO 2025-06-18 18:51:22,813 judge_list Minimum tier changed from 1 to None
+INFO 2025-06-18 18:51:22,831 judge_handler Judge disconnected from: ('172.17.0.2', 59114) with name test_judge_1
+INFO 2025-06-18 18:51:35,843 judge_handler Judge connected from: ('172.17.0.2', 36960)
+INFO 2025-06-18 18:51:35,848 judge_handler Judge authenticated: ('172.17.0.2', 36960) (test_judge_1)
+INFO 2025-06-18 18:51:35,848 judge_list Minimum tier changed from None to 1
+INFO 2025-06-18 19:00:41,476 judge_list Minimum tier changed from 1 to None
+INFO 2025-06-18 19:00:41,487 judge_handler Judge disconnected from: ('172.17.0.2', 36960) with name test_judge_1
+INFO 2025-06-18 19:00:54,598 judge_handler Judge connected from: ('172.17.0.2', 55042)
+INFO 2025-06-18 19:00:54,601 judge_handler Judge authenticated: ('172.17.0.2', 55042) (test_judge_1)
+INFO 2025-06-18 19:00:54,602 judge_list Minimum tier changed from None to 1
+INFO 2025-06-18 19:19:37,402 judge_list Minimum tier changed from 1 to None
+INFO 2025-06-18 19:19:37,415 judge_handler Judge disconnected from: ('172.17.0.2', 55042) with name test_judge_1
+INFO 2025-06-18 19:20:04,295 judge_handler Judge connected from: ('172.17.0.2', 60800)
+INFO 2025-06-18 19:20:04,301 judge_handler Judge authenticated: ('172.17.0.2', 60800) (test_judge_1)
+INFO 2025-06-18 19:20:04,301 judge_list Minimum tier changed from None to 1
+INFO 2025-06-18 19:22:03,856 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-18 19:22:03,858 judge_list Dispatched submission 1 to: test_judge_1
+INFO 2025-06-18 19:22:03,871 judge_handler Submission acknowledged: 1
+ERROR 2025-06-18 19:22:03,912 judge_handler Judge test_judge_1 failed while handling submission 1
+Traceback (most recent call last):
+  File "/home/sukhraj/site/judge/bridge/judge_handler.py", line 462, in on_internal_error
+    raise ValueError('\n\n' + packet['message'])
+ValueError: 
+
+Traceback (most recent call last):
+  File "/judge/dmoj/judge.py", line 415, in _worker_process_main
+    ipc_msg = next(case_gen)
+  File "/judge/dmoj/judge.py", line 454, in _grade_cases
+    problem = Problem(
+        self.submission.problem_id, self.submission.time_limit, self.submission.memory_limit, self.submission.meta
+    )
+  File "/judge/dmoj/problem.py", line 85, in __init__
+    if not self._resolve_test_cases():
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/judge/dmoj/problem.py", line 185, in _resolve_test_cases
+    self._problem_file_list(),
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/judge/dmoj/problem.py", line 168, in _problem_file_list
+    raise InvalidInitException('can only use test case format specifiers if `archive` is set')
+dmoj.config.InvalidInitException: can only use test case format specifiers if `archive` is set
+
+INFO 2025-06-18 19:22:04,012 judge_list Judge available after grading 1: test_judge_1
+INFO 2025-06-18 19:26:39,256 judge_list Abort request: 1
+INFO 2025-06-18 19:30:07,815 judge_list Minimum tier changed from 1 to None
+INFO 2025-06-18 19:30:07,834 judge_handler Judge disconnected from: ('172.17.0.2', 60800) with name test_judge_1
+INFO 2025-06-18 19:30:24,477 judge_handler Judge connected from: ('172.17.0.2', 43488)
+INFO 2025-06-18 19:30:24,484 judge_handler Judge authenticated: ('172.17.0.2', 43488) (test_judge_1)
+INFO 2025-06-18 19:30:24,484 judge_list Minimum tier changed from None to 1
+INFO 2025-06-18 19:31:11,877 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-18 19:31:11,878 judge_list Dispatched submission 2 to: test_judge_1
+INFO 2025-06-18 19:31:11,886 judge_handler Submission acknowledged: 2
+ERROR 2025-06-18 19:31:11,932 judge_handler Judge test_judge_1 failed while handling submission 2
+Traceback (most recent call last):
+  File "/home/sukhraj/site/judge/bridge/judge_handler.py", line 462, in on_internal_error
+    raise ValueError('\n\n' + packet['message'])
+ValueError: 
+
+Traceback (most recent call last):
+  File "/judge/dmoj/judge.py", line 415, in _worker_process_main
+    ipc_msg = next(case_gen)
+  File "/judge/dmoj/judge.py", line 454, in _grade_cases
+    problem = Problem(
+        self.submission.problem_id, self.submission.time_limit, self.submission.memory_limit, self.submission.meta
+    )
+  File "/judge/dmoj/problem.py", line 85, in __init__
+    if not self._resolve_test_cases():
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/judge/dmoj/problem.py", line 185, in _resolve_test_cases
+    self._problem_file_list(),
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/judge/dmoj/problem.py", line 168, in _problem_file_list
+    raise InvalidInitException('can only use test case format specifiers if `archive` is set')
+dmoj.config.InvalidInitException: can only use test case format specifiers if `archive` is set
+
+INFO 2025-06-18 19:31:11,968 judge_list Judge available after grading 2: test_judge_1
+INFO 2025-06-18 19:32:01,173 judge_list Minimum tier changed from 1 to None
+INFO 2025-06-18 19:32:01,195 judge_handler Judge disconnected from: ('172.17.0.2', 43488) with name test_judge_1
+INFO 2025-06-18 19:32:15,990 judge_list Abort request: 2
+INFO 2025-06-18 19:32:16,827 judge_handler Judge connected from: ('172.17.0.2', 39412)
+INFO 2025-06-18 19:32:16,834 judge_handler Judge authenticated: ('172.17.0.2', 39412) (test_judge_1)
+INFO 2025-06-18 19:32:16,834 judge_list Minimum tier changed from None to 1
+INFO 2025-06-18 19:33:06,458 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-18 19:33:06,460 judge_list Dispatched submission 3 to: test_judge_1
+INFO 2025-06-18 19:33:06,469 judge_handler Submission acknowledged: 3
+ERROR 2025-06-18 19:33:06,507 judge_handler Judge test_judge_1 failed while handling submission 3
+Traceback (most recent call last):
+  File "/home/sukhraj/site/judge/bridge/judge_handler.py", line 462, in on_internal_error
+    raise ValueError('\n\n' + packet['message'])
+ValueError: 
+
+Traceback (most recent call last):
+  File "/judge/dmoj/judge.py", line 415, in _worker_process_main
+    ipc_msg = next(case_gen)
+  File "/judge/dmoj/judge.py", line 454, in _grade_cases
+    problem = Problem(
+        self.submission.problem_id, self.submission.time_limit, self.submission.memory_limit, self.submission.meta
+    )
+  File "/judge/dmoj/problem.py", line 83, in __init__
+    self.problem_data.archive = self._resolve_archive_files()
+                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/judge/dmoj/problem.py", line 214, in _resolve_archive_files
+    archive_path = os.path.join(self.root_dir, self.config.archive)
+  File "<frozen posixpath>", line 90, in join
+  File "<frozen genericpath>", line 188, in _check_arg_types
+TypeError: join() argument must be str, bytes, or os.PathLike object, not 'bool'
+
+INFO 2025-06-18 19:33:06,527 judge_list Judge available after grading 3: test_judge_1
+INFO 2025-06-18 19:34:31,804 judge_list Minimum tier changed from 1 to None
+INFO 2025-06-18 19:34:31,816 judge_handler Judge disconnected from: ('172.17.0.2', 39412) with name test_judge_1
+INFO 2025-06-18 19:34:48,225 judge_handler Judge connected from: ('172.17.0.2', 36338)
+INFO 2025-06-18 19:34:48,236 judge_handler Judge authenticated: ('172.17.0.2', 36338) (test_judge_1)
+INFO 2025-06-18 19:34:48,237 judge_list Minimum tier changed from None to 1
+INFO 2025-06-18 19:35:15,280 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-18 19:35:15,281 judge_list Dispatched submission 4 to: test_judge_1
+INFO 2025-06-18 19:35:15,288 judge_handler Submission acknowledged: 4
+ERROR 2025-06-18 19:35:15,329 judge_handler Judge test_judge_1 failed while handling submission 4
+Traceback (most recent call last):
+  File "/home/sukhraj/site/judge/bridge/judge_handler.py", line 462, in on_internal_error
+    raise ValueError('\n\n' + packet['message'])
+ValueError: 
+
+Traceback (most recent call last):
+  File "/judge/dmoj/judge.py", line 415, in _worker_process_main
+    ipc_msg = next(case_gen)
+  File "/judge/dmoj/judge.py", line 454, in _grade_cases
+    problem = Problem(
+        self.submission.problem_id, self.submission.time_limit, self.submission.memory_limit, self.submission.meta
+    )
+  File "/judge/dmoj/problem.py", line 83, in __init__
+    self.problem_data.archive = self._resolve_archive_files()
+                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/judge/dmoj/problem.py", line 218, in _resolve_archive_files
+    archive = zipfile.ZipFile(archive_path, 'r')
+  File "/usr/lib/python3.13/zipfile/__init__.py", line 1367, in __init__
+    self.fp = io.open(file, filemode)
+              ~~~~~~~^^^^^^^^^^^^^^^^
+IsADirectoryError: [Errno 21] Is a directory: '/problems/aplusb/.'
+
+INFO 2025-06-18 19:35:15,360 judge_list Judge available after grading 4: test_judge_1
+INFO 2025-06-18 19:36:42,889 judge_list Minimum tier changed from 1 to None
+INFO 2025-06-18 19:36:42,919 judge_handler Judge disconnected from: ('172.17.0.2', 36338) with name test_judge_1
+INFO 2025-06-18 19:36:57,548 judge_handler Judge connected from: ('172.17.0.2', 44854)
+INFO 2025-06-18 19:36:57,551 judge_handler Judge authenticated: ('172.17.0.2', 44854) (test_judge_1)
+INFO 2025-06-18 19:36:57,552 judge_list Minimum tier changed from None to 1
+INFO 2025-06-18 19:37:36,331 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-18 19:37:36,332 judge_list Dispatched submission 5 to: test_judge_1
+INFO 2025-06-18 19:37:36,340 judge_handler Submission acknowledged: 5
+INFO 2025-06-18 19:37:36,584 judge_handler test_judge_1: Submission generated compiler messages: 5
+INFO 2025-06-18 19:37:36,593 judge_handler test_judge_1: Grading has begun on: 5
+INFO 2025-06-18 19:37:36,722 judge_handler test_judge_1: 1 test case(s) completed on: 5
+INFO 2025-06-18 19:37:36,822 judge_handler test_judge_1: 1 test case(s) completed on: 5
+INFO 2025-06-18 19:37:36,830 judge_handler test_judge_1: Grading has ended on: 5
+INFO 2025-06-18 19:37:36,830 judge_list Judge available after grading 5: test_judge_1
+INFO 2025-06-18 19:40:45,178 judge_list Minimum tier changed from 1 to None
+INFO 2025-06-18 19:40:45,197 judge_handler Judge disconnected from: ('172.17.0.2', 44854) with name test_judge_1
+INFO 2025-06-18 19:41:00,150 judge_handler Judge connected from: ('172.17.0.2', 42038)
+INFO 2025-06-18 19:41:00,154 judge_handler Judge authenticated: ('172.17.0.2', 42038) (test_judge_1)
+INFO 2025-06-18 19:41:00,155 judge_list Minimum tier changed from None to 1
+INFO 2025-06-18 19:41:19,429 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-18 19:41:19,430 judge_list Dispatched submission 6 to: test_judge_1
+INFO 2025-06-18 19:41:19,437 judge_handler Submission acknowledged: 6
+INFO 2025-06-18 19:41:19,671 judge_handler test_judge_1: Submission generated compiler messages: 6
+INFO 2025-06-18 19:41:19,676 judge_handler test_judge_1: Grading has begun on: 6
+INFO 2025-06-18 19:41:19,836 judge_handler test_judge_1: 1 test case(s) completed on: 6
+INFO 2025-06-18 19:41:19,931 judge_handler test_judge_1: 1 test case(s) completed on: 6
+INFO 2025-06-18 19:41:19,942 judge_handler test_judge_1: Grading has ended on: 6
+INFO 2025-06-18 19:41:19,942 judge_list Judge available after grading 6: test_judge_1
+INFO 2025-06-18 19:42:53,819 judge_list Minimum tier changed from 1 to None
+INFO 2025-06-18 19:42:53,842 judge_handler Judge disconnected from: ('172.17.0.2', 42038) with name test_judge_1
+INFO 2025-06-18 19:43:10,201 judge_handler Judge connected from: ('172.17.0.2', 52422)
+INFO 2025-06-18 19:43:10,205 judge_handler Judge authenticated: ('172.17.0.2', 52422) (test_judge_1)
+INFO 2025-06-18 19:43:10,205 judge_list Minimum tier changed from None to 1
+INFO 2025-06-18 19:43:29,280 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-18 19:43:29,280 judge_list Dispatched submission 7 to: test_judge_1
+INFO 2025-06-18 19:43:29,287 judge_handler Submission acknowledged: 7
+INFO 2025-06-18 19:43:29,520 judge_handler test_judge_1: Submission generated compiler messages: 7
+INFO 2025-06-18 19:43:29,532 judge_handler test_judge_1: Grading has begun on: 7
+INFO 2025-06-18 19:43:29,750 judge_handler test_judge_1: 1 test case(s) completed on: 7
+INFO 2025-06-18 19:43:29,786 judge_handler test_judge_1: 1 test case(s) completed on: 7
+INFO 2025-06-18 19:43:29,795 judge_handler test_judge_1: Grading has ended on: 7
+INFO 2025-06-18 19:43:29,796 judge_list Judge available after grading 7: test_judge_1
+INFO 2025-06-18 19:47:52,606 judge_list Minimum tier changed from 1 to None
+INFO 2025-06-18 19:47:52,620 judge_handler Judge disconnected from: ('172.17.0.2', 52422) with name test_judge_1
+INFO 2025-06-18 19:48:08,756 judge_handler Judge connected from: ('172.17.0.2', 52034)
+INFO 2025-06-18 19:48:08,760 judge_handler Judge authenticated: ('172.17.0.2', 52034) (test_judge_1)
+INFO 2025-06-18 19:48:08,761 judge_list Minimum tier changed from None to 1
+INFO 2025-06-18 19:48:24,507 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-18 19:48:24,507 judge_list Dispatched submission 8 to: test_judge_1
+INFO 2025-06-18 19:48:24,515 judge_handler Submission acknowledged: 8
+INFO 2025-06-18 19:48:24,791 judge_handler test_judge_1: Submission generated compiler messages: 8
+INFO 2025-06-18 19:48:24,797 judge_handler test_judge_1: Grading has begun on: 8
+INFO 2025-06-18 19:48:25,054 judge_handler test_judge_1: 2 test case(s) completed on: 8
+INFO 2025-06-18 19:48:25,061 judge_handler test_judge_1: Grading has ended on: 8
+INFO 2025-06-18 19:48:25,061 judge_list Judge available after grading 8: test_judge_1
+INFO 2025-06-18 19:50:42,705 judge_list Minimum tier changed from 1 to None
+INFO 2025-06-18 19:50:42,718 judge_handler Judge disconnected from: ('172.17.0.2', 52034) with name test_judge_1
+INFO 2025-06-18 19:50:58,269 judge_handler Judge connected from: ('172.17.0.2', 57794)
+INFO 2025-06-18 19:50:58,276 judge_handler Judge authenticated: ('172.17.0.2', 57794) (test_judge_1)
+INFO 2025-06-18 19:50:58,276 judge_list Minimum tier changed from None to 1
+INFO 2025-06-18 19:51:04,675 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-18 19:51:04,676 judge_list Dispatched submission 9 to: test_judge_1
+INFO 2025-06-18 19:51:04,682 judge_handler Submission acknowledged: 9
+INFO 2025-06-18 19:51:04,923 judge_handler test_judge_1: Submission generated compiler messages: 9
+INFO 2025-06-18 19:51:04,936 judge_handler test_judge_1: Grading has begun on: 9
+INFO 2025-06-18 19:51:05,233 judge_handler test_judge_1: 2 test case(s) completed on: 9
+INFO 2025-06-18 19:51:05,243 judge_handler test_judge_1: Grading has ended on: 9
+INFO 2025-06-18 19:51:05,243 judge_list Judge available after grading 9: test_judge_1
+INFO 2025-06-18 19:52:48,650 judge_list Minimum tier changed from 1 to None
+INFO 2025-06-18 19:52:48,668 judge_handler Judge disconnected from: ('172.17.0.2', 57794) with name test_judge_1
+INFO 2025-06-18 19:53:06,722 judge_handler Judge connected from: ('172.17.0.2', 59206)
+INFO 2025-06-18 19:53:06,727 judge_handler Judge authenticated: ('172.17.0.2', 59206) (test_judge_1)
+INFO 2025-06-18 19:53:06,727 judge_list Minimum tier changed from None to 1
+INFO 2025-06-18 19:53:22,755 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-18 19:53:22,756 judge_list Dispatched submission 10 to: test_judge_1
+INFO 2025-06-18 19:53:22,763 judge_handler Submission acknowledged: 10
+INFO 2025-06-18 19:53:23,001 judge_handler test_judge_1: Submission generated compiler messages: 10
+INFO 2025-06-18 19:53:23,005 judge_handler test_judge_1: Grading has begun on: 10
+INFO 2025-06-18 19:53:23,257 judge_handler test_judge_1: 2 test case(s) completed on: 10
+INFO 2025-06-18 19:53:23,268 judge_handler test_judge_1: Grading has ended on: 10
+INFO 2025-06-18 19:53:23,269 judge_list Judge available after grading 10: test_judge_1
+INFO 2025-06-18 19:56:39,771 judge_list Minimum tier changed from 1 to None
+INFO 2025-06-18 19:56:39,789 judge_handler Judge disconnected from: ('172.17.0.2', 59206) with name test_judge_1
+INFO 2025-06-18 19:56:55,376 judge_handler Judge connected from: ('172.17.0.2', 38446)
+INFO 2025-06-18 19:56:55,383 judge_handler Judge authenticated: ('172.17.0.2', 38446) (test_judge_1)
+INFO 2025-06-18 19:56:55,383 judge_list Minimum tier changed from None to 1
+INFO 2025-06-18 19:57:06,191 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-18 19:57:06,191 judge_list Dispatched submission 11 to: test_judge_1
+INFO 2025-06-18 19:57:06,199 judge_handler Submission acknowledged: 11
+INFO 2025-06-18 19:57:06,459 judge_handler test_judge_1: Submission generated compiler messages: 11
+INFO 2025-06-18 19:57:06,467 judge_handler test_judge_1: Grading has begun on: 11
+INFO 2025-06-18 19:57:06,662 judge_handler test_judge_1: 1 test case(s) completed on: 11
+INFO 2025-06-18 19:57:06,709 judge_handler test_judge_1: 1 test case(s) completed on: 11
+INFO 2025-06-18 19:57:06,718 judge_handler test_judge_1: Grading has ended on: 11
+INFO 2025-06-18 19:57:06,718 judge_list Judge available after grading 11: test_judge_1
+INFO 2025-06-18 19:59:03,847 judge_list Free judges: 1
+INFO 2025-06-18 19:59:03,848 judge_list Dispatched submission 12 to: test_judge_1
+INFO 2025-06-18 19:59:03,856 judge_handler Submission acknowledged: 12
+INFO 2025-06-18 19:59:04,118 judge_handler test_judge_1: Submission generated compiler messages: 12
+INFO 2025-06-18 19:59:04,129 judge_handler test_judge_1: Grading has begun on: 12
+INFO 2025-06-18 19:59:04,354 judge_handler test_judge_1: 2 test case(s) completed on: 12
+INFO 2025-06-18 19:59:04,369 judge_handler test_judge_1: Grading has ended on: 12
+INFO 2025-06-18 19:59:04,369 judge_list Judge available after grading 12: test_judge_1
+INFO 2025-06-19 04:56:31,783 judge_handler Judge connected from: ('172.17.0.2', 55362)
+INFO 2025-06-19 04:56:31,787 judge_handler Judge authenticated: ('172.17.0.2', 55362) (test_judge_1)
+INFO 2025-06-19 04:56:31,787 judge_list Minimum tier changed from None to 1
+INFO 2025-06-19 06:16:21,787 judge_handler Judge connected from: ('172.17.0.2', 49250)
+INFO 2025-06-19 06:16:21,796 judge_handler Judge authenticated: ('172.17.0.2', 49250) (test_judge_1)
+INFO 2025-06-19 06:16:21,796 judge_list Minimum tier changed from None to 1
+INFO 2025-06-19 06:23:51,408 judge_list Minimum tier changed from 1 to None
+INFO 2025-06-19 06:23:51,419 judge_handler Judge disconnected from: ('172.17.0.2', 49250) with name test_judge_1
+INFO 2025-06-19 06:24:04,592 judge_handler Judge connected from: ('172.17.0.2', 39558)
+INFO 2025-06-19 06:24:04,595 judge_handler Judge authenticated: ('172.17.0.2', 39558) (test_judge_1)
+INFO 2025-06-19 06:24:04,595 judge_list Minimum tier changed from None to 1
+INFO 2025-06-19 06:24:56,512 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-19 06:24:56,512 judge_list Dispatched submission 13 to: test_judge_1
+INFO 2025-06-19 06:24:56,518 judge_handler Submission acknowledged: 13
+INFO 2025-06-19 06:24:56,764 judge_handler test_judge_1: Submission generated compiler messages: 13
+INFO 2025-06-19 06:24:56,774 judge_handler test_judge_1: Grading has begun on: 13
+INFO 2025-06-19 06:24:56,934 judge_handler test_judge_1: 1 test case(s) completed on: 13
+INFO 2025-06-19 06:24:56,994 judge_handler test_judge_1: 1 test case(s) completed on: 13
+INFO 2025-06-19 06:24:57,006 judge_handler test_judge_1: Grading has ended on: 13
+INFO 2025-06-19 06:24:57,006 judge_list Judge available after grading 13: test_judge_1
+INFO 2025-06-19 06:27:41,873 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-19 06:27:41,874 judge_list Dispatched submission 14 to: test_judge_1
+INFO 2025-06-19 06:27:41,881 judge_handler Submission acknowledged: 14
+INFO 2025-06-19 06:27:42,277 judge_handler test_judge_1: Submission generated compiler messages: 14
+INFO 2025-06-19 06:27:42,333 judge_handler test_judge_1: Grading has begun on: 14
+INFO 2025-06-19 06:27:42,645 judge_handler test_judge_1: 2 test case(s) completed on: 14
+INFO 2025-06-19 06:27:42,744 judge_handler test_judge_1: Grading has ended on: 14
+INFO 2025-06-19 06:27:42,744 judge_list Judge available after grading 14: test_judge_1
+INFO 2025-06-19 06:35:28,238 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-19 06:35:28,239 judge_list Dispatched submission 15 to: test_judge_1
+INFO 2025-06-19 06:35:28,247 judge_handler Submission acknowledged: 15
+INFO 2025-06-19 06:35:28,518 judge_handler test_judge_1: Submission generated compiler messages: 15
+INFO 2025-06-19 06:35:28,528 judge_handler test_judge_1: Grading has begun on: 15
+INFO 2025-06-19 06:35:28,767 judge_handler test_judge_1: 2 test case(s) completed on: 15
+INFO 2025-06-19 06:35:28,779 judge_handler test_judge_1: Grading has ended on: 15
+INFO 2025-06-19 06:35:28,779 judge_list Judge available after grading 15: test_judge_1
+INFO 2025-06-19 06:38:36,414 judge_list Minimum tier changed from 1 to None
+INFO 2025-06-19 06:38:36,423 judge_handler Judge disconnected from: ('172.17.0.2', 39558) with name test_judge_1
+INFO 2025-06-19 06:38:51,229 judge_handler Judge connected from: ('172.17.0.2', 33516)
+INFO 2025-06-19 06:38:51,232 judge_handler Judge authenticated: ('172.17.0.2', 33516) (test_judge_1)
+INFO 2025-06-19 06:38:51,232 judge_list Minimum tier changed from None to 1
+INFO 2025-06-19 06:38:56,433 judge_list Free judges: 1
+INFO 2025-06-19 06:38:56,433 judge_list Dispatched submission 16 to: test_judge_1
+INFO 2025-06-19 06:38:56,442 judge_handler Submission acknowledged: 16
+INFO 2025-06-19 06:38:56,721 judge_handler test_judge_1: Submission generated compiler messages: 16
+INFO 2025-06-19 06:38:56,730 judge_handler test_judge_1: Grading has begun on: 16
+INFO 2025-06-19 06:38:56,965 judge_handler test_judge_1: 2 test case(s) completed on: 16
+INFO 2025-06-19 06:38:56,974 judge_handler test_judge_1: Grading has ended on: 16
+INFO 2025-06-19 06:38:56,974 judge_list Judge available after grading 16: test_judge_1
+INFO 2025-06-19 06:42:27,065 judge_list Minimum tier changed from 1 to None
+INFO 2025-06-19 06:42:27,085 judge_handler Judge disconnected from: ('172.17.0.2', 33516) with name test_judge_1
+INFO 2025-06-19 06:42:41,436 judge_handler Judge connected from: ('172.17.0.2', 32980)
+INFO 2025-06-19 06:42:41,441 judge_handler Judge authenticated: ('172.17.0.2', 32980) (test_judge_1)
+INFO 2025-06-19 06:42:41,441 judge_list Minimum tier changed from None to 1
+INFO 2025-06-19 06:42:59,944 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-19 06:42:59,945 judge_list Dispatched submission 17 to: test_judge_1
+INFO 2025-06-19 06:42:59,952 judge_handler Submission acknowledged: 17
+INFO 2025-06-19 06:43:00,288 judge_handler test_judge_1: Submission generated compiler messages: 17
+INFO 2025-06-19 06:43:00,292 judge_handler test_judge_1: Grading has begun on: 17
+INFO 2025-06-19 06:43:00,426 judge_handler test_judge_1: 1 test case(s) completed on: 17
+INFO 2025-06-19 06:43:00,437 judge_handler test_judge_1: Grading has ended on: 17
+INFO 2025-06-19 06:43:00,437 judge_list Judge available after grading 17: test_judge_1
+INFO 2025-06-19 06:56:15,436 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-19 06:56:15,443 judge_list Dispatched submission 18 to: test_judge_1
+INFO 2025-06-19 06:56:15,472 judge_handler Submission acknowledged: 18
+INFO 2025-06-19 06:56:15,876 judge_handler test_judge_1: Submission generated compiler messages: 18
+INFO 2025-06-19 06:56:15,880 judge_handler test_judge_1: Grading has begun on: 18
+INFO 2025-06-19 06:56:16,010 judge_handler test_judge_1: 1 test case(s) completed on: 18
+INFO 2025-06-19 06:56:16,019 judge_handler test_judge_1: Grading has ended on: 18
+INFO 2025-06-19 06:56:16,020 judge_list Judge available after grading 18: test_judge_1
+INFO 2025-06-19 07:34:05,888 judge_list Minimum tier changed from 1 to None
+INFO 2025-06-19 07:34:05,905 judge_handler Judge disconnected from: ('172.17.0.2', 32980) with name test_judge_1
+INFO 2025-06-19 07:34:23,098 judge_handler Judge connected from: ('172.17.0.2', 37712)
+INFO 2025-06-19 07:34:23,103 judge_handler Judge authenticated: ('172.17.0.2', 37712) (test_judge_1)
+INFO 2025-06-19 07:34:23,106 judge_list Minimum tier changed from None to 1
+INFO 2025-06-19 07:35:15,251 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-19 07:35:15,252 judge_list Dispatched submission 19 to: test_judge_1
+INFO 2025-06-19 07:35:15,264 judge_handler Submission acknowledged: 19
+ERROR 2025-06-19 07:35:15,336 judge_handler Judge test_judge_1 failed while handling submission 19
+Traceback (most recent call last):
+  File "/home/sukhraj/site/judge/bridge/judge_handler.py", line 462, in on_internal_error
+    raise ValueError('\n\n' + packet['message'])
+ValueError: 
+
+Traceback (most recent call last):
+  File "/judge/dmoj/judge.py", line 415, in _worker_process_main
+    ipc_msg = next(case_gen)
+  File "/judge/dmoj/judge.py", line 454, in _grade_cases
+    problem = Problem(
+        self.submission.problem_id, self.submission.time_limit, self.submission.memory_limit, self.submission.meta
+    )
+  File "/judge/dmoj/problem.py", line 83, in __init__
+    self.problem_data.archive = self._resolve_archive_files()
+                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/judge/dmoj/problem.py", line 218, in _resolve_archive_files
+    archive = zipfile.ZipFile(archive_path, 'r')
+  File "/usr/lib/python3.13/zipfile/__init__.py", line 1367, in __init__
+    self.fp = io.open(file, filemode)
+              ~~~~~~~^^^^^^^^^^^^^^^^
+IsADirectoryError: [Errno 21] Is a directory: '/problems/aplusb/testcases'
+
+INFO 2025-06-19 07:35:15,522 judge_list Judge available after grading 19: test_judge_1
+INFO 2025-06-19 07:35:21,227 judge_list Abort request: 19
+INFO 2025-06-19 07:40:18,950 judge_handler test_judge_1: Updated problem list
+INFO 2025-06-19 07:40:18,965 judge_handler test_judge_1: Updated problem list
+INFO 2025-06-19 07:40:18,986 judge_handler test_judge_1: Updated problem list
+INFO 2025-06-19 07:40:18,994 judge_handler test_judge_1: Updated problem list
+INFO 2025-06-19 07:40:19,015 judge_handler test_judge_1: Updated problem list
+INFO 2025-06-19 07:40:19,033 judge_handler test_judge_1: Updated problem list
+INFO 2025-06-19 07:40:19,052 judge_handler test_judge_1: Updated problem list
+INFO 2025-06-19 07:40:19,084 judge_handler test_judge_1: Updated problem list
+INFO 2025-06-19 07:40:19,100 judge_handler test_judge_1: Updated problem list
+INFO 2025-06-19 07:40:38,142 judge_list Minimum tier changed from 1 to None
+INFO 2025-06-19 07:40:38,155 judge_handler Judge disconnected from: ('172.17.0.2', 37712) with name test_judge_1
+INFO 2025-06-19 07:40:55,911 judge_handler Judge connected from: ('172.17.0.2', 57700)
+INFO 2025-06-19 07:40:55,917 judge_handler Judge authenticated: ('172.17.0.2', 57700) (test_judge_1)
+INFO 2025-06-19 07:40:55,918 judge_list Minimum tier changed from None to 1
+INFO 2025-06-19 07:41:33,856 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-19 07:41:33,857 judge_list Dispatched submission 20 to: test_judge_1
+INFO 2025-06-19 07:41:33,873 judge_handler Submission acknowledged: 20
+ERROR 2025-06-19 07:41:33,908 judge_handler Judge test_judge_1 failed while handling submission 20
+Traceback (most recent call last):
+  File "/home/sukhraj/site/judge/bridge/judge_handler.py", line 462, in on_internal_error
+    raise ValueError('\n\n' + packet['message'])
+ValueError: 
+
+Traceback (most recent call last):
+  File "/judge/dmoj/judge.py", line 415, in _worker_process_main
+    ipc_msg = next(case_gen)
+  File "/judge/dmoj/judge.py", line 454, in _grade_cases
+    problem = Problem(
+        self.submission.problem_id, self.submission.time_limit, self.submission.memory_limit, self.submission.meta
+    )
+  File "/judge/dmoj/problem.py", line 83, in __init__
+    self.problem_data.archive = self._resolve_archive_files()
+                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/judge/dmoj/problem.py", line 218, in _resolve_archive_files
+    archive = zipfile.ZipFile(archive_path, 'r')
+  File "/usr/lib/python3.13/zipfile/__init__.py", line 1367, in __init__
+    self.fp = io.open(file, filemode)
+              ~~~~~~~^^^^^^^^^^^^^^^^
+IsADirectoryError: [Errno 21] Is a directory: '/problems/aplusb/testcases'
+
+INFO 2025-06-19 07:41:33,923 judge_list Judge available after grading 20: test_judge_1
+INFO 2025-06-19 07:42:32,329 judge_list Abort request: 20
+INFO 2025-06-19 07:42:47,092 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-19 07:42:47,093 judge_list Dispatched submission 21 to: test_judge_1
+INFO 2025-06-19 07:42:47,097 judge_handler Submission acknowledged: 21
+INFO 2025-06-19 07:42:47,369 judge_handler test_judge_1: Submission generated compiler messages: 21
+INFO 2025-06-19 07:42:47,372 judge_handler test_judge_1: Grading has begun on: 21
+INFO 2025-06-19 07:42:47,529 judge_handler test_judge_1: 3 test case(s) completed on: 21
+INFO 2025-06-19 07:42:47,537 judge_handler test_judge_1: Grading has ended on: 21
+INFO 2025-06-19 07:42:47,538 judge_list Judge available after grading 21: test_judge_1
+INFO 2025-06-19 11:18:18,209 judge_handler Judge connected from: ('172.17.0.2', 54744)
+INFO 2025-06-19 11:18:18,213 judge_handler Judge authenticated: ('172.17.0.2', 54744) (test_judge_1)
+INFO 2025-06-19 11:18:18,213 judge_list Minimum tier changed from None to 1
+INFO 2025-06-20 04:47:26,217 judge_handler Judge connected from: ('172.17.0.2', 39090)
+INFO 2025-06-20 04:47:26,223 judge_handler Judge authenticated: ('172.17.0.2', 39090) (test_judge_1)
+INFO 2025-06-20 04:47:26,223 judge_list Minimum tier changed from None to 1
+INFO 2025-06-22 17:17:42,702 judge_handler Judge connected from: ('172.17.0.2', 36386)
+INFO 2025-06-22 17:17:42,710 judge_handler Judge authenticated: ('172.17.0.2', 36386) (test_judge_1)
+INFO 2025-06-22 17:17:42,710 judge_list Minimum tier changed from None to 1
+INFO 2025-06-23 05:16:37,848 judge_handler Judge connected from: ('172.17.0.2', 33400)
+INFO 2025-06-23 05:16:37,853 judge_handler Judge authenticated: ('172.17.0.2', 33400) (test_judge_1)
+INFO 2025-06-23 05:16:37,854 judge_list Minimum tier changed from None to 1
+INFO 2025-06-23 12:17:17,076 judge_handler Judge connected from: ('172.17.0.2', 32908)
+INFO 2025-06-23 12:17:17,082 judge_handler Judge authenticated: ('172.17.0.2', 32908) (test_judge_1)
+INFO 2025-06-23 12:17:17,082 judge_list Minimum tier changed from None to 1
+INFO 2025-06-23 12:22:01,685 judge_handler Judge connected from: ('172.17.0.2', 37192)
+INFO 2025-06-23 12:22:01,696 judge_handler Judge authenticated: ('172.17.0.2', 37192) (test_judge_1)
+INFO 2025-06-23 12:22:01,696 judge_list Minimum tier changed from None to 1
+INFO 2025-06-23 17:26:14,537 judge_handler Judge connected from: ('172.17.0.2', 35058)
+INFO 2025-06-23 17:26:14,542 judge_handler Judge authenticated: ('172.17.0.2', 35058) (test_judge_1)
+INFO 2025-06-23 17:26:14,542 judge_list Minimum tier changed from None to 1
+INFO 2025-06-24 13:22:04,460 judge_handler Judge connected from: ('172.17.0.2', 57006)
+INFO 2025-06-24 13:22:04,466 judge_handler Judge authenticated: ('172.17.0.2', 57006) (test_judge_1)
+INFO 2025-06-24 13:22:04,466 judge_list Minimum tier changed from None to 1
+INFO 2025-06-25 12:42:18,826 judge_handler Judge connected from: ('172.17.0.2', 51208)
+INFO 2025-06-25 12:42:18,834 judge_handler Judge authenticated: ('172.17.0.2', 51208) (test_judge_1)
+INFO 2025-06-25 12:42:18,834 judge_list Minimum tier changed from None to 1
+INFO 2025-06-26 05:34:41,379 judge_handler Judge connected from: ('172.17.0.2', 45276)
+INFO 2025-06-26 05:34:41,385 judge_handler Judge authenticated: ('172.17.0.2', 45276) (test_judge_1)
+INFO 2025-06-26 05:34:41,385 judge_list Minimum tier changed from None to 1
+INFO 2025-06-26 06:55:00,990 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-26 06:55:00,996 judge_list Dispatched submission 22 to: test_judge_1
+INFO 2025-06-26 06:55:01,031 judge_handler Submission acknowledged: 22
+INFO 2025-06-26 06:55:01,484 judge_handler test_judge_1: Submission generated compiler messages: 22
+INFO 2025-06-26 06:55:01,488 judge_handler test_judge_1: Grading has begun on: 22
+INFO 2025-06-26 06:55:01,802 judge_handler test_judge_1: 3 test case(s) completed on: 22
+INFO 2025-06-26 06:55:01,813 judge_handler test_judge_1: Grading has ended on: 22
+INFO 2025-06-26 06:55:01,813 judge_list Judge available after grading 22: test_judge_1
+INFO 2025-06-26 07:00:21,438 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-26 07:00:21,440 judge_list Dispatched submission 23 to: test_judge_1
+INFO 2025-06-26 07:00:21,453 judge_handler Submission acknowledged: 23
+INFO 2025-06-26 07:00:21,795 judge_handler test_judge_1: Submission generated compiler messages: 23
+INFO 2025-06-26 07:00:21,799 judge_handler test_judge_1: Grading has begun on: 23
+INFO 2025-06-26 07:00:21,949 judge_handler test_judge_1: 1 test case(s) completed on: 23
+INFO 2025-06-26 07:00:22,043 judge_handler test_judge_1: 2 test case(s) completed on: 23
+INFO 2025-06-26 07:00:22,058 judge_handler test_judge_1: Grading has ended on: 23
+INFO 2025-06-26 07:00:22,058 judge_list Judge available after grading 23: test_judge_1
+INFO 2025-06-27 11:11:12,965 judge_handler Judge connected from: ('172.17.0.2', 32826)
+INFO 2025-06-27 11:11:12,973 judge_handler Judge authenticated: ('172.17.0.2', 32826) (test_judge_1)
+INFO 2025-06-27 11:11:12,974 judge_list Minimum tier changed from None to 1
+INFO 2025-06-27 12:56:42,251 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-27 12:56:42,253 judge_list Dispatched submission 24 to: test_judge_1
+INFO 2025-06-27 12:56:42,266 judge_handler Submission acknowledged: 24
+INFO 2025-06-27 12:56:42,716 judge_handler test_judge_1: Submission generated compiler messages: 24
+INFO 2025-06-27 12:56:42,719 judge_handler test_judge_1: Grading has begun on: 24
+INFO 2025-06-27 12:56:42,901 judge_handler test_judge_1: 3 test case(s) completed on: 24
+INFO 2025-06-27 12:56:42,906 judge_handler test_judge_1: Grading has ended on: 24
+INFO 2025-06-27 12:56:42,906 judge_list Judge available after grading 24: test_judge_1
+INFO 2025-06-27 12:57:51,188 judge_list Specified judge test_judge_1 is available
+INFO 2025-06-27 12:57:51,188 judge_list Dispatched submission 25 to: test_judge_1
+INFO 2025-06-27 12:57:51,195 judge_handler Submission acknowledged: 25
+INFO 2025-06-27 12:57:51,404 judge_handler test_judge_1: Submission generated compiler messages: 25
+INFO 2025-06-27 12:57:51,409 judge_handler test_judge_1: Grading has begun on: 25
+INFO 2025-06-27 12:57:51,680 judge_handler test_judge_1: 3 test case(s) completed on: 25
+INFO 2025-06-27 12:57:51,692 judge_handler test_judge_1: Grading has ended on: 25
+INFO 2025-06-27 12:57:51,692 judge_list Judge available after grading 25: test_judge_1
+INFO 2025-06-30 05:47:47,142 judge_handler Judge connected from: ('172.17.0.2', 42860)
+INFO 2025-06-30 05:47:47,147 judge_handler Judge authenticated: ('172.17.0.2', 42860) (test_judge_1)
+INFO 2025-06-30 05:47:47,147 judge_list Minimum tier changed from None to 1
+INFO 2025-07-01 06:11:03,129 judge_handler Judge connected from: ('172.17.0.2', 36480)
+INFO 2025-07-01 06:11:03,142 judge_handler Judge authenticated: ('172.17.0.2', 36480) (test_judge_1)
+INFO 2025-07-01 06:11:03,143 judge_list Minimum tier changed from None to 1
+INFO 2025-07-01 07:50:16,646 judge_list Specified judge test_judge_1 is available
+INFO 2025-07-01 07:50:16,653 judge_list Dispatched submission 26 to: test_judge_1
+INFO 2025-07-01 07:50:16,677 judge_handler Submission acknowledged: 26
+INFO 2025-07-01 07:50:17,033 judge_handler test_judge_1: Submission generated compiler messages: 26
+INFO 2025-07-01 07:50:17,037 judge_handler test_judge_1: Grading has begun on: 26
+INFO 2025-07-01 07:50:17,134 judge_handler test_judge_1: 1 test case(s) completed on: 26
+INFO 2025-07-01 07:50:17,193 judge_handler test_judge_1: 2 test case(s) completed on: 26
+INFO 2025-07-01 07:50:17,200 judge_handler test_judge_1: Grading has ended on: 26
+INFO 2025-07-01 07:50:17,200 judge_list Judge available after grading 26: test_judge_1
+INFO 2025-07-01 07:50:57,121 judge_list Specified judge test_judge_1 is available
+INFO 2025-07-01 07:50:57,121 judge_list Dispatched submission 27 to: test_judge_1
+INFO 2025-07-01 07:50:57,128 judge_handler Submission acknowledged: 27
+INFO 2025-07-01 07:50:57,321 judge_handler test_judge_1: Submission generated compiler messages: 27
+INFO 2025-07-01 07:50:57,324 judge_handler test_judge_1: Grading has begun on: 27
+INFO 2025-07-01 07:50:57,492 judge_handler test_judge_1: 3 test case(s) completed on: 27
+INFO 2025-07-01 07:50:57,498 judge_handler test_judge_1: Grading has ended on: 27
+INFO 2025-07-01 07:50:57,498 judge_list Judge available after grading 27: test_judge_1
+INFO 2025-07-01 11:49:45,055 judge_list Specified judge test_judge_1 is available
+INFO 2025-07-01 11:49:45,059 judge_list Dispatched submission 28 to: test_judge_1
+INFO 2025-07-01 11:49:45,084 judge_handler Submission acknowledged: 28
+INFO 2025-07-01 11:49:45,440 judge_handler test_judge_1: Submission generated compiler messages: 28
+INFO 2025-07-01 11:49:45,444 judge_handler test_judge_1: Grading has begun on: 28
+INFO 2025-07-01 11:49:45,566 judge_handler test_judge_1: 1 test case(s) completed on: 28
+INFO 2025-07-01 11:49:45,673 judge_handler test_judge_1: 2 test case(s) completed on: 28
+INFO 2025-07-01 11:49:45,679 judge_handler test_judge_1: Grading has ended on: 28
+INFO 2025-07-01 11:49:45,680 judge_list Judge available after grading 28: test_judge_1
+INFO 2025-07-01 11:50:31,329 judge_list Specified judge test_judge_1 is available
+INFO 2025-07-01 11:50:31,330 judge_list Dispatched submission 29 to: test_judge_1
+INFO 2025-07-01 11:50:31,337 judge_handler Submission acknowledged: 29
+INFO 2025-07-01 11:50:31,559 judge_handler test_judge_1: Submission generated compiler messages: 29
+INFO 2025-07-01 11:50:31,562 judge_handler test_judge_1: Grading has begun on: 29
+INFO 2025-07-01 11:50:31,797 judge_handler test_judge_1: 2 test case(s) completed on: 29
+INFO 2025-07-01 11:50:31,803 judge_handler test_judge_1: 1 test case(s) completed on: 29
+INFO 2025-07-01 11:50:31,807 judge_handler test_judge_1: Grading has ended on: 29
+INFO 2025-07-01 11:50:31,807 judge_list Judge available after grading 29: test_judge_1
+INFO 2025-07-01 11:54:56,832 judge_list Specified judge test_judge_1 is available
+INFO 2025-07-01 11:54:56,833 judge_list Dispatched submission 30 to: test_judge_1
+INFO 2025-07-01 11:54:56,842 judge_handler Submission acknowledged: 30
+INFO 2025-07-01 11:54:57,051 judge_handler test_judge_1: Submission generated compiler messages: 30
+INFO 2025-07-01 11:54:57,060 judge_handler test_judge_1: Grading has begun on: 30
+INFO 2025-07-01 11:54:57,307 judge_handler test_judge_1: 2 test case(s) completed on: 30
+INFO 2025-07-01 11:54:57,320 judge_handler test_judge_1: 1 test case(s) completed on: 30
+INFO 2025-07-01 11:54:57,327 judge_handler test_judge_1: Grading has ended on: 30
+INFO 2025-07-01 11:54:57,327 judge_list Judge available after grading 30: test_judge_1
+INFO 2025-07-01 11:57:42,370 judge_list Specified judge test_judge_1 is available
+INFO 2025-07-01 11:57:42,371 judge_list Dispatched submission 31 to: test_judge_1
+INFO 2025-07-01 11:57:42,378 judge_handler Submission acknowledged: 31
+INFO 2025-07-01 11:57:42,828 judge_handler test_judge_1: Submission generated compiler messages: 31
+INFO 2025-07-01 11:57:42,831 judge_handler test_judge_1: Grading has begun on: 31
+INFO 2025-07-01 11:57:42,884 judge_handler test_judge_1: 3 test case(s) completed on: 31
+INFO 2025-07-01 11:57:42,890 judge_handler test_judge_1: Grading has ended on: 31
+INFO 2025-07-01 11:57:42,891 judge_list Judge available after grading 31: test_judge_1
+INFO 2025-07-01 12:03:18,322 judge_list Specified judge test_judge_1 is available
+INFO 2025-07-01 12:03:18,322 judge_list Dispatched submission 32 to: test_judge_1
+INFO 2025-07-01 12:03:18,332 judge_handler Submission acknowledged: 32
+INFO 2025-07-01 12:03:18,851 judge_handler test_judge_1: Submission generated compiler messages: 32
+INFO 2025-07-01 12:03:18,858 judge_handler test_judge_1: Grading has begun on: 32
+INFO 2025-07-01 12:03:18,916 judge_handler test_judge_1: 3 test case(s) completed on: 32
+INFO 2025-07-01 12:03:18,925 judge_handler test_judge_1: Grading has ended on: 32
+INFO 2025-07-01 12:03:18,926 judge_list Judge available after grading 32: test_judge_1
+INFO 2025-07-02 05:11:04,014 judge_handler Judge connected from: ('172.17.0.2', 39824)
+INFO 2025-07-02 05:11:04,019 judge_handler Judge authenticated: ('172.17.0.2', 39824) (test_judge_1)
+INFO 2025-07-02 05:11:04,019 judge_list Minimum tier changed from None to 1
+INFO 2025-07-02 05:30:39,260 judge_list Specified judge test_judge_1 is available
+INFO 2025-07-02 05:30:39,263 judge_list Dispatched submission 33 to: test_judge_1
+INFO 2025-07-02 05:30:39,273 judge_handler Submission acknowledged: 33
+INFO 2025-07-02 05:30:39,656 judge_handler test_judge_1: Submission generated compiler messages: 33
+INFO 2025-07-02 05:30:39,661 judge_handler test_judge_1: Grading has begun on: 33
+INFO 2025-07-02 05:30:39,932 judge_handler test_judge_1: 2 test case(s) completed on: 33
+INFO 2025-07-02 05:30:39,953 judge_handler test_judge_1: 1 test case(s) completed on: 33
+INFO 2025-07-02 05:30:39,958 judge_handler test_judge_1: Grading has ended on: 33
+INFO 2025-07-02 05:30:39,959 judge_list Judge available after grading 33: test_judge_1
+INFO 2025-07-02 05:31:15,768 judge_list Specified judge test_judge_1 is available
+INFO 2025-07-02 05:31:15,769 judge_list Dispatched submission 34 to: test_judge_1
+INFO 2025-07-02 05:31:15,776 judge_handler Submission acknowledged: 34
+INFO 2025-07-02 05:31:16,037 judge_handler test_judge_1: Submission generated compiler messages: 34
+INFO 2025-07-02 05:31:16,041 judge_handler test_judge_1: Grading has begun on: 34
+INFO 2025-07-02 05:31:16,235 judge_handler test_judge_1: 1 test case(s) completed on: 34
+INFO 2025-07-02 05:31:16,333 judge_handler test_judge_1: 2 test case(s) completed on: 34
+INFO 2025-07-02 05:31:16,340 judge_handler test_judge_1: Grading has ended on: 34
+INFO 2025-07-02 05:31:16,340 judge_list Judge available after grading 34: test_judge_1
+INFO 2025-07-02 05:31:55,305 judge_list Specified judge test_judge_1 is available
+INFO 2025-07-02 05:31:55,306 judge_list Dispatched submission 35 to: test_judge_1
+INFO 2025-07-02 05:31:55,313 judge_handler Submission acknowledged: 35
+INFO 2025-07-02 05:31:56,099 judge_handler test_judge_1: Submission generated compiler messages: 35
+INFO 2025-07-02 05:31:56,102 judge_handler test_judge_1: Grading has begun on: 35
+INFO 2025-07-02 05:31:56,135 judge_handler test_judge_1: 3 test case(s) completed on: 35
+INFO 2025-07-02 05:31:56,141 judge_handler test_judge_1: Grading has ended on: 35
+INFO 2025-07-02 05:31:56,141 judge_list Judge available after grading 35: test_judge_1
+INFO 2025-07-02 05:33:00,465 judge_list Specified judge test_judge_1 is available
+INFO 2025-07-02 05:33:00,465 judge_list Dispatched submission 36 to: test_judge_1
+INFO 2025-07-02 05:33:00,472 judge_handler Submission acknowledged: 36
+INFO 2025-07-02 05:33:01,147 judge_handler test_judge_1: Submission generated compiler messages: 36
+INFO 2025-07-02 05:33:01,150 judge_handler test_judge_1: Grading has begun on: 36
+INFO 2025-07-02 05:33:01,182 judge_handler test_judge_1: 3 test case(s) completed on: 36
+INFO 2025-07-02 05:33:01,186 judge_handler test_judge_1: Grading has ended on: 36
+INFO 2025-07-02 05:33:01,186 judge_list Judge available after grading 36: test_judge_1
+INFO 2025-07-02 08:10:21,301 judge_handler Judge connected from: ('172.17.0.2', 39148)
+INFO 2025-07-02 08:10:21,308 judge_handler Judge authenticated: ('172.17.0.2', 39148) (test_judge_1)
+INFO 2025-07-02 08:10:21,308 judge_list Minimum tier changed from None to 1
+INFO 2025-07-02 10:11:12,287 judge_handler Judge connected from: ('172.17.0.2', 39360)
+INFO 2025-07-02 10:11:12,298 judge_handler Judge authenticated: ('172.17.0.2', 39360) (test_judge_1)
+INFO 2025-07-02 10:11:12,298 judge_list Minimum tier changed from None to 1
+INFO 2025-07-03 04:38:47,209 judge_handler Judge connected from: ('172.17.0.2', 60278)
+INFO 2025-07-03 04:38:47,217 judge_handler Judge authenticated: ('172.17.0.2', 60278) (test_judge_1)
+INFO 2025-07-03 04:38:47,217 judge_list Minimum tier changed from None to 1
+INFO 2025-07-06 17:34:19,200 judge_handler Judge connected from: ('172.17.0.2', 51130)
+INFO 2025-07-06 17:34:19,204 judge_handler Judge authenticated: ('172.17.0.2', 51130) (test_judge_1)
+INFO 2025-07-06 17:34:19,204 judge_list Minimum tier changed from None to 1
+INFO 2025-07-08 04:48:22,633 judge_handler Judge connected from: ('172.17.0.2', 38278)
+INFO 2025-07-08 04:48:22,639 judge_handler Judge authenticated: ('172.17.0.2', 38278) (test_judge_1)
+INFO 2025-07-08 04:48:22,639 judge_list Minimum tier changed from None to 1

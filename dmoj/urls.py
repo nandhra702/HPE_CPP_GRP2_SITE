@@ -9,6 +9,10 @@ from django.utils.functional import lazy
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import RedirectView
 
+from judge.views.trial_script import download_problem_submissions
+
+
+
 from judge.feed import AtomBlogFeed, AtomCommentFeed, AtomProblemFeed, BlogFeed, CommentFeed, ProblemFeed
 from judge.sitemap import sitemaps
 from judge.views import TitledTemplateView, api, blog, comment, contests, language, license, mailgun, organization, \
@@ -33,6 +37,7 @@ register_patterns = [
     # Let's use <str:activation_key>, because a bad activation key should still get to the view;
     # that way, it can return a sensible "invalid key" message instead of a confusing 404.
     path('activate/<str:activation_key>/', ActivationView.as_view(), name='registration_activate'),
+    #path('judge/', include('judge.urls')),  # If not already present,
     path('register/', RegistrationView.as_view(), name='registration_register'),
     path('register/complete/',
          TitledTemplateView.as_view(template_name='registration/registration_complete.html',
@@ -366,6 +371,8 @@ urlpatterns = [
         path('failure', tasks.demo_failure),
         path('progress', tasks.demo_progress),
     ])),
+
+    path('contest/<str:contest_key>/trial_script/<str:problem_code>/',download_problem_submissions,name='trial_script'),
 ]
 
 favicon_paths = ['apple-touch-icon-180x180.png', 'apple-touch-icon-114x114.png', 'android-chrome-72x72.png',

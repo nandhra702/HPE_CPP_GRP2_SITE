@@ -1,5 +1,5 @@
 from django.views.generic import TemplateView
-
+from . import trial_script 
 
 class TitledTemplateView(TemplateView):
     title = None

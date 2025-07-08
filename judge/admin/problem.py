@@ -144,6 +144,7 @@ class ProblemAdmin(NoBatchDeleteMixin, VersionAdmin):
     actions_on_bottom = True
     list_filter = ('is_public', ProblemCreatorListFilter)
     form = ProblemForm
+    
     date_hierarchy = 'date'
 
     def get_actions(self, request):

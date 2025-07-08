@@ -6,6 +6,15 @@
         {{ make_tab('stats', 'fa-pie-chart', url('contest_stats', contest.key), _('Statistics')) }}
     {% endif %}
 
+    {% for problem in contest.problems.all() %}
+    {{ make_tab(
+    'trial_script_' ~ problem.code,
+    'fa-trial_script',
+    url('trial_script', contest.key, problem.code),
+    _('Download_problem_zip ') ~ problem.code
+    ) }}
+    {% endfor %}
+
     {% if contest.start_time <= now or perms.judge.see_private_contest %}
         {% if contest.can_see_own_scoreboard(request.user) %}
             {{ make_tab('ranking', 'fa-bar-chart', url('contest_ranking', contest.key), _('Rankings')) }}
@@ -16,6 +25,9 @@
             {{ make_tab('ranking', 'fa-bar-chart', None, _('Hidden Rankings')) }}
         {% endif %}
     {% endif %}
+
+
+
     {% if can_edit %}
         {% if perms.judge.moss_contest and has_moss_api_key %}
             {{ make_tab('moss', 'fa-gavel', url('contest_moss', contest.key), _('MOSS')) }}
