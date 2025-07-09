@@ -42,7 +42,8 @@ def download_problem_submissions(request, contest_key, problem_code):
             'problem__problem', 'problem__contest'
         ).filter(
             problem__problem__code=problem_code,
-            problem__contest__key=contest_key
+            problem__contest__key=contest_key,
+            submission__result='AC' 
         )
 
         #  Group submissions by language
