@@ -1,4 +1,4 @@
-import collections.abc
+import collections
 import inspect
 from math import ceil
 

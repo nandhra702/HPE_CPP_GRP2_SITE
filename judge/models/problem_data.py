@@ -25,7 +25,7 @@ CHECKERS = (
     ('floatsabs', _('Floats (absolute)')),
     ('floatsrel', _('Floats (relative)')),
     ('rstripped', _('Non-trailing spaces')),
-    ('sorted', _('Sorted')),
+    ('sorted', _('Unordered')),
     ('identical', _('Byte identical')),
     ('linecount', _('Line-by-line')),
 )
@@ -93,6 +93,4 @@ class ProblemTestCase(models.Model):
     output_limit = models.IntegerField(verbose_name=_('output limit length'), blank=True, null=True)
     checker = models.CharField(max_length=10, verbose_name=_('checker'), choices=CHECKERS, blank=True)
     checker_args = models.TextField(verbose_name=_('checker arguments'), blank=True,
-                                    help_text=_('checker arguments as a JSON object'))
-    batch_dependencies = models.TextField(verbose_name=_('batch dependencies'), blank=True,
-                                          help_text=_('batch dependencies as a comma-separated list of integers'))
+                                    help_text=_('Checker arguments as a JSON object.'))

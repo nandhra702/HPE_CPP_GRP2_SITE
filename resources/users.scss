@@ -1,4 +1,4 @@
-@use "vars" as *;
+@import "vars";
 
 td.user-name {
     padding-left: 2em;
@@ -22,7 +22,7 @@ tr:target {
     padding-left: 0.5em;
 }
 
-.users-table {
+#users-table {
     th.rank, th.points, th.problems, th.username {
         white-space: nowrap;
     }
@@ -117,7 +117,6 @@ tr:target {
 img.user-gravatar {
     display: block;
     border-radius: 6px;
-    background-color: white;
 }
 
 .user-content {
@@ -270,19 +269,19 @@ img.user-gravatar {
                     background-color: $color_pageBg;
                 }
                 &.activity-0 {
-                    background-color: $color_user_submission_activity0;
+                    background-color: #ddd;
                 }
                 &.activity-1 {
-                    background-color: $color_user_submission_activity1;
+                    background-color: #9be9a8;
                 }
                 &.activity-2 {
-                    background-color: $color_user_submission_activity2;
+                    background-color: #40c463;
                 }
                 &.activity-3 {
-                    background-color: $color_user_submission_activity3;
+                    background-color: #2f9c4c;
                 }
                 &.activity-4 {
-                    background-color: $color_user_submission_activity4;
+                    background-color: #216e39;
                 }
             }
         }

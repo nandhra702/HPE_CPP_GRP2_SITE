@@ -11,7 +11,6 @@ from judge.models import BlogPost, Comment, Contest, Language, Problem, ProblemC
     Ticket
 from judge.utils.cachedict import CacheDict
 from judge.utils.diggpaginator import DiggPaginator
-from judge.utils.opengraph import generate_opengraph
 from judge.utils.tickets import filter_visible_tickets
 from judge.utils.views import TitleMixin
 
@@ -102,14 +101,7 @@ class PostView(TitleMixin, CommentedDetailView):
 
     def get_context_data(self, **kwargs):
         context = super(PostView, self).get_context_data(**kwargs)
-
-        metadata = generate_opengraph('generated-meta-blog:%d' % self.object.id,
-                                      self.object.summary or self.object.content, 'blog')
-        context['meta_description'] = metadata[0]
-        context['og_image'] = self.object.og_image or metadata[1]
-        context['enable_comments'] = settings.DMOJ_ENABLE_COMMENTS
-        context['enable_social'] = settings.DMOJ_ENABLE_SOCIAL
-
+        context['og_image'] = self.object.og_image
         return context
 
     def get_object(self, queryset=None):

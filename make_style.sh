@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 if ! [ -x "$(command -v sass)" ]; then
   echo 'Error: sass is not installed.' >&2
   exit 1
@@ -20,14 +20,7 @@ build_style() {
   echo "Creating $1 style..."
   cp resources/vars-$1.scss resources/vars.scss
   sass resources:sass_processed
-  postcss \
-      sass_processed/ace-dmoj.css \
-      sass_processed/featherlight.css \
-      sass_processed/martor-description.css \
-      sass_processed/select2-dmoj.css \
-      sass_processed/style.css \
-      --verbose --use autoprefixer -d "$2"
-  rm resources/vars.scss
+  postcss sass_processed/style.css sass_processed/martor-description.css --verbose --use autoprefixer -d $2
 }
 
 build_style 'default' 'resources'

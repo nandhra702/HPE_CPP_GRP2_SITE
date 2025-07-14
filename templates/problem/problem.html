@@ -342,9 +342,12 @@
                 <p class="no-comments-message">{{ _('No clarifications have been made at this time.') }}</p>
             {% endif %}
         </div>
-    {% elif enable_comments %}
-        {% with comment_warn_code=true %}
-            {% include "comments/list.html" %}
-        {% endwith %}
+    {% else %}
+        {% include "comments/list.html" %}
     {% endif %}
+{% endblock %}
+
+{% block bodyend %}
+    {{ super() }}
+    {% include "comments/math.html" %}
 {% endblock %}

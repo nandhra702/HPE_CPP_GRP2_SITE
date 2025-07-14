@@ -6,7 +6,6 @@ import webauthn
 from django import forms
 from django.conf import settings
 from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db.models import Q
@@ -15,11 +14,11 @@ from django.urls import reverse_lazy
 from django.utils.text import format_lazy
 from django.utils.translation import gettext_lazy as _, ngettext_lazy
 
+from django_ace import AceWidget
 from judge.models import Contest, Language, Organization, Problem, ProblemPointsVote, Profile, Submission, \
     WebAuthnCredential
-from judge.utils.mail import validate_email_domain
 from judge.utils.subscription import newsletter_id
-from judge.widgets import AceWidget, MartorWidget, Select2MultipleWidget, Select2Widget
+from judge.widgets import HeavyPreviewPageDownWidget, Select2MultipleWidget, Select2Widget
 
 TOTP_CODE_LENGTH = 6
 
@@ -49,12 +48,12 @@ class ProfileForm(ModelForm):
 
     class Meta:
         model = Profile
-        fields = ['about', 'organizations', 'timezone', 'language', 'ace_theme', 'site_theme', 'user_script']
+        fields = ['about', 'organizations', 'timezone', 'language', 'ace_theme', 'user_script']
         widgets = {
+            'user_script': AceWidget(theme='github'),
             'timezone': Select2Widget(attrs={'style': 'width:200px'}),
             'language': Select2Widget(attrs={'style': 'width:200px'}),
             'ace_theme': Select2Widget(attrs={'style': 'width:200px'}),
-            'site_theme': Select2Widget(attrs={'style': 'width:200px'}),
         }
 
         has_math_config = bool(settings.MATHOID_URL)
@@ -62,7 +61,11 @@ class ProfileForm(ModelForm):
             fields.append('math_engine')
             widgets['math_engine'] = Select2Widget(attrs={'style': 'width:200px'})
 
-        widgets['about'] = MartorWidget(attrs={'data-markdownfy-url': reverse_lazy('profile_preview')})
+        if HeavyPreviewPageDownWidget is not None:
+            widgets['about'] = HeavyPreviewPageDownWidget(
+                preview=reverse_lazy('profile_preview'),
+                attrs={'style': 'max-width:700px;min-width:700px;width:700px'},
+            )
 
     def clean_about(self):
         if 'about' in self.changed_data and not self.instance.has_any_solves:
@@ -89,27 +92,6 @@ class ProfileForm(ModelForm):
             )
         if not self.fields['organizations'].queryset:
             self.fields.pop('organizations')
-        self.fields['user_script'].widget = AceWidget(mode='javascript', theme=user.profile.resolved_ace_theme)
-
-
-class EmailChangeForm(Form):
-    password = CharField(widget=forms.PasswordInput())
-    email = forms.EmailField()
-
-    def __init__(self, *args, user, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.user = user
-
-    def clean_email(self):
-        if User.objects.filter(email=self.cleaned_data['email']).exists():
-            raise ValidationError(_('This email address is already taken.'))
-        validate_email_domain(self.cleaned_data['email'])
-        return self.cleaned_data['email']
-
-    def clean_password(self):
-        if not self.user.check_password(self.cleaned_data['password']):
-            raise ValidationError(_('Invalid password'))
-        return self.cleaned_data['password']
 
 
 class DownloadDataForm(Form):
@@ -168,7 +150,8 @@ class EditOrganizationForm(ModelForm):
         model = Organization
         fields = ['about', 'logo_override_image', 'admins']
         widgets = {'admins': Select2MultipleWidget(attrs={'style': 'width: 200px'})}
-        widgets['about'] = MartorWidget(attrs={'data-markdownfy-url': reverse_lazy('organization_preview')})
+        if HeavyPreviewPageDownWidget is not None:
+            widgets['about'] = HeavyPreviewPageDownWidget(preview=reverse_lazy('organization_preview'))
 
 
 class CustomAuthenticationForm(AuthenticationForm):
@@ -196,7 +179,7 @@ class NoAutoCompleteCharField(forms.CharField):
 class TOTPForm(Form):
     TOLERANCE = settings.DMOJ_TOTP_TOLERANCE_HALF_MINUTES
 
-    totp_or_scratch_code = NoAutoCompleteCharField(required=False, widget=forms.TextInput(attrs={'autofocus': True}))
+    totp_or_scratch_code = NoAutoCompleteCharField(required=False)
 
     def __init__(self, *args, **kwargs):
         self.profile = kwargs.pop('profile')

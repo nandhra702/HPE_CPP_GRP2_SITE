@@ -1,8 +1,7 @@
-@use "vars" as *;
-@use "base-description";
+@import "base-description";
 
 .content-description {
-    @include base-description.content-description;
+    @include content-description;
 }
 
 .display-math {

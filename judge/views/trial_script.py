@@ -1,4 +1,4 @@
-from django.http import FileResponse
+from django.http import FileResponse, HttpResponseNotFound
 import tempfile
 import os
 import zipfile
@@ -6,13 +6,12 @@ import subprocess
 import csv
 from collections import defaultdict
 import socket
-from judge.models import Contest, ContestSubmission, SubmissionSource
 import datetime
 import glob
 
-timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-report_csv_paths = []
+from judge.models import Contest, ContestSubmission, SubmissionSource
 
+timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
 LANGUAGE_EXTENSIONS = {
     'C': 'c', 'C++': 'cpp', 'C++11': 'cpp', 'Python 2': 'py', 'Python 3': 'py',
@@ -28,37 +27,35 @@ DOLOS_LANGUAGE_FLAGS = {
 
 
 def extract_username(filename):
-   
-    name = filename.rsplit('.', 1)[0]  # Remove extension
+    name = filename.rsplit('.', 1)[0]
     parts = name.split('_')
     if len(parts) >= 2 and parts[-1].isdigit():
-        return '_'.join(parts[:-1])  # Remove submission ID
-    return name  # fallback (e.g. no underscore or submission ID)
+        return '_'.join(parts[:-1])
+    return name
 
 
+def extract_similarity_data(report_dirs):
+    similarity_data = defaultdict(lambda: defaultdict(float))
 
-def extract_similarity_data(report_csv_paths):
-    similarity_data = defaultdict(lambda: defaultdict(float))  # username -> problem_code -> max_similarity
+    for report_dir in report_dirs:
+        similarities_csv = os.path.join(report_dir, "similarities.csv")
+        if not os.path.isfile(similarities_csv):
+            print(f"[!] similarities.csv not found in: {report_dir}")
+            continue
 
-    for path in report_csv_paths:
-        if not os.path.exists(path):
-            print(f"[!] Missing Dolos output: {path}")
+        # Extract problem code
+        problem_code = os.path.basename(report_dir)
+        if "submissions" in problem_code:
+            problem_code = problem_code.split("submissions")[0]
+            problem_code = problem_code.split('-')[-1]
 
-        # Extract problem code from directory name instead of filename
-        parent_dir = os.path.basename(os.path.dirname(path))  # e.g. dolos-report-*-twosumPython3submissions
-        problem_code = parent_dir.split('-')[-1]  # Extracts 'twosumPython3submissions'
-        
-        # Optional cleanup: remove 'submissions' suffix
-        if problem_code.endswith('submissions'):
-            problem_code = problem_code[:-11]  # now just 'twosumPython3'
-
-
-        with open(path, newline='') as csvfile:
+        with open(similarities_csv, newline='') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
-                file1 = os.path.basename(row['leftFilePath'])   # e.g. personal_sukhraj_45.py
-                file2 = os.path.basename(row['rightFilePath'])  # e.g. sukhraj_47.py
+                file1 = os.path.basename(row['leftFilePath'])
+                file2 = os.path.basename(row['rightFilePath'])
                 similarity = float(row['similarity'])
+
                 user1 = extract_username(file1)
                 user2 = extract_username(file2)
 
@@ -81,12 +78,15 @@ def find_free_port(start_port=3001, max_port=3100, used_ports=set()):
                 return port
     raise RuntimeError("No free port found in range.")
 
-    # ///////////////////////////////////
 
-def download_problem_submissions(request, contest_key):
+def download_problem_submissions(request, contest_key, problem_code):
     contest = Contest.objects.get(key=contest_key)
-    problems = contest.problems.all()
-    base_dir = "/home/sukhraj/submissions"  # or any path you want
+    problem = contest.problems.filter(code=problem_code).first()
+    if not problem:
+        return HttpResponseNotFound("Problem not found in this contest.")
+    problems = [problem]
+
+    base_dir = "/home/trishal/submissions"
     os.makedirs(base_dir, exist_ok=True)
     tmp_dir = os.path.join(base_dir, f"contest_{contest_key}_{timestamp}")
     os.makedirs(tmp_dir, exist_ok=True)
@@ -113,10 +113,7 @@ def download_problem_submissions(request, contest_key):
                 user = submission.user
                 lang = submission.language.name
                 ext = LANGUAGE_EXTENSIONS.get(lang, 'txt')
-                username = user.username
-                sub_id = submission.id
-
-                filename = f"{username}_{sub_id}.{ext}"
+                filename = f"{user.username}_{submission.id}.{ext}"
 
                 try:
                     source = SubmissionSource.objects.get(pk=submission.id)
@@ -136,55 +133,56 @@ def download_problem_submissions(request, contest_key):
                     for filename, code in files:
                         zipf.writestr(filename, code)
 
-                lang_flag = DOLOS_LANGUAGE_FLAGS.get(lang, None)
+                lang_flag = DOLOS_LANGUAGE_FLAGS.get(lang)
                 if lang_flag:
                     try:
                         free_port = find_free_port(start_port=3001, used_ports=used_ports)
                         subprocess.Popen([
                             "dolos", "run", "-f", "web", "-l", lang_flag,
-                            "--port", str(free_port), zip_path],cwd=tmp_dir)
+                            "--port", str(free_port), zip_path
+                        ], cwd=tmp_dir)
 
-                        csv_output_path = zip_path.replace(".zip", "_report.csv")
+                        csv_output_dir = f"dolos-report-{timestamp}-{problem_code}{lang.replace(' ', '')}submissions"
+                        csv_output_path = os.path.join(tmp_dir, csv_output_dir)
+
                         with open(csv_output_path, 'w') as csv_file:
-                            subprocess.run([
+                            ssubprocess.run([
                                 "dolos", "run", "-f", "csv", "-l", lang_flag,
-                                zip_path], stdout=csv_file, cwd=tmp_dir)    
+                                zip_path, "-o", csv_output_path
+                        ], cwd=tmp_dir)
                     except Exception as e:
                         print(f"[✗] Dolos failed for {zip_filename}: {e}")
                 else:
                     print(f"[!] Skipping Dolos: No language flag for '{lang}'")
 
-      
+        report_dirs = glob.glob(os.path.join(tmp_dir, "dolos-report-*"))
+        sim_data = extract_similarity_data(report_dirs)
 
-        report_csv_paths = glob.glob(os.path.join(tmp_dir, "dolos-report-*/pairs.csv"))
+        print("Final similarity data:", sim_data)
+        print("[Debug] Extracted Similarity Data:")
+        for user, scores in sim_data.items():
+            print(f"  {user} -> {scores}")
 
-        sim_data = extract_similarity_data(report_csv_paths)
 
         similarity_matrix_path = os.path.join(tmp_dir, f"{contest_key}_similarity_matrix.txt")
         with open(similarity_matrix_path, 'w') as out_file:
             for username, scores in sim_data.items():
                 line = f"{username}"
+                
                 for problem in problems:
-                    code = problem.code
 
-                    # Try to find any key in scores that contains the problem code
+                    code = problem.code
                     matching_key = next((k for k in scores if code in k), None)
                     sim_percent = scores[matching_key] if matching_key else 0.0
-
                     line += f" : {code} {sim_percent:.2f}%"
                 out_file.write(line + "\n")
-        
+
         final_zip_path = os.path.join(tmp_dir, f"{contest_key}_grouped_submissions.zip")
         with zipfile.ZipFile(final_zip_path, 'w', zipfile.ZIP_DEFLATED) as final_zip:
             for zip_file in lang_zip_paths:
                 arcname = os.path.basename(zip_file)
                 final_zip.write(zip_file, arcname=arcname)
-
-
-
             final_zip.write(similarity_matrix_path, arcname=os.path.basename(similarity_matrix_path))
-
-
 
         return FileResponse(open(final_zip_path, 'rb'), as_attachment=True,
                             filename=f"{contest_key}_grouped_submissions.zip")

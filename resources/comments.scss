@@ -1,4 +1,4 @@
-@use "vars" as *;
+@import "vars";
 
 .comment-score {
     font-weight: bold;
@@ -60,8 +60,16 @@ a {
     box-sizing: border-box;
 }
 
-.comment-edit-form {
-    min-width: 60em;
+.comment-post-wrapper {
+    padding-bottom: 5px;
+
+    input, textarea {
+        min-width: 100%;
+        max-width: 100%;
+
+        // Hack for 4k on Chrome
+        font-size: $base_font_size;
+    }
 }
 
 .comment {
@@ -136,6 +144,11 @@ a {
         display: flex;
     }
 
+    .gravatar {
+        width: 75px;
+        max-width: 75px;
+    }
+
     .gravatar-mobile {
         display: none;
     }
@@ -151,9 +164,9 @@ a {
     }
 
     @media (max-width: 760px) {
-        img.user-gravatar {
-            display: inline-block;
-            border-radius: 2px;
+        .gravatar {
+            width: 10px;
+            max-width: 10px;
         }
 
         .gravatar-mobile {

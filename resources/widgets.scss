@@ -1,4 +1,4 @@
-@use "vars" as *;
+@import "vars";
 
 .social i {
     display: inline;
@@ -101,19 +101,7 @@ input {
     }
 
     &[type=checkbox] {
-        appearance: none;
         vertical-align: middle;
-        border: 1px solid $color_primary50;
-        background: $color_primary0;
-        border-radius: 2px;
-        width: 0.95em;
-        height: 0.95em;
-        cursor: pointer;
-
-        &:checked {
-            appearance: auto;
-            accent-color: $highlight_blue;
-        }
     }
 }
 
@@ -162,8 +150,6 @@ textarea:focus {
 // Bootstrap-y tabs
 .ul_tab_a_active {
     color: $color_primary100;
-    // Cover up the bottom border of active tabs with this color
-    background: $color_pageBg;
     cursor: default;
     border: 1px solid $color_primary25;
     border-bottom-color: $color_pageBg;
@@ -236,7 +222,7 @@ textarea:focus {
                 position: relative;
                 display: block;
                 padding: 10px 15px;
-                color: $color_primary66;
+                color: $color_primary50;
                 text-decoration: none;
                 white-space: nowrap;
             }
@@ -325,21 +311,21 @@ ul.pagination {
 }
 
 .alert-info {
-    color: $color_info100;
-    background-color: $color_info25;
-    border-color: $color_info50;
+    color: #31708f;
+    background-color: #d9edf7;
+    border-color: #bce8f1;
 }
 
 .alert-warning {
-    color: $color_warning100;
-    background-color: $color_warning25;
-    border-color: $color_warning50;
+    color: #8a6d3b;
+    background-color: #fcf8e3;
+    border-color: #faebcc;
 }
 
 .alert-danger {
-    color: $color_danger100;
-    background-color: $color_danger25;
-    border-color: $color_danger50;
+    color: #a94442;
+    background-color: #f2dede;
+    border-color: #ebccd1;
 }
 
 .alert-dismissable, .alert-dismissible {
@@ -358,7 +344,8 @@ ul.pagination {
     font-size: 21px;
     font-weight: 700;
     line-height: 1;
-    color: $color_primary100;
+    color: #000;
+    text-shadow: 0 1px 0 #fff;
     filter: alpha(opacity=20);
     opacity: 0.2;
 }
@@ -369,7 +356,7 @@ a.close {
     line-height: 1;
 
     &:hover {
-        color: $color_primary100;
+        color: black !important;
     }
 }
 
@@ -403,6 +390,15 @@ a.close {
     margin-top: 0.8em;
     padding-top: 0.5em;
     text-align: right;
+}
+
+ul.select2-results__options {
+    color: black;
+}
+
+ul.select2-selection__rendered {
+    padding: 0 5px !important;
+    color: black;
 }
 
 .sidebox h3 {
@@ -476,33 +472,33 @@ a.close {
         border-radius: 5px;
 
         &.debug {
-            color: $color_primary75;
-            background-color: $color_primary10;
-            border-color: $color_primary25;
+            color: #383d41;
+            background-color: #e2e3e5;
+            border-color: #d6d8db;
         }
 
         &.info {
-            color: $color_info100;
-            background-color: $color_info25;
-            border-color: $color_info50;
+            color: #0c5460;
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
         }
 
         &.success {
-            color: $color_success100;
-            background-color: $color_success25;
-            border-color: $color_success50;
+            color: #155724;
+            background-color: #d4edda;
+            border-color: #c3e6cb;
         }
 
         &.warning {
-            color: $color_warning100;
-            background-color: $color_warning25;
-            border-color: $color_warning50;
+            color: #856404;
+            background-color: #fff3cd;
+            border-color: #ffeeba;
         }
 
         &.error {
-            color: $color_danger100;
-            background-color: $color_danger25;
-            border-color: $color_danger50;
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
         }
     }
 }

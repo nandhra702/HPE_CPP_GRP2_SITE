@@ -23,7 +23,7 @@ from fernet_fields import EncryptedCharField
 from pyotp.utils import strings_equal
 from sortedm2m.fields import SortedManyToManyField
 
-from judge.models.choices import ACE_THEMES, MATH_ENGINES_CHOICES, SITE_THEMES, TIMEZONE
+from judge.models.choices import ACE_THEMES, MATH_ENGINES_CHOICES, TIMEZONE
 from judge.models.runtime import Language
 from judge.ratings import rating_class
 from judge.utils.two_factor import webauthn_decode
@@ -151,11 +151,10 @@ class Profile(models.Model):
                                 default=settings.DEFAULT_USER_TIME_ZONE)
     language = models.ForeignKey('Language', verbose_name=_('preferred language'), on_delete=models.SET_DEFAULT,
                                  default=Language.get_default_language_pk)
-    points = models.FloatField(default=0)
-    performance_points = models.FloatField(default=0)
-    problem_count = models.IntegerField(default=0)
-    ace_theme = models.CharField(max_length=30, verbose_name=_('Ace theme'), choices=ACE_THEMES, default='auto')
-    site_theme = models.CharField(max_length=10, verbose_name=_('site theme'), choices=SITE_THEMES, default='auto')
+    points = models.FloatField(default=0, db_index=True)
+    performance_points = models.FloatField(default=0, db_index=True)
+    problem_count = models.IntegerField(default=0, db_index=True)
+    ace_theme = models.CharField(max_length=30, verbose_name=_('Ace theme'), choices=ACE_THEMES, default='github')
     last_access = models.DateTimeField(verbose_name=_('last access time'), default=now)
     ip = models.GenericIPAddressField(verbose_name=_('last IP'), blank=True, null=True)
     organizations = SortedManyToManyField(Organization, verbose_name=_('organization'), blank=True,
@@ -225,17 +224,6 @@ class Profile(models.Model):
     @cached_property
     def has_any_solves(self):
         return self.submission_set.filter(result='AC', case_points__gte=F('case_total')).exists()
-
-    @cached_property
-    def resolved_ace_theme(self):
-        if self.ace_theme != 'auto':
-            return self.ace_theme
-        if not self.user.has_perm('judge.test_site'):
-            return settings.DMOJ_THEME_DEFAULT_ACE_THEME.get('light')
-        if self.site_theme != 'auto':
-            return settings.DMOJ_THEME_DEFAULT_ACE_THEME.get(self.site_theme)
-        # This must be resolved client-side using prefers-color-scheme.
-        return None
 
     _pp_table = [pow(settings.DMOJ_PP_STEP, i) for i in range(settings.DMOJ_PP_ENTRIES)]
 
@@ -337,12 +325,6 @@ class Profile(models.Model):
         )
         verbose_name = _('user profile')
         verbose_name_plural = _('user profiles')
-
-        indexes = [
-            models.Index(fields=('is_unlisted', '-performance_points')),
-            models.Index(fields=('is_unlisted', '-rating')),
-            models.Index(fields=('is_unlisted', '-problem_count')),
-        ]
 
 
 class WebAuthnCredential(models.Model):

@@ -31,8 +31,8 @@
         {% if request.user.is_authenticated and perms.judge.rejudge_submission %}
             <script type="text/javascript">
                 window.rejudge_submission = function (id, e) {
-                    if ((typeof e !== 'undefined' && (e.ctrlKey || e.metaKey)) ||
-                        confirm({{ _('Are you sure you want to rejudge?')|htmltojs }})) {
+                    if ((typeof e !== 'undefined' && e.ctrlKey) ||
+                        confirm('{{ _('Are you sure you want to rejudge?') }}')) {
                         $.ajax({
                             url: '{{ url('submission_rejudge') }}',
                             type: "POST",
@@ -70,16 +70,14 @@
                 }
 
                 $('#status').select2({
-                    theme: '{{ DMOJ_SELECT2_THEME }}',
                     multiple: 1,
-                    placeholder: {{ _('Filter by status...')|htmltojs }},
+                    placeholder: '{{ _('Filter by status...') }}',
                     matcher: idAndTextMatcher,
                 }).css({'visibility': 'visible'});
 
                 $('#language').select2({
-                    theme: '{{ DMOJ_SELECT2_THEME }}',
                     multiple: 1,
-                    placeholder: {{ _('Filter by language...')|htmltojs }},
+                    placeholder: '{{ _('Filter by language...') }}',
                     matcher: idAndTextMatcher,
                 }).css({'visibility': 'visible'});
             });

@@ -1,0 +1,50 @@
+{% extends "tabs-base.html" %}
+{% import "macros.html" as tabs %}
+
+{% block tabs %}
+{{ tabs.make_tab('detail', 'fa-info-circle', url('contest_view', contest.key), _('Info')) }}
+{{ tabs.make_tab('stats', 'fa-pie-chart', url('contest_stats', contest.key), _('Statistics')) }}
+{{ tabs.make_tab('reports', 'fa-flag', url('contest_reports', contest.key), _('Reports')) }}
+{% endblock %}
+
+{% block content %}
+<h2>Reports for Contest: {{ contest.name }}</h2>
+{% if problem_languages %}
+<table>
+    <thead>
+        <tr>
+            <th>Problem</th>
+            <th>Language</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for problem, langs in problem_languages.items() %}
+        <tr>
+            <td>{{ problem.title }}</td>
+            <td>
+                <select id="language_{{ problem.code }}">
+                    {% for lang in langs %}
+                    <option value="{{ lang }}">{{ lang }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+            <td>
+                <button onclick="generateReport('{{ contest.key }}', '{{ problem.code }}')">Generate</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No problems found for this contest.</p>
+{% endif %}
+
+<script>
+    function generateReport(contestKey, problemCode) {
+        const language = document.getElementById(`language_${problemCode}`).value;
+        const url = `/contest/${contestKey}/${problemCode}/${language}/download/`;
+        window.location.href = url;
+    }
+</script>
+{% endblock %}

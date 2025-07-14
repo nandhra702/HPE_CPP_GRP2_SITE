@@ -1,4 +1,4 @@
-@use "vars" as *;
+@import "vars";
 
 .info-float {
     position: sticky;
@@ -54,10 +54,6 @@
         .score {
             font-size: 1.3em;
             color: #000;
-
-            .grading-spinner {
-                color: $color_primary100;
-            }
         }
     }
 

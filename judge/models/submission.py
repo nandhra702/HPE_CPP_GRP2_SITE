@@ -64,17 +64,16 @@ class Submission(models.Model):
         'AB': _('Aborted'),
     }
 
-    user = models.ForeignKey(Profile, verbose_name=_('user'), on_delete=models.CASCADE, db_index=False)
-    problem = models.ForeignKey(Problem, verbose_name=_('problem'), on_delete=models.CASCADE, db_index=False)
+    user = models.ForeignKey(Profile, verbose_name=_('user'), on_delete=models.CASCADE)
+    problem = models.ForeignKey(Problem, verbose_name=_('problem'), on_delete=models.CASCADE)
     date = models.DateTimeField(verbose_name=_('submission time'), auto_now_add=True, db_index=True)
-    time = models.FloatField(verbose_name=_('execution time'), null=True)
+    time = models.FloatField(verbose_name=_('execution time'), null=True, db_index=True)
     memory = models.FloatField(verbose_name=_('memory usage'), null=True)
-    points = models.FloatField(verbose_name=_('points granted'), null=True)
-    language = models.ForeignKey(Language, verbose_name=_('submission language'),
-                                 on_delete=models.CASCADE, db_index=False)
+    points = models.FloatField(verbose_name=_('points granted'), null=True, db_index=True)
+    language = models.ForeignKey(Language, verbose_name=_('submission language'), on_delete=models.CASCADE)
     status = models.CharField(verbose_name=_('status'), max_length=2, choices=STATUS, default='QU', db_index=True)
     result = models.CharField(verbose_name=_('result'), max_length=3, choices=SUBMISSION_RESULT,
-                              default=None, null=True, blank=True)
+                              default=None, null=True, blank=True, db_index=True)
     error = models.TextField(verbose_name=_('compile errors'), null=True, blank=True)
     current_testcase = models.IntegerField(default=0)
     batch = models.BooleanField(verbose_name=_('batched cases'), default=False)
@@ -86,7 +85,7 @@ class Submission(models.Model):
     rejudged_date = models.DateTimeField(verbose_name=_('last rejudge date by admin'), null=True, blank=True)
     is_pretested = models.BooleanField(verbose_name=_('was ran on pretests only'), default=False)
     contest_object = models.ForeignKey('Contest', verbose_name=_('contest'), null=True, blank=True,
-                                       on_delete=models.SET_NULL, related_name='+', db_index=False)
+                                       on_delete=models.SET_NULL, related_name='+')
     locked_after = models.DateTimeField(verbose_name=_('submission lock'), null=True, blank=True)
 
     @classmethod
@@ -231,32 +230,6 @@ class Submission(models.Model):
         verbose_name = _('submission')
         verbose_name_plural = _('submissions')
 
-        indexes = [
-            # For problem submission rankings
-            models.Index(fields=['problem', 'user', '-points', '-time']),
-
-            # For contest problem submission rankings
-            models.Index(fields=['contest_object', 'problem', 'user', '-points', '-time']),
-
-            # For main submission list filtering by some combination of result and language
-            models.Index(fields=['result', '-id']),
-            models.Index(fields=['result', 'language', '-id']),
-            models.Index(fields=['language', '-id']),
-
-            # For filtered main submission list result charts
-            models.Index(fields=['result', 'problem']),
-            models.Index(fields=['language', 'problem', 'result']),
-
-            # For problem submissions result chart
-            models.Index(fields=['problem', 'result']),
-
-            # For user_attempted_ids and own problem submissions result chart
-            models.Index(fields=['user', 'problem', 'result']),
-
-            # For user_completed_ids
-            models.Index(fields=['user', 'result']),
-        ]
-
 
 class SubmissionSource(models.Model):
     submission = models.OneToOneField(Submission, on_delete=models.CASCADE, verbose_name=_('associated submission'),
@@ -275,7 +248,7 @@ class SubmissionSource(models.Model):
 class SubmissionTestCase(models.Model):
     RESULT = SUBMISSION_RESULT
 
-    submission = models.ForeignKey(Submission, verbose_name=_('associated submission'), db_index=False,
+    submission = models.ForeignKey(Submission, verbose_name=_('associated submission'),
                                    related_name='test_cases', on_delete=models.CASCADE)
     case = models.IntegerField(verbose_name=_('test case ID'))
     status = models.CharField(max_length=3, verbose_name=_('status flag'), choices=SUBMISSION_RESULT)

@@ -1,0 +1,26 @@
+# This is the same ID you specified in the judge admin panel.
+id: Trishal
+# The key this judge will use to authenticate with the site server, generated from the admin panel.
+key: "mH2xhuvVabngpqYGVlhG5XjV4frlDCpY/EpIsYlqKkLf+I/t+n/0BFcUxzHuXixWGdXiWSibZqqH4WV67/nlsGXFk6inq2LaIHLT"
+# Where to look for problems on the local filesystem.
+# Any directory matching any of the following globs with an init.yml file is assumed to be a problem directory.
+problem_storage_globs:
+  - /home/trishal/online-judge/problems/*
+runtime:
+  as_x64: /usr/bin/x86_64-linux-gnu-as
+  as_x86: /usr/bin/as
+  awk: /usr/bin/mawk
+  cat: /usr/bin/cat
+  g++: /usr/bin/g++
+  g++11: /usr/bin/g++
+  g++14: /usr/bin/g++
+  g++17: /usr/bin/g++
+  g++20: /usr/bin/g++-11
+  gcc: /usr/bin/gcc
+  gcc11: /usr/bin/gcc
+  ld_x64: /usr/bin/x86_64-linux-gnu-ld
+  ld_x86: /usr/bin/ld
+  perl: /usr/bin/perl
+  python3: /home/trishal/venv/bin/python3
+  sed: /usr/bin/sed
+  tclsh: /usr/bin/tclsh

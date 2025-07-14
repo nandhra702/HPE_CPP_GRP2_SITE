@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models, transaction
@@ -16,6 +15,7 @@ from judge.models.problem import Problem
 from judge.models.profile import Class, Organization, Profile
 from judge.models.submission import Submission
 from judge.ratings import rate_contest
+import sys
 
 __all__ = ['Contest', 'ContestTag', 'ContestParticipation', 'ContestProblem', 'ContestSubmission', 'Rating']
 
@@ -115,14 +115,7 @@ class Contest(models.Model):
     rating_ceiling = models.IntegerField(verbose_name=_('rating ceiling'),
                                          help_text=_('Do not rate users who have a higher rating.'),
                                          null=True, blank=True)
-    performance_ceiling_override = models.IntegerField(verbose_name=_('performance ceiling override'),
-                                                       help_text=_('Overrides the performance_ceiling parameter '
-                                                                   'used in computing ratings. '
-                                                                   "Do not modify unless you know what you're doing!"),
-                                                       null=True, blank=True)
-    rate_all = models.BooleanField(verbose_name=_('rate all'),
-                                   help_text=_('Rate users even if they make no submissions.'),
-                                   default=False)
+    rate_all = models.BooleanField(verbose_name=_('rate all'), help_text=_('Rate all users who joined.'), default=False)
     rate_exclude = models.ManyToManyField(Profile, verbose_name=_('exclude from ratings'), blank=True,
                                           related_name='rate_exclude+')
     is_private = models.BooleanField(verbose_name=_('private to specific users'), default=False)
@@ -296,15 +289,6 @@ class Contest(models.Model):
             return None
 
     @cached_property
-    def performance_ceiling(self):
-        if self.performance_ceiling_override is not None:
-            return self.performance_ceiling_override
-        elif self.rating_ceiling:
-            return self.rating_ceiling + settings.DMOJ_CONTEST_PERF_CEILING_INCREMENT
-        else:
-            return None
-
-    @cached_property
     def ended(self):
         return self.end_time < self._now
 
@@ -407,19 +391,10 @@ class Contest(models.Model):
         if not user.is_authenticated:
             return False
 
-        # Can be populated using annotate for performance in list views.
-        editor_or_tester = getattr(self, 'editor_or_tester', None)
-        if editor_or_tester is None:
-            editor_or_tester = user.profile.id in self.editor_ids or user.profile.id in self.tester_ids
-
-        if editor_or_tester:
+        if user.profile.id in self.editor_ids or user.profile.id in self.tester_ids:
             return False
 
-        completed_contest = getattr(self, 'completed_contest', None)
-        if completed_contest is None:
-            completed_contest = self.has_completed_contest(user)
-
-        if completed_contest:
+        if self.has_completed_contest(user):
             return False
 
         if self.limit_join_organizations:
@@ -504,7 +479,6 @@ class Contest(models.Model):
             ('change_contest_visibility', _('Change contest visibility')),
             ('contest_problem_label', _('Edit contest problem label script')),
             ('lock_contest', _('Change lock status of contest')),
-            ('override_performance_ceiling', _('Override performance ceiling of contest')),
         )
         verbose_name = _('contest')
         verbose_name_plural = _('contests')

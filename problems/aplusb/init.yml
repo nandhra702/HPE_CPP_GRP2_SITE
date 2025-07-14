@@ -1,0 +1,15 @@
+name: A Plus B
+code: aplusb
+type: standard
+validator: token
+limits:
+  time: 1.0
+  memory: 262144
+archive: testcases.zip
+cases:
+  - in: 1.in
+    out: 1.out
+  - in: 2.in
+    out: 2.out
+  - in: 3.in
+    out: 3.out

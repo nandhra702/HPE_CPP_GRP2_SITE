@@ -1,4 +1,6 @@
 # coding=utf-8
+import re
+
 from django import forms
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -12,10 +14,11 @@ from registration.forms import RegistrationForm
 from sortedm2m.forms import SortedMultipleChoiceField
 
 from judge.models import Language, Organization, Profile, TIMEZONE
-from judge.utils.mail import validate_email_domain
 from judge.utils.recaptcha import ReCaptchaField, ReCaptchaWidget
 from judge.utils.subscription import Subscription, newsletter_id
 from judge.widgets import Select2MultipleWidget, Select2Widget
+
+bad_mail_regex = list(map(re.compile, settings.BAD_MAIL_PROVIDER_REGEX))
 
 
 class CustomRegistrationForm(RegistrationForm):
@@ -40,7 +43,12 @@ class CustomRegistrationForm(RegistrationForm):
         if User.objects.filter(email=self.cleaned_data['email']).exists():
             raise forms.ValidationError(gettext('The email address "%s" is already taken. Only one registration '
                                                 'is allowed per address.') % self.cleaned_data['email'])
-        validate_email_domain(self.cleaned_data['email'])
+        if '@' in self.cleaned_data['email']:
+            domain = self.cleaned_data['email'].split('@')[-1].lower()
+            if (domain in settings.BAD_MAIL_PROVIDERS or
+                    any(regex.match(domain) for regex in bad_mail_regex)):
+                raise forms.ValidationError(gettext('Your email provider is not allowed due to history of abuse. '
+                                                    'Please use a reputable email provider.'))
         return self.cleaned_data['email']
 
     def clean_organizations(self):
@@ -61,7 +69,9 @@ class RegistrationView(OldRegistrationView):
     def get_context_data(self, **kwargs):
         if 'title' not in kwargs:
             kwargs['title'] = self.title
-        kwargs['TIMEZONE_MAP'] = settings.TIMEZONE_MAP
+        tzmap = settings.TIMEZONE_MAP
+        kwargs['TIMEZONE_MAP'] = tzmap or 'http://momentjs.com/static/img/world.png'
+        kwargs['TIMEZONE_BG'] = settings.TIMEZONE_BG if tzmap else '#4E7CAD'
         kwargs['password_validators'] = get_default_password_validators()
         kwargs['tos_url'] = settings.TERMS_OF_SERVICE_URL
         return super(RegistrationView, self).get_context_data(**kwargs)

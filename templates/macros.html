@@ -1,0 +1,7 @@
+{% macro make_tab(slug, icon, url, label, current_tab) %}
+<li class="{% if current_tab == slug %}active{% endif %}">
+    <a href="{{ url }}">
+        <i class="fa {{ icon }}"></i> {{ label }}
+    </a>
+</li>
+{% endmacro %}

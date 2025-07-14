@@ -15,7 +15,7 @@
     </style>
 
     {% if is_admin %}
-        <style>#organization-users-table td:nth-child(3), #organization-users th:nth-child(3) {
+        <style>#users-table td:nth-child(3), #users-table th:nth-child(3) {
             border-right: none;
         }
         </style>
@@ -26,7 +26,7 @@
     <script type="text/javascript">
         $(function () {
             $('form.kick-form').find('a.button').click(function () {
-                if (confirm({{ _('Are you sure you want to kick this user?')|htmltojs }})) {
+                if (confirm("{{ _('Are you sure you want to kick this user?') }}")) {
                     $(this).parent().submit();
                 }
                 return false;
@@ -35,7 +35,4 @@
     </script>
 {% endblock %}
 
-{% block users_table %}
-    {% set table_id='organization-users-table' %}
-    {% include "organization/users-table.html" %}
-{% endblock %}
+{% block users_table %}{% include "organization/users-table.html" %}{% endblock %}

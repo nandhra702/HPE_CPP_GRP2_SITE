@@ -1,0 +1,21 @@
+<!-- {% extends "base.html" %}
+{% block content %}
+<h2>Reports for {{ contest.name }}</h2>
+
+{% for problem_code, languages in problem_languages.items %}
+<div class="report-block">
+    <h4>Problem: {{ problem_code }}</h4>
+    <form method="post" action="{% url 'run_dolos' contest.key problem_code %}">
+        {% csrf_token %}
+        <label for="lang_{{ problem_code }}">Select Language:</label>
+        <select name="language" id="lang_{{ problem_code }}">
+            {% for lang in languages %}
+            <option value="{{ lang }}">{{ lang }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit">Generate Report</button>
+    </form>
+</div>
+{% endfor %}
+
+{% endblock %} -->

@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import shutil
 from datetime import timedelta
 from operator import itemgetter
 from random import randrange
@@ -30,9 +31,9 @@ from judge.comments import CommentedDetailView
 from judge.forms import ProblemCloneForm, ProblemPointsVoteForm, ProblemSubmitForm
 from judge.models import ContestSubmission, Judge, Language, Problem, ProblemGroup, ProblemPointsVote, \
     ProblemTranslation, ProblemType, RuntimeVersion, Solution, Submission, SubmissionSource
+from judge.pdf_problems import DefaultPdfMaker, HAS_PDF
 from judge.utils.diggpaginator import DiggPaginator
 from judge.utils.opengraph import generate_opengraph
-from judge.utils.pdfoid import PDF_RENDERING_ENABLED, render_pdf
 from judge.utils.problems import contest_attempted_ids, contest_completed_ids, hot_problems, user_attempted_ids, \
     user_completed_ids
 from judge.utils.strings import safe_float_or_none, safe_int_or_none
@@ -127,7 +128,6 @@ class ProblemSolution(SolvedProblemMixin, ProblemMixin, TitleMixin, CommentedDet
             raise Http404()
         context['solution'] = solution
         context['has_solved_problem'] = self.object.id in self.get_completed_problems()
-        context['enable_comments'] = settings.DMOJ_ENABLE_COMMENTS
         return context
 
     def get_comment_page(self):
@@ -167,7 +167,7 @@ class ProblemDetail(ProblemMixin, SolvedProblemMixin, CommentedDetailView):
 
         context['available_judges'] = Judge.objects.filter(online=True, problems=self.object)
         context['show_languages'] = self.object.allowed_languages.count() != Language.objects.count()
-        context['has_pdf_render'] = PDF_RENDERING_ENABLED
+        context['has_pdf_render'] = HAS_PDF
         context['completed_problem_ids'] = self.get_completed_problems()
         context['attempted_problems'] = self.get_attempted_problems()
 
@@ -202,7 +202,6 @@ class ProblemDetail(ProblemMixin, SolvedProblemMixin, CommentedDetailView):
                                           context['description'], 'problem')
         context['meta_description'] = self.object.summary or metadata[0]
         context['og_image'] = self.object.og_image or metadata[1]
-        context['enable_comments'] = settings.DMOJ_ENABLE_COMMENTS
 
         context['vote_perm'] = self.object.vote_permission_for_user(user)
         if context['vote_perm'].can_vote():
@@ -298,7 +297,7 @@ class ProblemPdfView(ProblemMixin, SingleObjectMixin, View):
     languages = set(map(itemgetter(0), settings.LANGUAGES))
 
     def get(self, request, *args, **kwargs):
-        if not PDF_RENDERING_ENABLED:
+        if not HAS_PDF:
             raise Http404()
 
         language = kwargs.get('language', self.request.LANGUAGE_CODE)
@@ -306,47 +305,48 @@ class ProblemPdfView(ProblemMixin, SingleObjectMixin, View):
             raise Http404()
 
         problem = self.get_object()
-        pdf_basename = '%s.%s.pdf' % (problem.code, language)
+        try:
+            trans = problem.translations.get(language=language)
+        except ProblemTranslation.DoesNotExist:
+            trans = None
 
-        def render_problem_pdf():
-            self.logger.info('Rendering PDF in %s: %s', language, problem.code)
+        cache = os.path.join(settings.DMOJ_PDF_PROBLEM_CACHE, '%s.%s.pdf' % (problem.code, language))
 
-            with translation.override(language):
-                try:
-                    trans = problem.translations.get(language=language)
-                except ProblemTranslation.DoesNotExist:
-                    trans = None
+        if not os.path.exists(cache):
+            self.logger.info('Rendering: %s.%s.pdf', problem.code, language)
+            with DefaultPdfMaker() as maker, translation.override(language):
+                problem_name = problem.name if trans is None else trans.name
+                maker.html = get_template('problem/raw.html').render({
+                    'problem': problem,
+                    'problem_name': problem_name,
+                    'description': problem.description if trans is None else trans.description,
+                    'url': request.build_absolute_uri(),
+                    'math_engine': maker.math_engine,
+                }).replace('"//', '"https://').replace("'//", "'https://")
+                maker.title = problem_name
 
-                problem_name = trans.name if trans else problem.name
-                return render_pdf(
-                    html=get_template('problem/raw.html').render({
-                        'problem': problem,
-                        'problem_name': problem_name,
-                        'description': trans.description if trans else problem.description,
-                        'url': request.build_absolute_uri(),
-                    }).replace('"//', '"https://').replace("'//", "'https://"),
-                    title=problem_name,
-                )
+                assets = ['style.css']
+                if maker.math_engine == 'jax':
+                    assets.append('mathjax_config.js')
+                for file in assets:
+                    maker.load(file, os.path.join(settings.DMOJ_RESOURCES, file))
+                maker.make()
+                if not maker.success:
+                    self.logger.error('Failed to render PDF for %s', problem.code)
+                    return HttpResponse(maker.log, status=500, content_type='text/plain')
+                shutil.move(maker.pdffile, cache)
 
         response = HttpResponse()
-        response['Content-Type'] = 'application/pdf'
-        response['Content-Disposition'] = f'inline; filename={pdf_basename}'
 
-        if settings.DMOJ_PDF_PROBLEM_CACHE:
-            pdf_filename = os.path.join(settings.DMOJ_PDF_PROBLEM_CACHE, pdf_basename)
-            if not os.path.exists(pdf_filename):
-                with open(pdf_filename, 'wb') as f:
-                    f.write(render_problem_pdf())
-
-            if settings.DMOJ_PDF_PROBLEM_INTERNAL:
-                url_path = f'{settings.DMOJ_PDF_PROBLEM_INTERNAL}/{pdf_basename}'
-            else:
-                url_path = None
-
-            add_file_response(request, response, url_path, pdf_filename)
+        if hasattr(settings, 'DMOJ_PDF_PROBLEM_INTERNAL'):
+            url_path = '%s/%s.%s.pdf' % (settings.DMOJ_PDF_PROBLEM_INTERNAL, problem.code, language)
         else:
-            response.content = render_problem_pdf()
+            url_path = None
 
+        add_file_response(request, response, url_path, cache)
+
+        response['Content-Type'] = 'application/pdf'
+        response['Content-Disposition'] = 'inline; filename=%s.%s.pdf' % (problem.code, language)
         return response
 
 
@@ -365,9 +365,12 @@ class ProblemList(QueryStringSortMixin, TitleMixin, SolvedProblemMixin, ListView
     def get_paginator(self, queryset, per_page, orphans=0,
                       allow_empty_first_page=True, **kwargs):
         paginator = DiggPaginator(queryset, per_page, body=6, padding=2, orphans=orphans,
-                                  count=queryset.values('pk').count() if not self.in_contest else None,
                                   allow_empty_first_page=allow_empty_first_page, **kwargs)
         if not self.in_contest:
+            # Get the number of pages and then add in this magic.
+            # noinspection PyStatementEffect
+            paginator.num_pages
+
             queryset = queryset.add_i18n_name(self.request.LANGUAGE_CODE)
             sort_key = self.order.lstrip('-')
             if sort_key in self.sql_sort:
@@ -446,12 +449,13 @@ class ProblemList(QueryStringSortMixin, TitleMixin, SolvedProblemMixin, ListView
                 org_filter |= Q(organizations__in=self.profile.organizations.all())
             filter &= org_filter
         if self.profile is not None:
-            filter = Problem.q_add_author_curator_tester(filter, self.profile)
+            filter |= Q(authors=self.profile)
+            filter |= Q(curators=self.profile)
+            filter |= Q(testers=self.profile)
         queryset = Problem.objects.filter(filter).select_related('group').defer('description', 'summary')
         if self.profile is not None and self.hide_solved:
-            queryset = queryset.exclude(id__in=Submission.objects
-                                        .filter(user=self.profile, result='AC', case_points__gte=F('case_total'))
-                                        .values_list('problem_id', flat=True))
+            queryset = queryset.exclude(id__in=Submission.objects.filter(user=self.profile, points=F('problem__points'))
+                                        .values_list('problem__id', flat=True))
         if self.show_types:
             queryset = queryset.prefetch_related('types')
         queryset = queryset.annotate(has_public_editorial=Case(
@@ -687,7 +691,7 @@ class ProblemSubmit(LoginRequiredMixin, ProblemMixin, TitleMixin, SingleObjectFo
         form_data = getattr(form, 'cleaned_data', form.initial)
         if 'language' in form_data:
             form.fields['source'].widget.mode = form_data['language'].ace
-        form.fields['source'].widget.theme = self.request.profile.resolved_ace_theme
+        form.fields['source'].widget.theme = self.request.profile.ace_theme
 
         return form
 

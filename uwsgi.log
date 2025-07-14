@@ -1,0 +1,353 @@
+nohup: ignoring input
+[uWSGI] getting INI configuration from uwsgi.ini
+[uwsgi-static] added mapping for /static => /tmp/static
+*** Starting uWSGI 2.0.30 (64bit) on [Mon Jun 30 09:57:25 2025] ***
+compiled with version: 11.4.0 on 07 June 2025 12:03:44
+os: Linux-6.8.0-60-generic #63~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue Apr 22 19:00:15 UTC 2
+nodename: trishal-Inspiron-5558
+machine: x86_64
+clock source: unix
+detected number of CPU cores: 4
+current working directory: /home/trishal/online-judge
+writing pidfile to /home/trishal/online-judge/dmoj-site.pid
+detected binary path: /home/trishal/venv/bin/uwsgi
+!!! no internal routing support, rebuild with pcre support !!!
+chdir() to /home/trishal/online-judge
+your processes number limit is 31165
+your memory page size is 4096 bytes
+detected max file descriptor number: 1048576
+building mime-types dictionary from file /etc/mime.types...1516 entry found
+lock engine: pthread robust mutexes
+thunder lock: disabled (you can enable it with --thunder-lock)
+uwsgi socket 0 bound to UNIX address /tmp/dmoj-site.sock fd 3
+Python version: 3.10.12 (main, May 27 2025, 17:12:29) [GCC 11.4.0]
+PEP 405 virtualenv detected: /home/trishal/venv
+Set PythonHome to /home/trishal/venv
+Python main interpreter initialized at 0x5c24f07d0010
+python threads support enabled
+your server socket listen backlog is limited to 100 connections
+your mercy for graceful operations on workers is 60 seconds
+mapped 583360 bytes (569 KB) for 7 cores
+*** Operational MODE: preforking ***
+added /home/trishal/online-judge/ to pythonpath.
+WSGI app 0 (mountpoint='') ready in 2 seconds on interpreter 0x5c24f07d0010 pid: 251347 (default app)
+*** uWSGI is running in multiple interpreter mode ***
+spawned uWSGI master process (pid: 251347)
+spawned uWSGI worker 1 (pid: 251370, cores: 1)
+spawned uWSGI worker 2 (pid: 251371, cores: 1)
+spawned uWSGI worker 3 (pid: 251372, cores: 1)
+spawned uWSGI worker 4 (pid: 251373, cores: 1)
+spawned uWSGI worker 5 (pid: 251374, cores: 1)
+worker 1 killed successfully (pid: 251370)
+uWSGI worker 1 cheaped.
+Mon Jun 30 04:27:29 2025 - SIGPIPE: writing to a closed pipe/socket/fd (probably the client disconnected) !!!
+worker 2 killed successfully (pid: 251371)
+uWSGI worker 2 cheaped.
+Mon Jun 30 04:27:33 2025 - SIGPIPE: writing to a closed pipe/socket/fd (probably the client disconnected) on request /contest/first (ip 192.168.29.235) !!!
+{address space usage: 203280384 bytes/193MB} {rss usage: 127877120 bytes/121MB} [pid: 251373|app: 0|req: 1/1] 192.168.29.235 () {48 vars in 926 bytes} [Mon Jun 30 04:27:33 2025] GET /contest/first => generated 31036 bytes in 2247 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+Mon Jun 30 04:27:35 2025 - SIGPIPE: writing to a closed pipe/socket/fd (probably the client disconnected) on request /manifest.json (ip 192.168.29.235) !!!
+{address space usage: 156999680 bytes/149MB} {rss usage: 77611008 bytes/74MB} [pid: 251372|app: 0|req: 1/2] 192.168.29.235 () {46 vars in 844 bytes} [Mon Jun 30 04:27:35 2025] GET /manifest.json => generated 0 bytes in 423 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 158515200 bytes/151MB} {rss usage: 78135296 bytes/74MB} [pid: 251372|app: 0|req: 2/3] 192.168.29.235 () {48 vars in 975 bytes} [Mon Jun 30 04:27:37 2025] GET /contests/first/download/aplusb/ => generated 722 bytes in 54 msecs (HTTP/1.1 200) 6 headers in 215 bytes (1 switches on core 0)
+{address space usage: 203079680 bytes/193MB} {rss usage: 126504960 bytes/120MB} [pid: 251372|app: 0|req: 3/4] 192.168.29.235 () {48 vars in 925 bytes} [Mon Jun 30 04:27:42 2025] GET /users/ => generated 17851 bytes in 1483 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 203280384 bytes/193MB} {rss usage: 127877120 bytes/121MB} [pid: 251373|app: 0|req: 2/5] 192.168.29.235 () {46 vars in 837 bytes} [Mon Jun 30 04:27:43 2025] GET /manifest.json => generated 0 bytes in 376 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+cheaper hard rss memory limit exceeded, cheap one of 3 workers
+Mon Jun 30 04:27:44 2025 - SIGPIPE: writing to a closed pipe/socket/fd (probably the client disconnected) on request /submissions/ (ip 192.168.29.235) !!!
+worker 3 killed successfully (pid: 251372)
+uWSGI worker 3 cheaped.
+{address space usage: 203120640 bytes/193MB} {rss usage: 126836736 bytes/120MB} [pid: 251374|app: 0|req: 1/6] 192.168.29.235 () {48 vars in 930 bytes} [Mon Jun 30 04:27:44 2025] GET /submissions/ => generated 43582 bytes in 1962 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 203280384 bytes/193MB} {rss usage: 127877120 bytes/121MB} [pid: 251373|app: 0|req: 3/7] 192.168.29.235 () {46 vars in 843 bytes} [Mon Jun 30 04:27:46 2025] GET /manifest.json => generated 0 bytes in 23 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+cheaper hard rss memory limit exceeded, cheap one of 2 workers
+/home/trishal/online-judge/judge/utils/diggpaginator.py:194: UnorderedObjectListWarning: Pagination may yield inconsistent results with an unordered object_list: <class 'judge.models.problem.Problem'> TranslatedProblemQuerySet.
+  super(DiggPaginator, self).__init__(*args, **kwargs)
+{address space usage: 203120640 bytes/193MB} {rss usage: 127229952 bytes/121MB} [pid: 251374|app: 0|req: 2/8] 192.168.29.235 () {48 vars in 930 bytes} [Mon Jun 30 04:27:47 2025] GET /problems/ => generated 23543 bytes in 192 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 203120640 bytes/193MB} {rss usage: 127229952 bytes/121MB} [pid: 251374|app: 0|req: 3/9] 192.168.29.235 () {46 vars in 840 bytes} [Mon Jun 30 04:27:47 2025] GET /manifest.json => generated 0 bytes in 24 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+worker 4 killed successfully (pid: 251373)
+uWSGI worker 4 cheaped.
+{address space usage: 204169216 bytes/194MB} {rss usage: 128278528 bytes/122MB} [pid: 251374|app: 0|req: 4/10] 192.168.29.235 () {48 vars in 909 bytes} [Mon Jun 30 04:27:48 2025] GET / => generated 18433 bytes in 457 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 204169216 bytes/194MB} {rss usage: 128278528 bytes/122MB} [pid: 251374|app: 0|req: 5/11] 192.168.29.235 () {46 vars in 831 bytes} [Mon Jun 30 04:27:49 2025] GET /manifest.json => generated 0 bytes in 40 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129064960 bytes/123MB} [pid: 251374|app: 0|req: 6/12] 192.168.29.235 () {48 vars in 922 bytes} [Mon Jun 30 04:28:25 2025] GET /problem/sum => generated 31871 bytes in 398 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129064960 bytes/123MB} [pid: 251374|app: 0|req: 7/13] 192.168.29.235 () {46 vars in 842 bytes} [Mon Jun 30 04:28:26 2025] GET /manifest.json => generated 0 bytes in 24 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129064960 bytes/123MB} [pid: 251374|app: 0|req: 8/14] 192.168.29.235 () {46 vars in 868 bytes} [Mon Jun 30 04:28:26 2025] GET /android-chrome-192x192.png => generated 0 bytes in 25 msecs (HTTP/1.1 302) 6 headers in 209 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129064960 bytes/123MB} [pid: 251374|app: 0|req: 9/15] 192.168.29.235 () {46 vars in 850 bytes} [Mon Jun 30 04:28:26 2025] GET /favicon-96x96.png => generated 0 bytes in 21 msecs (HTTP/1.1 302) 6 headers in 200 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129064960 bytes/123MB} [pid: 251374|app: 0|req: 10/16] 192.168.29.235 () {48 vars in 975 bytes} [Mon Jun 30 04:28:29 2025] GET /problem/sum/submissions/trishal/ => generated 33552 bytes in 122 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129064960 bytes/123MB} [pid: 251374|app: 0|req: 11/17] 192.168.29.235 () {46 vars in 863 bytes} [Mon Jun 30 04:28:29 2025] GET /manifest.json => generated 0 bytes in 23 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129064960 bytes/123MB} [pid: 251374|app: 0|req: 12/18] 192.168.29.235 () {46 vars in 889 bytes} [Mon Jun 30 04:28:29 2025] GET /android-chrome-192x192.png => generated 0 bytes in 26 msecs (HTTP/1.1 302) 6 headers in 209 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129064960 bytes/123MB} [pid: 251374|app: 0|req: 13/19] 192.168.29.235 () {46 vars in 871 bytes} [Mon Jun 30 04:28:29 2025] GET /favicon-96x96.png => generated 0 bytes in 21 msecs (HTTP/1.1 302) 6 headers in 200 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129064960 bytes/123MB} [pid: 251374|app: 0|req: 14/20] 192.168.29.235 () {48 vars in 947 bytes} [Mon Jun 30 04:28:33 2025] GET /problem/sum/submit => generated 22483 bytes in 134 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129064960 bytes/123MB} [pid: 251374|app: 0|req: 15/21] 192.168.29.235 () {46 vars in 849 bytes} [Mon Jun 30 04:28:33 2025] GET /manifest.json => generated 0 bytes in 24 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129064960 bytes/123MB} [pid: 251374|app: 0|req: 16/22] 192.168.29.235 () {48 vars in 903 bytes} [Mon Jun 30 04:28:33 2025] GET /widgets/template?id=8 => generated 0 bytes in 41 msecs (HTTP/1.1 200) 5 headers in 140 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129064960 bytes/123MB} [pid: 251374|app: 0|req: 17/23] 192.168.29.235 () {46 vars in 875 bytes} [Mon Jun 30 04:28:33 2025] GET /android-chrome-192x192.png => generated 0 bytes in 21 msecs (HTTP/1.1 302) 6 headers in 209 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129064960 bytes/123MB} [pid: 251374|app: 0|req: 18/24] 192.168.29.235 () {46 vars in 857 bytes} [Mon Jun 30 04:28:33 2025] GET /favicon-96x96.png => generated 0 bytes in 22 msecs (HTTP/1.1 302) 6 headers in 200 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129064960 bytes/123MB} [pid: 251374|app: 0|req: 19/25] 192.168.29.235 () {48 vars in 947 bytes} [Mon Jun 30 04:29:07 2025] GET /problem/sum/submit => generated 22483 bytes in 97 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129064960 bytes/123MB} [pid: 251374|app: 0|req: 20/26] 192.168.29.235 () {46 vars in 849 bytes} [Mon Jun 30 04:29:07 2025] GET /manifest.json => generated 0 bytes in 23 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129064960 bytes/123MB} [pid: 251374|app: 0|req: 21/27] 192.168.29.235 () {48 vars in 903 bytes} [Mon Jun 30 04:29:09 2025] GET /widgets/template?id=4 => generated 0 bytes in 19 msecs (HTTP/1.1 200) 5 headers in 140 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129196032 bytes/123MB} [pid: 251374|app: 0|req: 22/28] 192.168.29.235 () {54 vars in 1107 bytes} [Mon Jun 30 04:29:13 2025] POST /problem/sum/submit => generated 0 bytes in 130 msecs (HTTP/1.1 302) 6 headers in 183 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129458176 bytes/123MB} [pid: 251374|app: 0|req: 23/29] 192.168.29.235 () {48 vars in 944 bytes} [Mon Jun 30 04:29:13 2025] GET /submission/10 => generated 16755 bytes in 209 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129458176 bytes/123MB} [pid: 251374|app: 0|req: 24/30] 192.168.29.235 () {46 vars in 844 bytes} [Mon Jun 30 04:29:13 2025] GET /manifest.json => generated 0 bytes in 34 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129458176 bytes/123MB} [pid: 251374|app: 0|req: 25/31] 192.168.29.235 () {46 vars in 870 bytes} [Mon Jun 30 04:29:13 2025] GET /android-chrome-192x192.png => generated 0 bytes in 19 msecs (HTTP/1.1 302) 6 headers in 209 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129458176 bytes/123MB} [pid: 251374|app: 0|req: 26/32] 192.168.29.235 () {46 vars in 852 bytes} [Mon Jun 30 04:29:13 2025] GET /favicon-96x96.png => generated 0 bytes in 122 msecs (HTTP/1.1 302) 6 headers in 200 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129458176 bytes/123MB} [pid: 251374|app: 0|req: 27/33] 192.168.29.235 () {48 vars in 925 bytes} [Mon Jun 30 04:29:14 2025] GET /src/10 => generated 16552 bytes in 162 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129458176 bytes/123MB} [pid: 251374|app: 0|req: 28/34] 192.168.29.235 () {46 vars in 837 bytes} [Mon Jun 30 04:29:15 2025] GET /manifest.json => generated 0 bytes in 25 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129458176 bytes/123MB} [pid: 251374|app: 0|req: 29/35] 192.168.29.235 () {46 vars in 863 bytes} [Mon Jun 30 04:29:15 2025] GET /android-chrome-192x192.png => generated 0 bytes in 57 msecs (HTTP/1.1 302) 6 headers in 209 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129458176 bytes/123MB} [pid: 251374|app: 0|req: 30/36] 192.168.29.235 () {46 vars in 845 bytes} [Mon Jun 30 04:29:15 2025] GET /favicon-96x96.png => generated 0 bytes in 26 msecs (HTTP/1.1 302) 6 headers in 200 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129720320 bytes/123MB} [pid: 251374|app: 0|req: 31/37] 192.168.29.235 () {48 vars in 932 bytes} [Mon Jun 30 04:29:15 2025] GET /submission/10 => generated 17788 bytes in 100 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129720320 bytes/123MB} [pid: 251374|app: 0|req: 32/38] 192.168.29.235 () {46 vars in 844 bytes} [Mon Jun 30 04:29:15 2025] GET /manifest.json => generated 0 bytes in 25 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129720320 bytes/123MB} [pid: 251374|app: 0|req: 33/39] 192.168.29.235 () {48 vars in 925 bytes} [Mon Jun 30 04:29:57 2025] GET /src/10 => generated 16552 bytes in 94 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129720320 bytes/123MB} [pid: 251374|app: 0|req: 34/40] 192.168.29.235 () {46 vars in 837 bytes} [Mon Jun 30 04:29:57 2025] GET /manifest.json => generated 0 bytes in 25 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129720320 bytes/123MB} [pid: 251374|app: 0|req: 35/41] 192.168.29.235 () {48 vars in 952 bytes} [Mon Jun 30 04:29:59 2025] GET /problem/sum/resubmit/10 => generated 22655 bytes in 99 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129720320 bytes/123MB} [pid: 251374|app: 0|req: 36/42] 192.168.29.235 () {46 vars in 854 bytes} [Mon Jun 30 04:29:59 2025] GET /manifest.json => generated 0 bytes in 24 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129720320 bytes/123MB} [pid: 251374|app: 0|req: 37/43] 192.168.29.235 () {46 vars in 880 bytes} [Mon Jun 30 04:29:59 2025] GET /android-chrome-192x192.png => generated 0 bytes in 24 msecs (HTTP/1.1 302) 6 headers in 209 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129720320 bytes/123MB} [pid: 251374|app: 0|req: 38/44] 192.168.29.235 () {46 vars in 862 bytes} [Mon Jun 30 04:29:59 2025] GET /favicon-96x96.png => generated 0 bytes in 22 msecs (HTTP/1.1 302) 6 headers in 200 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129720320 bytes/123MB} [pid: 251374|app: 0|req: 39/45] 192.168.29.235 () {54 vars in 1122 bytes} [Mon Jun 30 04:30:05 2025] POST /problem/sum/resubmit/10 => generated 0 bytes in 202 msecs (HTTP/1.1 302) 6 headers in 183 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129720320 bytes/123MB} [pid: 251374|app: 0|req: 40/46] 192.168.29.235 () {48 vars in 949 bytes} [Mon Jun 30 04:30:05 2025] GET /submission/11 => generated 16755 bytes in 59 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129720320 bytes/123MB} [pid: 251374|app: 0|req: 41/47] 192.168.29.235 () {46 vars in 844 bytes} [Mon Jun 30 04:30:06 2025] GET /manifest.json => generated 0 bytes in 15 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129720320 bytes/123MB} [pid: 251374|app: 0|req: 42/48] 192.168.29.235 () {46 vars in 870 bytes} [Mon Jun 30 04:30:06 2025] GET /android-chrome-192x192.png => generated 0 bytes in 21 msecs (HTTP/1.1 302) 6 headers in 209 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129720320 bytes/123MB} [pid: 251374|app: 0|req: 43/49] 192.168.29.235 () {46 vars in 852 bytes} [Mon Jun 30 04:30:06 2025] GET /favicon-96x96.png => generated 0 bytes in 21 msecs (HTTP/1.1 302) 6 headers in 200 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129720320 bytes/123MB} [pid: 251374|app: 0|req: 44/50] 192.168.29.235 () {48 vars in 925 bytes} [Mon Jun 30 04:30:07 2025] GET /src/11 => generated 18740 bytes in 82 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129720320 bytes/123MB} [pid: 251374|app: 0|req: 45/51] 192.168.29.235 () {46 vars in 837 bytes} [Mon Jun 30 04:30:07 2025] GET /manifest.json => generated 0 bytes in 24 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129720320 bytes/123MB} [pid: 251374|app: 0|req: 46/52] 192.168.29.235 () {46 vars in 863 bytes} [Mon Jun 30 04:30:07 2025] GET /android-chrome-192x192.png => generated 0 bytes in 26 msecs (HTTP/1.1 302) 6 headers in 209 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129720320 bytes/123MB} [pid: 251374|app: 0|req: 47/53] 192.168.29.235 () {46 vars in 845 bytes} [Mon Jun 30 04:30:07 2025] GET /favicon-96x96.png => generated 0 bytes in 22 msecs (HTTP/1.1 302) 6 headers in 200 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129851392 bytes/123MB} [pid: 251374|app: 0|req: 48/54] 192.168.29.235 () {48 vars in 932 bytes} [Mon Jun 30 04:30:08 2025] GET /submission/11 => generated 16949 bytes in 200 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129851392 bytes/123MB} [pid: 251374|app: 0|req: 49/55] 192.168.29.235 () {46 vars in 844 bytes} [Mon Jun 30 04:30:08 2025] GET /manifest.json => generated 0 bytes in 25 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129851392 bytes/123MB} [pid: 251374|app: 0|req: 50/56] 192.168.29.235 () {48 vars in 925 bytes} [Mon Jun 30 04:30:47 2025] GET /src/11 => generated 18740 bytes in 86 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129851392 bytes/123MB} [pid: 251374|app: 0|req: 51/57] 192.168.29.235 () {46 vars in 837 bytes} [Mon Jun 30 04:30:47 2025] GET /manifest.json => generated 0 bytes in 36 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129851392 bytes/123MB} [pid: 251374|app: 0|req: 52/58] 192.168.29.235 () {48 vars in 952 bytes} [Mon Jun 30 04:30:48 2025] GET /problem/sum/resubmit/11 => generated 22835 bytes in 102 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129851392 bytes/123MB} [pid: 251374|app: 0|req: 53/59] 192.168.29.235 () {46 vars in 854 bytes} [Mon Jun 30 04:30:48 2025] GET /manifest.json => generated 0 bytes in 23 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129851392 bytes/123MB} [pid: 251374|app: 0|req: 54/60] 192.168.29.235 () {46 vars in 880 bytes} [Mon Jun 30 04:30:48 2025] GET /android-chrome-192x192.png => generated 0 bytes in 22 msecs (HTTP/1.1 302) 6 headers in 209 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129851392 bytes/123MB} [pid: 251374|app: 0|req: 55/61] 192.168.29.235 () {46 vars in 862 bytes} [Mon Jun 30 04:30:48 2025] GET /favicon-96x96.png => generated 0 bytes in 21 msecs (HTTP/1.1 302) 6 headers in 200 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129851392 bytes/123MB} [pid: 251374|app: 0|req: 56/62] 192.168.29.235 () {54 vars in 1122 bytes} [Mon Jun 30 04:30:52 2025] POST /problem/sum/resubmit/11 => generated 0 bytes in 121 msecs (HTTP/1.1 302) 6 headers in 183 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129851392 bytes/123MB} [pid: 251374|app: 0|req: 57/63] 192.168.29.235 () {48 vars in 949 bytes} [Mon Jun 30 04:30:52 2025] GET /submission/12 => generated 16755 bytes in 64 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129851392 bytes/123MB} [pid: 251374|app: 0|req: 58/64] 192.168.29.235 () {46 vars in 844 bytes} [Mon Jun 30 04:30:52 2025] GET /manifest.json => generated 0 bytes in 24 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129851392 bytes/123MB} [pid: 251374|app: 0|req: 59/65] 192.168.29.235 () {46 vars in 870 bytes} [Mon Jun 30 04:30:53 2025] GET /android-chrome-192x192.png => generated 0 bytes in 29 msecs (HTTP/1.1 302) 6 headers in 209 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129851392 bytes/123MB} [pid: 251374|app: 0|req: 60/66] 192.168.29.235 () {46 vars in 852 bytes} [Mon Jun 30 04:30:53 2025] GET /favicon-96x96.png => generated 0 bytes in 66 msecs (HTTP/1.1 302) 6 headers in 200 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129851392 bytes/123MB} [pid: 251374|app: 0|req: 61/67] 192.168.29.235 () {48 vars in 925 bytes} [Mon Jun 30 04:30:54 2025] GET /src/12 => generated 19168 bytes in 96 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129851392 bytes/123MB} [pid: 251374|app: 0|req: 62/68] 192.168.29.235 () {46 vars in 837 bytes} [Mon Jun 30 04:30:54 2025] GET /manifest.json => generated 0 bytes in 40 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129851392 bytes/123MB} [pid: 251374|app: 0|req: 63/69] 192.168.29.235 () {46 vars in 863 bytes} [Mon Jun 30 04:30:54 2025] GET /android-chrome-192x192.png => generated 0 bytes in 18 msecs (HTTP/1.1 302) 6 headers in 209 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129851392 bytes/123MB} [pid: 251374|app: 0|req: 64/70] 192.168.29.235 () {46 vars in 845 bytes} [Mon Jun 30 04:30:54 2025] GET /favicon-96x96.png => generated 0 bytes in 22 msecs (HTTP/1.1 302) 6 headers in 200 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129851392 bytes/123MB} [pid: 251374|app: 0|req: 65/71] 192.168.29.235 () {48 vars in 932 bytes} [Mon Jun 30 04:30:55 2025] GET /submission/12 => generated 15610 bytes in 111 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 205217792 bytes/195MB} {rss usage: 129851392 bytes/123MB} [pid: 251374|app: 0|req: 66/72] 192.168.29.235 () {46 vars in 844 bytes} [Mon Jun 30 04:30:55 2025] GET /manifest.json => generated 0 bytes in 22 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 206266368 bytes/196MB} {rss usage: 130244608 bytes/124MB} [pid: 251374|app: 0|req: 67/73] 192.168.29.235 () {48 vars in 931 bytes} [Mon Jun 30 04:33:19 2025] GET /contests/ => generated 16155 bytes in 235 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 206266368 bytes/196MB} {rss usage: 130244608 bytes/124MB} [pid: 251374|app: 0|req: 68/74] 192.168.29.235 () {46 vars in 840 bytes} [Mon Jun 30 04:33:19 2025] GET /manifest.json => generated 0 bytes in 22 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 206266368 bytes/196MB} {rss usage: 130244608 bytes/124MB} [pid: 251374|app: 0|req: 69/75] 192.168.29.235 () {48 vars in 949 bytes} [Mon Jun 30 04:33:21 2025] GET /admin/judge/contest/ => generated 21866 bytes in 521 msecs (HTTP/1.1 200) 8 headers in 438 bytes (1 switches on core 0)
+{address space usage: 206266368 bytes/196MB} {rss usage: 130244608 bytes/124MB} [pid: 251374|app: 0|req: 70/76] 192.168.29.235 () {46 vars in 851 bytes} [Mon Jun 30 04:33:21 2025] GET /admin/jsi18n/ => generated 3281 bytes in 24 msecs (HTTP/1.1 200) 5 headers in 165 bytes (1 switches on core 0)
+{address space usage: 206266368 bytes/196MB} {rss usage: 130768896 bytes/124MB} [pid: 251374|app: 0|req: 71/77] 192.168.29.235 () {48 vars in 978 bytes} [Mon Jun 30 04:33:23 2025] GET /admin/judge/contest/1/change/ => generated 83634 bytes in 918 msecs (HTTP/1.1 200) 8 headers in 438 bytes (1 switches on core 0)
+{address space usage: 206266368 bytes/196MB} {rss usage: 130768896 bytes/124MB} [pid: 251374|app: 0|req: 72/78] 192.168.29.235 () {46 vars in 860 bytes} [Mon Jun 30 04:33:24 2025] GET /admin/jsi18n/ => generated 3281 bytes in 18 msecs (HTTP/1.1 200) 5 headers in 165 bytes (1 switches on core 0)
+{address space usage: 206266368 bytes/196MB} {rss usage: 130899968 bytes/124MB} [pid: 251374|app: 0|req: 73/79] 192.168.29.235 () {54 vars in 1142 bytes} [Mon Jun 30 04:33:24 2025] POST /widgets/preview/contest => generated 100 bytes in 54 msecs (HTTP/1.1 200) 5 headers in 156 bytes (1 switches on core 0)
+/home/trishal/venv/lib/python3.10/site-packages/django/views/generic/list.py:86: UnorderedObjectListWarning: Pagination may yield inconsistent results with an unordered object_list: <class 'judge.models.problem.Problem'> TranslatedProblemQuerySet.
+  return self.paginator_class(
+{address space usage: 206266368 bytes/196MB} {rss usage: 130899968 bytes/124MB} [pid: 251374|app: 0|req: 74/80] 192.168.29.235 () {48 vars in 1086 bytes} [Mon Jun 30 04:33:27 2025] GET /judge-select2/problem/?field_id=MTMxNjA2NTc0NjkzMzQ0%3A1uW6Cp%3AwxEMQ4w22pwk2ePkTTgiqIY9teU2HbtCSYKnps1T-YE => generated 85 bytes in 54 msecs (HTTP/1.1 200) 5 headers in 147 bytes (1 switches on core 0)
+{address space usage: 209412096 bytes/199MB} {rss usage: 133521408 bytes/127MB} [pid: 251374|app: 0|req: 75/81] 192.168.29.235 () {54 vars in 1142 bytes} [Mon Jun 30 04:33:37 2025] POST /admin/judge/contest/1/change/ => generated 0 bytes in 1041 msecs (HTTP/1.1 302) 9 headers in 570 bytes (1 switches on core 0)
+{address space usage: 209412096 bytes/199MB} {rss usage: 133783552 bytes/127MB} [pid: 251374|app: 0|req: 76/82] 192.168.29.235 () {48 vars in 1192 bytes} [Mon Jun 30 04:33:38 2025] GET /admin/judge/contest/ => generated 22047 bytes in 570 msecs (HTTP/1.1 200) 9 headers in 536 bytes (1 switches on core 0)
+{address space usage: 209412096 bytes/199MB} {rss usage: 133783552 bytes/127MB} [pid: 251374|app: 0|req: 77/83] 192.168.29.235 () {46 vars in 851 bytes} [Mon Jun 30 04:33:38 2025] GET /admin/jsi18n/ => generated 3281 bytes in 58 msecs (HTTP/1.1 200) 5 headers in 165 bytes (1 switches on core 0)
+{address space usage: 209412096 bytes/199MB} {rss usage: 133783552 bytes/127MB} [pid: 251374|app: 0|req: 78/84] 192.168.29.235 () {46 vars in 862 bytes} [Mon Jun 30 05:03:33 2025] GET / => generated 18433 bytes in 91 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 209412096 bytes/199MB} {rss usage: 133783552 bytes/127MB} [pid: 251374|app: 0|req: 79/85] 192.168.29.235 () {46 vars in 831 bytes} [Mon Jun 30 05:03:33 2025] GET /manifest.json => generated 0 bytes in 17 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 210731008 bytes/200MB} {rss usage: 135356416 bytes/129MB} [pid: 251374|app: 0|req: 80/86] 192.168.29.235 () {48 vars in 926 bytes} [Mon Jun 30 05:03:35 2025] GET /contest/first => generated 31531 bytes in 264 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 210731008 bytes/200MB} {rss usage: 135356416 bytes/129MB} [pid: 251374|app: 0|req: 81/87] 192.168.29.235 () {46 vars in 844 bytes} [Mon Jun 30 05:03:35 2025] GET /manifest.json => generated 0 bytes in 22 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 210731008 bytes/200MB} {rss usage: 135356416 bytes/129MB} [pid: 251374|app: 0|req: 82/88] 192.168.29.235 () {48 vars in 975 bytes} [Mon Jun 30 05:10:12 2025] GET /contests/first/download/aplusb/ => generated 1016 bytes in 70 msecs (HTTP/1.1 200) 6 headers in 216 bytes (1 switches on core 0)
+{address space usage: 210731008 bytes/200MB} {rss usage: 135356416 bytes/129MB} [pid: 251374|app: 0|req: 83/89] 192.168.29.235 () {46 vars in 862 bytes} [Mon Jun 30 06:55:38 2025] GET / => generated 18433 bytes in 151 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+Mon Jun 30 06:55:39 2025 - SIGPIPE: writing to a closed pipe/socket/fd (probably the client disconnected) on request /manifest.json (ip 192.168.29.235) !!!
+Mon Jun 30 06:55:39 2025 - uwsgi_response_write_headers_do(): Broken pipe [core/writer.c line 248] during GET /manifest.json (192.168.29.235)
+OSError: write error
+{address space usage: 210731008 bytes/200MB} {rss usage: 135356416 bytes/129MB} [pid: 251374|app: 0|req: 84/90] 192.168.29.235 () {46 vars in 831 bytes} [Mon Jun 30 06:55:38 2025] GET /manifest.json => generated 0 bytes in 400 msecs (HTTP/1.1 302) 6 headers in 0 bytes (0 switches on core 0)
+{address space usage: 210731008 bytes/200MB} {rss usage: 135356416 bytes/129MB} [pid: 251374|app: 0|req: 85/91] 192.168.29.235 () {46 vars in 862 bytes} [Mon Jun 30 06:55:39 2025] GET / => generated 18432 bytes in 123 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 210731008 bytes/200MB} {rss usage: 135356416 bytes/129MB} [pid: 251374|app: 0|req: 86/92] 192.168.29.235 () {46 vars in 831 bytes} [Mon Jun 30 06:55:39 2025] GET /manifest.json => generated 0 bytes in 30 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 210731008 bytes/200MB} {rss usage: 135356416 bytes/129MB} [pid: 251374|app: 0|req: 87/93] 192.168.29.235 () {42 vars in 653 bytes} [Mon Jun 30 06:55:39 2025] GET /apple-touch-icon-precomposed.png => generated 0 bytes in 4 msecs (HTTP/1.1 302) 6 headers in 215 bytes (1 switches on core 0)
+{address space usage: 210731008 bytes/200MB} {rss usage: 135356416 bytes/129MB} [pid: 251374|app: 0|req: 88/94] 192.168.29.235 () {42 vars in 629 bytes} [Mon Jun 30 06:55:39 2025] GET /apple-touch-icon.png => generated 0 bytes in 2 msecs (HTTP/1.1 302) 6 headers in 203 bytes (1 switches on core 0)
+{address space usage: 210731008 bytes/200MB} {rss usage: 135356416 bytes/129MB} [pid: 251374|app: 0|req: 89/95] 192.168.29.235 () {42 vars in 611 bytes} [Mon Jun 30 06:55:39 2025] GET /favicon.ico => generated 12377 bytes in 93 msecs (HTTP/1.1 404) 5 headers in 150 bytes (1 switches on core 0)
+{address space usage: 210731008 bytes/200MB} {rss usage: 135356416 bytes/129MB} [pid: 251374|app: 0|req: 90/96] 192.168.29.235 () {48 vars in 918 bytes} [Mon Jun 30 06:55:41 2025] GET /contests/ => generated 16155 bytes in 87 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 210731008 bytes/200MB} {rss usage: 135356416 bytes/129MB} [pid: 251374|app: 0|req: 91/97] 192.168.29.235 () {46 vars in 840 bytes} [Mon Jun 30 06:55:41 2025] GET /manifest.json => generated 0 bytes in 22 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+ERROR 2025-06-30 06:55:43,479 extensions Error: Reverse for 'download' not found. 'download' is not a valid view function or pattern name.
+{address space usage: 221450240 bytes/211MB} {rss usage: 147415040 bytes/140MB} [pid: 251374|app: 0|req: 92/98] 192.168.29.235 () {48 vars in 935 bytes} [Mon Jun 30 06:55:43 2025] GET /contest/first => generated 1091498 bytes in 3625 msecs (HTTP/1.1 500) 6 headers in 332 bytes (6 switches on core 0)
+{address space usage: 221450240 bytes/211MB} {rss usage: 147415040 bytes/140MB} [pid: 251374|app: 0|req: 93/99] 192.168.29.235 () {46 vars in 844 bytes} [Mon Jun 30 06:55:46 2025] GET /manifest.json => generated 0 bytes in 23 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 221450240 bytes/211MB} {rss usage: 147415040 bytes/140MB} [pid: 251374|app: 0|req: 94/100] 192.168.29.235 () {46 vars in 862 bytes} [Mon Jun 30 07:16:48 2025] GET / => generated 18433 bytes in 94 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 221450240 bytes/211MB} {rss usage: 147415040 bytes/140MB} [pid: 251374|app: 0|req: 95/101] 192.168.29.235 () {46 vars in 831 bytes} [Mon Jun 30 07:16:49 2025] GET /manifest.json => generated 0 bytes in 22 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+ERROR 2025-06-30 07:16:51,705 extensions Error: Reverse for 'download' not found. 'download' is not a valid view function or pattern name.
+Mon Jun 30 07:16:55 2025 - SIGPIPE: writing to a closed pipe/socket/fd (probably the client disconnected) on request /contest/first (ip 192.168.29.235) !!!
+Mon Jun 30 07:16:55 2025 - uwsgi_response_writev_headers_and_body_do(): Broken pipe [core/writer.c line 306] during GET /contest/first (192.168.29.235)
+OSError: write error
+{address space usage: 221450240 bytes/211MB} {rss usage: 147808256 bytes/140MB} [pid: 251374|app: 0|req: 96/102] 192.168.29.235 () {48 vars in 926 bytes} [Mon Jun 30 07:16:51 2025] GET /contest/first => generated 0 bytes in 3410 msecs (HTTP/1.1 500) 6 headers in 0 bytes (0 switches on core 0)
+ERROR 2025-06-30 07:16:55,074 extensions Error: Reverse for 'download' not found. 'download' is not a valid view function or pattern name.
+{address space usage: 222482432 bytes/212MB} {rss usage: 148987904 bytes/142MB} [pid: 251374|app: 0|req: 97/103] 192.168.29.235 () {48 vars in 926 bytes} [Mon Jun 30 07:16:55 2025] GET /contest/first => generated 1091467 bytes in 2971 msecs (HTTP/1.1 500) 6 headers in 332 bytes (5 switches on core 0)
+{address space usage: 222482432 bytes/212MB} {rss usage: 148987904 bytes/142MB} [pid: 251374|app: 0|req: 98/104] 192.168.29.235 () {48 vars in 918 bytes} [Mon Jun 30 07:17:03 2025] GET /contests/ => generated 16154 bytes in 117 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 222482432 bytes/212MB} {rss usage: 148987904 bytes/142MB} [pid: 251374|app: 0|req: 99/105] 192.168.29.235 () {46 vars in 840 bytes} [Mon Jun 30 07:17:03 2025] GET /manifest.json => generated 0 bytes in 20 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+ERROR 2025-06-30 07:17:04,266 extensions Error: Reverse for 'download' not found. 'download' is not a valid view function or pattern name.
+{address space usage: 223674368 bytes/213MB} {rss usage: 150429696 bytes/143MB} [pid: 251374|app: 0|req: 100/106] 192.168.29.235 () {48 vars in 935 bytes} [Mon Jun 30 07:17:04 2025] GET /contest/first => generated 1091476 bytes in 3098 msecs (HTTP/1.1 500) 6 headers in 332 bytes (5 switches on core 0)
+{address space usage: 223674368 bytes/213MB} {rss usage: 150429696 bytes/143MB} [pid: 251374|app: 0|req: 101/107] 192.168.29.235 () {46 vars in 844 bytes} [Mon Jun 30 07:17:07 2025] GET /manifest.json => generated 0 bytes in 17 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+ERROR 2025-06-30 07:17:29,736 extensions Error: Reverse for 'download' not found. 'download' is not a valid view function or pattern name.
+{address space usage: 224313344 bytes/213MB} {rss usage: 151085056 bytes/144MB} [pid: 251374|app: 0|req: 102/108] 192.168.29.235 () {48 vars in 935 bytes} [Mon Jun 30 07:17:29 2025] GET /contest/first => generated 1091498 bytes in 3082 msecs (HTTP/1.1 500) 6 headers in 332 bytes (4 switches on core 0)
+{address space usage: 224313344 bytes/213MB} {rss usage: 151085056 bytes/144MB} [pid: 251374|app: 0|req: 103/109] 192.168.29.235 () {46 vars in 844 bytes} [Mon Jun 30 07:17:32 2025] GET /manifest.json => generated 0 bytes in 18 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 224313344 bytes/213MB} {rss usage: 151085056 bytes/144MB} [pid: 251374|app: 0|req: 104/110] 192.168.29.235 () {46 vars in 840 bytes} [Mon Jun 30 07:19:02 2025] GET /manifest.json => generated 0 bytes in 100 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+ERROR 2025-06-30 07:19:08,302 extensions Error: Reverse for 'download' not found. 'download' is not a valid view function or pattern name.
+{address space usage: 226590720 bytes/216MB} {rss usage: 152526848 bytes/145MB} [pid: 251374|app: 0|req: 105/111] 192.168.29.235 () {48 vars in 935 bytes} [Mon Jun 30 07:19:08 2025] GET /contest/first => generated 1091476 bytes in 3071 msecs (HTTP/1.1 500) 6 headers in 332 bytes (5 switches on core 0)
+{address space usage: 226590720 bytes/216MB} {rss usage: 152526848 bytes/145MB} [pid: 251374|app: 0|req: 106/112] 192.168.29.235 () {46 vars in 844 bytes} [Mon Jun 30 07:19:11 2025] GET /manifest.json => generated 0 bytes in 31 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 226590720 bytes/216MB} {rss usage: 152526848 bytes/145MB} [pid: 251374|app: 0|req: 107/113] 192.168.29.235 () {54 vars in 1096 bytes} [Mon Jun 30 07:19:14 2025] POST /contest/first/join => generated 0 bytes in 112 msecs (HTTP/1.1 302) 6 headers in 179 bytes (1 switches on core 0)
+{address space usage: 226590720 bytes/216MB} {rss usage: 152526848 bytes/145MB} [pid: 251374|app: 0|req: 108/114] 192.168.29.235 () {48 vars in 927 bytes} [Mon Jun 30 07:19:15 2025] GET /problems/ => generated 21652 bytes in 50 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 226590720 bytes/216MB} {rss usage: 152526848 bytes/145MB} [pid: 251374|app: 0|req: 109/115] 192.168.29.235 () {46 vars in 840 bytes} [Mon Jun 30 07:19:15 2025] GET /manifest.json => generated 0 bytes in 26 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+ERROR 2025-06-30 07:19:16,977 extensions Error: Reverse for 'download' not found. 'download' is not a valid view function or pattern name.
+{address space usage: 227823616 bytes/217MB} {rss usage: 153968640 bytes/146MB} [pid: 251374|app: 0|req: 110/116] 192.168.29.235 () {48 vars in 935 bytes} [Mon Jun 30 07:19:16 2025] GET /contest/first => generated 1091498 bytes in 3366 msecs (HTTP/1.1 500) 6 headers in 332 bytes (5 switches on core 0)
+{address space usage: 227823616 bytes/217MB} {rss usage: 153968640 bytes/146MB} [pid: 251374|app: 0|req: 111/117] 192.168.29.235 () {46 vars in 844 bytes} [Mon Jun 30 07:19:20 2025] GET /manifest.json => generated 0 bytes in 74 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+Gracefully killing worker 5 (pid: 251374)...
+...gracefully killing workers...
+worker 5 buried after 1 seconds
+binary reloading uWSGI...
+chdir() to /home/trishal/online-judge
+closing all non-uwsgi socket fds > 2 (max_fd = 1048576)...
+found fd 3 mapped to socket 0 (/tmp/dmoj-site.sock)
+running /home/trishal/venv/bin/uwsgi
+[uWSGI] getting INI configuration from uwsgi.ini
+[uwsgi-static] added mapping for /static => /tmp/static
+*** Starting uWSGI 2.0.30 (64bit) on [Mon Jun 30 07:19:40 2025] ***
+compiled with version: 11.4.0 on 07 June 2025 12:03:44
+os: Linux-6.8.0-60-generic #63~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue Apr 22 19:00:15 UTC 2
+nodename: trishal-Inspiron-5558
+machine: x86_64
+clock source: unix
+detected number of CPU cores: 4
+current working directory: /home/trishal/online-judge
+detected binary path: /home/trishal/venv/bin/uwsgi
+!!! no internal routing support, rebuild with pcre support !!!
+chdir() to /home/trishal/online-judge
+your processes number limit is 31165
+your memory page size is 4096 bytes
+detected max file descriptor number: 1048576
+building mime-types dictionary from file /etc/mime.types...1516 entry found
+lock engine: pthread robust mutexes
+thunder lock: disabled (you can enable it with --thunder-lock)
+uwsgi socket 0 inherited UNIX address /tmp/dmoj-site.sock fd 3
+Python version: 3.10.12 (main, May 27 2025, 17:12:29) [GCC 11.4.0]
+PEP 405 virtualenv detected: /home/trishal/venv
+Set PythonHome to /home/trishal/venv
+Python main interpreter initialized at 0x5fb74d5f2cb0
+python threads support enabled
+your server socket listen backlog is limited to 100 connections
+your mercy for graceful operations on workers is 60 seconds
+mapped 583360 bytes (569 KB) for 7 cores
+*** Operational MODE: preforking ***
+added /home/trishal/online-judge/ to pythonpath.
+WSGI app 0 (mountpoint='') ready in 3 seconds on interpreter 0x5fb74d5f2cb0 pid: 251347 (default app)
+*** uWSGI is running in multiple interpreter mode ***
+gracefully (RE)spawned uWSGI master process (pid: 251347)
+spawned uWSGI worker 1 (pid: 277227, cores: 1)
+spawned uWSGI worker 2 (pid: 277228, cores: 1)
+spawned uWSGI worker 3 (pid: 277229, cores: 1)
+spawned uWSGI worker 4 (pid: 277230, cores: 1)
+spawned uWSGI worker 5 (pid: 277231, cores: 1)
+worker 1 killed successfully (pid: 277227)
+uWSGI worker 1 cheaped.
+Mon Jun 30 07:19:48 2025 - SIGPIPE: writing to a closed pipe/socket/fd (probably the client disconnected) !!!
+worker 2 killed successfully (pid: 277228)
+uWSGI worker 2 cheaped.
+Tue Jul  1 07:11:55 2025 - SIGPIPE: writing to a closed pipe/socket/fd (probably the client disconnected) on request / (ip 192.168.29.235) !!!
+Tue Jul  1 07:11:56 2025 - SIGPIPE: writing to a closed pipe/socket/fd (probably the client disconnected) on request / (ip 192.168.29.235) !!!
+Tue Jul  1 07:11:58 2025 - SIGPIPE: writing to a closed pipe/socket/fd (probably the client disconnected) on request / (ip 192.168.29.235) !!!
+Tue Jul  1 07:11:58 2025 - uwsgi_response_writev_headers_and_body_do(): Broken pipe [core/writer.c line 306] during GET / (192.168.29.235)
+OSError: write error
+{address space usage: 204103680 bytes/194MB} {rss usage: 127479808 bytes/121MB} [pid: 277231|app: 0|req: 1/1] 192.168.29.235 () {46 vars in 862 bytes} [Tue Jul  1 07:11:55 2025] GET / => generated 0 bytes in 2927 msecs (HTTP/1.1 200) 6 headers in 0 bytes (0 switches on core 0)
+Tue Jul  1 07:11:58 2025 - SIGPIPE: writing to a closed pipe/socket/fd (probably the client disconnected) on request / (ip 192.168.29.235) !!!
+Tue Jul  1 07:11:58 2025 - SIGPIPE: writing to a closed pipe/socket/fd (probably the client disconnected) on request / (ip 192.168.29.235) !!!
+Tue Jul  1 07:11:58 2025 - uwsgi_response_writev_headers_and_body_do(): Broken pipe [core/writer.c line 306] during GET / (192.168.29.235)
+OSError: write error
+{address space usage: 204091392 bytes/194MB} {rss usage: 127434752 bytes/121MB} [pid: 277230|app: 0|req: 1/2] 192.168.29.235 () {46 vars in 862 bytes} [Tue Jul  1 07:11:56 2025] GET / => generated 0 bytes in 2141 msecs (HTTP/1.1 200) 6 headers in 0 bytes (0 switches on core 0)
+cheaper hard rss memory limit exceeded, cheap one of 3 workers
+worker 4 killed successfully (pid: 277230)
+uWSGI worker 4 cheaped.
+{address space usage: 204091392 bytes/194MB} {rss usage: 127504384 bytes/121MB} [pid: 277229|app: 0|req: 1/3] 192.168.29.235 () {46 vars in 862 bytes} [Tue Jul  1 07:11:58 2025] GET / => generated 18433 bytes in 2023 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 204103680 bytes/194MB} {rss usage: 127479808 bytes/121MB} [pid: 277231|app: 0|req: 2/4] 192.168.29.235 () {46 vars in 831 bytes} [Tue Jul  1 07:12:00 2025] GET /manifest.json => generated 0 bytes in 35 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 204103680 bytes/194MB} {rss usage: 127479808 bytes/121MB} [pid: 277231|app: 0|req: 3/5] 192.168.29.235 () {42 vars in 653 bytes} [Tue Jul  1 07:12:00 2025] GET /apple-touch-icon-precomposed.png => generated 0 bytes in 2 msecs (HTTP/1.1 302) 6 headers in 215 bytes (1 switches on core 0)
+{address space usage: 204103680 bytes/194MB} {rss usage: 127479808 bytes/121MB} [pid: 277231|app: 0|req: 4/6] 192.168.29.235 () {42 vars in 629 bytes} [Tue Jul  1 07:12:00 2025] GET /apple-touch-icon.png => generated 0 bytes in 5 msecs (HTTP/1.1 302) 6 headers in 203 bytes (1 switches on core 0)
+{address space usage: 204091392 bytes/194MB} {rss usage: 127897600 bytes/121MB} [pid: 277229|app: 0|req: 2/7] 192.168.29.235 () {42 vars in 611 bytes} [Tue Jul  1 07:12:00 2025] GET /favicon.ico => generated 12717 bytes in 87 msecs (HTTP/1.1 404) 5 headers in 150 bytes (1 switches on core 0)
+cheaper hard rss memory limit exceeded, cheap one of 2 workers
+worker 3 killed successfully (pid: 277229)
+uWSGI worker 3 cheaped.
+{address space usage: 204103680 bytes/194MB} {rss usage: 128266240 bytes/122MB} [pid: 277231|app: 0|req: 5/8] 192.168.29.235 () {48 vars in 918 bytes} [Tue Jul  1 07:12:02 2025] GET /contests/ => generated 16165 bytes in 262 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 204103680 bytes/194MB} {rss usage: 128266240 bytes/122MB} [pid: 277231|app: 0|req: 6/9] 192.168.29.235 () {46 vars in 840 bytes} [Tue Jul  1 07:12:02 2025] GET /manifest.json => generated 0 bytes in 19 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+{address space usage: 205152256 bytes/195MB} {rss usage: 128921600 bytes/122MB} [pid: 277231|app: 0|req: 7/10] 192.168.29.235 () {48 vars in 935 bytes} [Tue Jul  1 07:12:04 2025] GET /contest/first => generated 31455 bytes in 418 msecs (HTTP/1.1 200) 6 headers in 326 bytes (1 switches on core 0)
+{address space usage: 205152256 bytes/195MB} {rss usage: 128921600 bytes/122MB} [pid: 277231|app: 0|req: 8/11] 192.168.29.235 () {46 vars in 844 bytes} [Tue Jul  1 07:12:04 2025] GET /manifest.json => generated 0 bytes in 26 msecs (HTTP/1.1 302) 6 headers in 196 bytes (1 switches on core 0)
+
+ /tmp/dolos-unzip-eydsi9/sum/C/user3_14  /tmp/dolos-unzip-eydsi9/sum/C/user3_15
+ .c                                      .c
+
+ Total overlap: 10 kgrams
+ Similarity score: 0.37037037037037035
+
+
+                             Fragment 1/3: 2 kgrams
+
+Tokens: 'null'
+
+
+
+
+1  #include <stdio.h>                  1  #include <stdio.h>
+2                                      2  
+3  int main() {                        3  int main() {
+4      int n;                          4      int a, b;
+5      if (scanf("%d", &n) != 1) return 5      scanf("%d %d", &a, &b);
+1;
+6                                      6      printf("%d\n", a + b);
+
+                             Fragment 2/3: 1 kgrams
+
+Tokens: 'null'
+
+6                                      2  
+7      for (int i = 0; i < n; i++) {   3  int main() {
+8          int a, b;                   4      int a, b;
+9          if (scanf("%d %d", &a, &b) !=5      scanf("%d %d", &a, &b);
+ 2) return 1;
+10         printf("%d\n", a + b);      6      printf("%d\n", a + b);
+11     }                               7      return 0;
+
+                             Fragment 3/3: 2 kgrams
+
+Tokens: 'null'
+
+6                                      2  
+7      for (int i = 0; i < n; i++) {   3  int main() {
+8          int a, b;                   4      int a, b;
+9          if (scanf("%d %d", &a, &b) !=5      scanf("%d %d", &a, &b);
+ 2) return 1;
+10         printf("%d\n", a + b);      6      printf("%d\n", a + b);
+11     }                               7      return 0;
+12                                     8  }
+Dolos report generated at: /tmp/tmpwuarmyc9/dolos-report
+{address space usage: 205152256 bytes/195MB} {rss usage: 128921600 bytes/122MB} [pid: 277231|app: 0|req: 9/12] 192.168.29.235 () {48 vars in 969 bytes} [Tue Jul  1 07:12:10 2025] GET /contests/first/download/sum/ => generated 501 bytes in 520 msecs via sendfile() (HTTP/1.1 200) 6 headers in 217 bytes (1 switches on core 0)
+Gracefully killing worker 5 (pid: 277231)...
+...brutally killing workers...
+Thu Jul 10 03:39:55 2025 - worker 5 (pid: 277231) is taking too much time to die...NO MERCY !!!
+worker 5 buried after 1 seconds
+binary reloading uWSGI...
+chdir() to /home/trishal/online-judge
+closing all non-uwsgi socket fds > 2 (max_fd = 1048576)...
+found fd 3 mapped to socket 0 (/tmp/dmoj-site.sock)
+running /home/trishal/venv/bin/uwsgi
+[uWSGI] getting INI configuration from uwsgi.ini
+[uwsgi-static] added mapping for /static => /tmp/static
+*** Starting uWSGI 2.0.30 (64bit) on [Thu Jul 10 03:39:59 2025] ***
+compiled with version: 11.4.0 on 07 June 2025 12:03:44
+os: Linux-6.8.0-60-generic #63~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue Apr 22 19:00:15 UTC 2
+nodename: trishal-Inspiron-5558
+machine: x86_64
+clock source: unix
+detected number of CPU cores: 4
+current working directory: /home/trishal/online-judge
+detected binary path: /home/trishal/venv/bin/uwsgi
+!!! no internal routing support, rebuild with pcre support !!!
+chdir() to /home/trishal/online-judge
+your processes number limit is 31165
+your memory page size is 4096 bytes
+detected max file descriptor number: 1048576
+building mime-types dictionary from file /etc/mime.types...1516 entry found
+lock engine: pthread robust mutexes
+thunder lock: disabled (you can enable it with --thunder-lock)
+uwsgi socket 0 inherited UNIX address /tmp/dmoj-site.sock fd 3
+Python version: 3.10.12 (main, May 27 2025, 17:12:29) [GCC 11.4.0]
+PEP 405 virtualenv detected: /home/trishal/venv
+Set PythonHome to /home/trishal/venv
+Python main interpreter initialized at 0x5f33a839fcb0
+python threads support enabled
+your server socket listen backlog is limited to 100 connections
+your mercy for graceful operations on workers is 60 seconds
+mapped 583360 bytes (569 KB) for 7 cores
+*** Operational MODE: preforking ***
+added /home/trishal/online-judge/ to pythonpath.

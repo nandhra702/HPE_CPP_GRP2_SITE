@@ -7,7 +7,7 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import models
-from django.db.models import CASCADE, Exists, F, FilteredRelation, OuterRef, Q, SET_NULL
+from django.db.models import CASCADE, F, FilteredRelation, Q, SET_NULL
 from django.db.models.functions import Coalesce
 from django.urls import reverse
 from django.utils import timezone
@@ -118,8 +118,7 @@ class Problem(models.Model):
                             validators=[RegexValidator('^[a-z0-9]+$', _('Problem code must be ^[a-z0-9]+$'))],
                             help_text=_('A short, unique code for the problem, used in the URL after /problem/'))
     name = models.CharField(max_length=100, verbose_name=_('problem name'), db_index=True,
-                            help_text=_('The full name of the problem, as shown in the problem list.'),
-                            validators=[disallowed_characters_validator])
+                            help_text=_('The full name of the problem, as shown in the problem list.'))
     description = models.TextField(verbose_name=_('problem body'), validators=[disallowed_characters_validator])
     authors = models.ManyToManyField(Profile, verbose_name=_('creators'), blank=True, related_name='authored_problems',
                                      help_text=_('These users will be able to edit the problem, '
@@ -280,37 +279,21 @@ class Problem(models.Model):
             q = Q(is_public=True)
             if not (user.has_perm('judge.see_organization_problem') or edit_public_problem):
                 # Either not organization private or in the organization.
-                q &= Q(is_organization_private=False) | cls.organization_filter_q(
-                    # Avoids needlessly joining Organization
-                    Profile.organizations.through.objects.filter(profile=user.profile).values('organization_id'),
+                q &= (
+                    Q(is_organization_private=False) |
+                    Q(is_organization_private=True, organizations__in=user.profile.organizations.all())
                 )
 
             if edit_own_problem:
-                q |= cls.organization_filter_q(
-                    # Avoids needlessly joining Organization
-                    Organization.admins.through.objects.filter(profile=user.profile).values('organization_id'),
-                )
+                q |= Q(is_organization_private=True, organizations__in=user.profile.admin_of.all())
 
-            # Authors, curators, and testers should always have access.
-            q = cls.q_add_author_curator_tester(q, user.profile)
+            # Authors, curators, and testers should always have access, so OR at the very end.
+            q |= Q(authors=user.profile)
+            q |= Q(curators=user.profile)
+            q |= Q(testers=user.profile)
             queryset = queryset.filter(q)
 
         return queryset
-
-    @classmethod
-    def q_add_author_curator_tester(cls, q, profile):
-        # This is way faster than the obvious |= Q(authors=profile) et al. because we are not doing
-        # joins and forcing the user to clean it up with .distinct().
-        q |= Exists(Problem.authors.through.objects.filter(problem=OuterRef('pk'), profile=profile))
-        q |= Exists(Problem.curators.through.objects.filter(problem=OuterRef('pk'), profile=profile))
-        q |= Exists(Problem.testers.through.objects.filter(problem=OuterRef('pk'), profile=profile))
-        return q
-
-    @classmethod
-    def organization_filter_q(cls, queryset):
-        q = Q(is_organization_private=True)
-        q &= Exists(Problem.organizations.through.objects.filter(problem=OuterRef('pk'), organization__in=queryset))
-        return q
 
     @classmethod
     def get_public_problems(cls):
@@ -501,7 +484,6 @@ class Problem(models.Model):
             ('change_public_visibility', _('Change is_public field')),
             ('change_manually_managed', _('Change is_manually_managed field')),
             ('see_organization_problem', _('See organization-private problems')),
-            ('create_private_problem', _('Create private problems')),
         )
         verbose_name = _('problem')
         verbose_name_plural = _('problems')

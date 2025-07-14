@@ -8,13 +8,11 @@ from django.urls import include, path, re_path, reverse
 from django.utils.functional import lazy
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import RedirectView
-
-from judge.views.trial_script import download_problem_submissions
-
-
+from martor.views import markdown_search_user
 
 from judge.feed import AtomBlogFeed, AtomCommentFeed, AtomProblemFeed, BlogFeed, CommentFeed, ProblemFeed
-from judge.sitemap import sitemaps
+from judge.sitemap import BlogPostSitemap, ContestSitemap, HomePageSitemap, OrganizationSitemap, ProblemSitemap, \
+    SolutionSitemap, UrlSitemap, UserSitemap
 from judge.views import TitledTemplateView, api, blog, comment, contests, language, license, mailgun, organization, \
     preview, problem, problem_manage, ranked_submission, register, stats, status, submission, tasks, ticket, \
     two_factor, user, widgets
@@ -25,7 +23,18 @@ from judge.views.select2 import AssigneeSelect2View, ClassSelect2View, CommentSe
     ContestUserSearchSelect2View, OrganizationSelect2View, ProblemSelect2View, TicketUserSelect2View, \
     UserSearchSelect2View, UserSelect2View
 from judge.views.widgets import martor_image_uploader
-from martor.views import markdown_search_user
+from judge.views.download import download_problem_submissions
+# from judge.views.download import show_problem_submissions
+from judge.views.download import download_and_analyze
+# from judge.views.reports import contest_reports
+# from judge.views.reports import run_dolos
+from judge.views.download import download_problem_language_submissions
+# from judge.views.reports import generate_report
+from judge.views.trial_script import download_problem_submissions
+from judge.views.reports import plagiarism_report_page, generate_plagiarism_report
+
+
+
 
 admin.autodiscover()
 
@@ -37,7 +46,6 @@ register_patterns = [
     # Let's use <str:activation_key>, because a bad activation key should still get to the view;
     # that way, it can return a sensible "invalid key" message instead of a confusing 404.
     path('activate/<str:activation_key>/', ActivationView.as_view(), name='registration_activate'),
-    #path('judge/', include('judge.urls')),  # If not already present,
     path('register/', RegistrationView.as_view(), name='registration_register'),
     path('register/complete/',
          TitledTemplateView.as_view(template_name='registration/registration_complete.html',
@@ -65,13 +73,10 @@ register_patterns = [
         template_name='registration/password_reset_done.html',
     ), name='password_reset_done'),
     path('social/error/', register.social_auth_error, name='social_auth_error'),
-    path('email/change/', user.EmailChangeRequestView.as_view(), name='email_change'),
-    path('email/change/activate/<str:activation_key>/',
-         user.EmailChangeActivateView.as_view(), name='email_change_activate'),
 
     path('2fa/', two_factor.TwoFactorLoginView.as_view(), name='login_2fa'),
     path('2fa/enable/', two_factor.TOTPEnableView.as_view(), name='enable_2fa'),
-    path('2fa/edit/', two_factor.TOTPEditView.as_view(), name='edit_2fa'),
+    path('2fa/refresh/', two_factor.TOTPRefreshView.as_view(), name='refresh_2fa'),
     path('2fa/disable/', two_factor.TOTPDisableView.as_view(), name='disable_2fa'),
     path('2fa/webauthn/attest/', two_factor.WebAuthnAttestationView.as_view(), name='webauthn_attest'),
     path('2fa/webauthn/assert/', two_factor.WebAuthnAttestView.as_view(), name='webauthn_assert'),
@@ -228,6 +233,8 @@ urlpatterns = [
              name='contest_participation_disqualify'),
 
         path('/', lambda _, contest: HttpResponsePermanentRedirect(reverse('contest_view', args=[contest]))),
+        
+
     ])),
 
     path('organizations/', organization.OrganizationList.as_view(), name='organization_list'),
@@ -263,19 +270,29 @@ urlpatterns = [
     path('runtimes/matrix/', status.version_matrix, name='version_matrix'),
     path('status/', status.status_all, name='status_all'),
 
-    path('api/v2/', include([
-        path('contests', api.api_v2.APIContestList.as_view()),
-        path('contest/<str:contest>', api.api_v2.APIContestDetail.as_view()),
-        path('problems', api.api_v2.APIProblemList.as_view()),
-        path('problem/<str:problem>', api.api_v2.APIProblemDetail.as_view()),
-        path('users', api.api_v2.APIUserList.as_view()),
-        path('user/<str:user>', api.api_v2.APIUserDetail.as_view()),
-        path('submissions', api.api_v2.APISubmissionList.as_view()),
-        path('submission/<int:submission>', api.api_v2.APISubmissionDetail.as_view()),
-        path('organizations', api.api_v2.APIOrganizationList.as_view()),
-        path('participations', api.api_v2.APIContestParticipationList.as_view()),
-        path('languages', api.api_v2.APILanguageList.as_view()),
-        path('judges', api.api_v2.APIJudgeList.as_view()),
+    path('api/', include([
+        path('contest/list', api.api_v1_contest_list),
+        path('contest/info/<str:contest>', api.api_v1_contest_detail),
+        path('problem/list', api.api_v1_problem_list),
+        path('problem/info/<str:problem>', api.api_v1_problem_info),
+        path('user/list', api.api_v1_user_list),
+        path('user/info/<str:user>', api.api_v1_user_info),
+        path('user/submissions/<str:user>', api.api_v1_user_submissions),
+        path('user/ratings/<int:page>', api.api_v1_user_ratings),
+        path('v2/', include([
+            path('contests', api.api_v2.APIContestList.as_view()),
+            path('contest/<str:contest>', api.api_v2.APIContestDetail.as_view()),
+            path('problems', api.api_v2.APIProblemList.as_view()),
+            path('problem/<str:problem>', api.api_v2.APIProblemDetail.as_view()),
+            path('users', api.api_v2.APIUserList.as_view()),
+            path('user/<str:user>', api.api_v2.APIUserDetail.as_view()),
+            path('submissions', api.api_v2.APISubmissionList.as_view()),
+            path('submission/<int:submission>', api.api_v2.APISubmissionDetail.as_view()),
+            path('organizations', api.api_v2.APIOrganizationList.as_view()),
+            path('participations', api.api_v2.APIContestParticipationList.as_view()),
+            path('languages', api.api_v2.APILanguageList.as_view()),
+            path('judges', api.api_v2.APIJudgeList.as_view()),
+        ])),
     ])),
 
     path('blog/', paged_list_view(blog.PostList, 'blog_post_list')),
@@ -353,7 +370,18 @@ urlpatterns = [
         path('/notes', ticket.TicketNotesEditView.as_view(), name='ticket_notes'),
     ])),
 
-    path('sitemap.xml', sitemap, {'sitemaps': sitemaps}),
+    path('sitemap.xml', sitemap, {'sitemaps': {
+        'home': HomePageSitemap,
+        'pages': UrlSitemap([
+            {'location': '/about/', 'priority': 0.9},
+        ]),
+        'problem': ProblemSitemap,
+        'solutions': SolutionSitemap,
+        'blog': BlogPostSitemap,
+        'contest': ContestSitemap,
+        'organization': OrganizationSitemap,
+        'user': UserSitemap,
+    }}),
 
     path('judge-select2/', include([
         path('profile/', UserSelect2View.as_view(), name='profile_select2'),
@@ -371,8 +399,36 @@ urlpatterns = [
         path('failure', tasks.demo_failure),
         path('progress', tasks.demo_progress),
     ])),
+    # path('contest/<str:contest_key>/trial_script/<str:problem_code>/',download_problem_submissions,name='trial_script'),
+    # path('contests/<str:contest_key>/download/<str:problem_code>/', download_problem_submissions, name='contest_problem_download'),
+    path(
+    'contest/<slug:contest_slug>/<slug:problem_code>/<str:language>/download/',
+    download_and_analyze,
+    name='download_and_analyze',
+),
+    #  path('contest/<str:contest_key>/plagiarism_reports/', plagiarism_report_page, name='plagiarism_reports'),
+    #  path('contest/<str:contest_key>/plagiarism_reports/', plagiarism_report_page, name='plagiarism_report_page'),
 
-    path('contest/<str:contest_key>/trial_script/<str:problem_code>/',download_problem_submissions,name='trial_script'),
+
+    # path('contest/<slug:contest_key>/reports/', contest_reports, name='contest_reports'),
+
+    # path('contest/<slug:contest_key>/<slug:problem_code>/run_dolos/', run_dolos, name='run_dolos'),
+    # path('contest/<str:contest_key>/report/<int:problem_id>/', generate_plagiarism_report, name='generate_plagiarism_report'),
+    path('contest/<str:contest_key>/plagiarism_reports/', plagiarism_report_page, name='plagiarism_report_page'),
+    path('contest/<str:contest_key>/download/<str:problem_code>/', download_problem_submissions, name='download_problem_submissions'),
+    path('contest/<str:contest_key>/report/<int:problem_id>/', generate_plagiarism_report, name='generate_plagiarism_report'),
+
+
+    # path('contests/<slug:contest_slug>/reports/', reports_view, name='contest_reports'),
+    # path('contests/<slug:contest_slug>/reports/', contest_reports, name='contest_reports'),
+    # path('contests/<slug:contest_slug>/reports/<slug:problem_key>/<str:language>/', download_submissions, name='download_submissions'),
+    # path('contest/<slug:contest_key>/<slug:problem_code>/run_dolos/', run_dolos, name='run_dolos'),
+
+    # path('contests/<str:contest_key>/<str:problem_code>/run-dolos/', run_dolos,name='run_dolos'),
+    path('contest/<str:contest_key>/<str:problem_code>/<str:language>/download/', download_problem_language_submissions, name='download_lang'),
+    # path('contest/<slug:contest_key>/generate-report/', generate_report, name='generate_report'),
+
+
 ]
 
 favicon_paths = ['apple-touch-icon-180x180.png', 'apple-touch-icon-114x114.png', 'android-chrome-72x72.png',

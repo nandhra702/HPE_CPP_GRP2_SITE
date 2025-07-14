@@ -44,17 +44,7 @@
         <link rel="stylesheet" href="{{ FONTAWESOME_CSS }}">
     {% endif %}
     {% compress css %}
-        {# TODO: once dark mode support is better, enable for all users by deleting the else branch #}
-        {% if perms.judge.test_site %}
-            {% if PREFERRED_STYLE_CSS is not none %}
-                <link rel="stylesheet" href="{{ static(PREFERRED_STYLE_CSS) }}">
-            {% else %}
-                <link rel="stylesheet" href="{{ static(LIGHT_STYLE_CSS) }}">
-                <link rel="stylesheet" href="{{ static(DARK_STYLE_CSS) }}" media="(prefers-color-scheme: dark)">
-            {% endif %}
-        {% else %}
-            <link rel="stylesheet" href="{{ static(LIGHT_STYLE_CSS) }}">
-        {% endif %}
+        <link rel="stylesheet" href="{{ static(STYLE_CSS) }}">
         {% if INLINE_FONTAWESOME %}<link rel="stylesheet" href="{{ static('libs/fontawesome/font-awesome.css') }}">{% endif %}
         <link rel="stylesheet" type="text/css" href="{{ static('libs/clipboard/tooltip.css') }}">
         <link rel="stylesheet" type="text/css" href="{{ static('libs/select2/select2.css') }}">
@@ -145,7 +135,7 @@
         </script>
     {% endif %}
 
-    {% if request.user.is_authenticated and not tfa_in_progress %}
+    {% if request.user.is_authenticated %}
         <script>
             window.user = {
                 email: '{{ request.user.email|escapejs }}',
@@ -162,7 +152,7 @@
     {% endif %}
 
     {# Don't run userscript since it may be malicious #}
-    {% if request.user.is_authenticated and request.profile.user_script and not request.user.is_impersonate and not tfa_in_progress and not ignore_user_script %}
+    {% if request.user.is_authenticated and request.profile.user_script and not request.user.is_impersonate and not ignore_user_script %}
         <script type="text/javascript">{{ request.profile.user_script|safe }}</script>
     {% endif %}
 
@@ -178,7 +168,7 @@
         </style>
     </noscript>
 </head>
-<body{% if perms.judge.test_site %} data-theme="{{ SITE_THEME_NAME }}"{% endif %}>
+<body>
 <svg width="0" height="0" style="display: block">
     <defs>
         <clipPath id="rating-clip"><circle cx="8" cy="8" r="7"/></clipPath>
@@ -195,8 +185,8 @@
                 <li>
                     <a href="{{ node.path }}" class="nav-{{ node.key }}{% if node.key in nav_tab %} active{% endif %}">
                         {{ user_trans(node.label) }}
-                        {% if not node.is_leaf_node() %}
-                            <div class="nav-expand">&gt;</div>
+                        {% if not node.is_leaf_node %}
+                            <div href="javascript:void(0)" class="nav-expand">></div>
                         {% endif %}
                     </a>
                     {% with children=node.get_children() %}
@@ -237,10 +227,8 @@
             {% else %}
                 <span class="anon">
                     <a href="{{ url('auth_login') }}?next={{ LOGIN_RETURN_PATH|urlencode }}"><b>{{ _('Log in') }}</b></a>
-                    {% if REGISTRATION_OPEN %}
-                        &nbsp;{{ _('or') }}&nbsp;
-                        <a href="{{ url('registration_register') }}"><b>{{ _('Sign up') }}</b></a>
-                    {% endif %}
+                    &nbsp;{{ _('or') }}&nbsp;
+                    <a href="{{ url('registration_register') }}"><b>{{ _('Sign up') }}</b></a>
                 </span>
             {% endif %}
         </span>
@@ -283,8 +271,8 @@
         <div id="content-body">{% block body %}{% endblock %}</div>
     </main>
 
-    {% if misc_config.announcement %}
-        <div id="announcement">{{ misc_config.announcement|safe }}</div>
+    {% if i18n_config.announcement %}
+        <div id="announcement">{{ i18n_config.announcement|safe }}</div>
     {% endif %}
 
     {% block bodyend %}{% endblock %}
@@ -293,8 +281,8 @@
         <span id="footer-content">
             <br>
             <a style="color: #808080" href="https://dmoj.ca">{{ _('proudly powered by **DMOJ**')|markdown('default', strip_paragraphs=True) }}</a> |
-            {% if misc_config.footer %}
-                {{ misc_config.footer|safe }} |
+            {% if i18n_config.footer %}
+                {{ i18n_config.footer|safe }} |
             {% endif %}
             <form action="{{ url('set_language') }}" method="post" style="display: inline">
                 {% csrf_token %}

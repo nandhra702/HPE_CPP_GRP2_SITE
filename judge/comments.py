@@ -3,7 +3,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from django.db.models import FilteredRelation, Q
+from django.db.models import Count, FilteredRelation, Q
 from django.db.models.expressions import F, Value
 from django.db.models.functions import Coalesce
 from django.forms import ModelForm
@@ -20,7 +20,7 @@ from reversion.models import Revision, Version
 
 from judge.dblock import LockModel
 from judge.models import Comment, CommentLock
-from judge.widgets import MartorWidget
+from judge.widgets import HeavyPreviewPageDownWidget
 
 
 class CommentForm(ModelForm):
@@ -31,15 +31,14 @@ class CommentForm(ModelForm):
             'parent': forms.HiddenInput(),
         }
 
-        widgets['body'] = MartorWidget(
-            editor_msg=_('Please click on "Preview" before posting your comment.'),
-            button_text=_('Post!'),
-            attrs={'data-markdownfy-url': reverse_lazy('comment_preview')},
-        )
+        if HeavyPreviewPageDownWidget is not None:
+            widgets['body'] = HeavyPreviewPageDownWidget(preview=reverse_lazy('comment_preview'),
+                                                         preview_timeout=1000, hide_preview_button=True)
 
     def __init__(self, request, *args, **kwargs):
         self.request = request
         super(CommentForm, self).__init__(*args, **kwargs)
+        self.fields['body'].widget.attrs.update({'placeholder': _('Comment body')})
 
     def clean(self):
         if self.request is not None and self.request.user.is_authenticated:
@@ -113,7 +112,7 @@ class CommentedDetailView(TemplateResponseMixin, SingleObjectMixin, View):
         queryset = Comment.objects.filter(hidden=False, page=self.get_comment_page())
         context['has_comments'] = queryset.exists()
         context['comment_lock'] = self.is_comment_locked()
-        queryset = queryset.select_related('author__user').defer('author__about')
+        queryset = queryset.select_related('author__user').defer('author__about').annotate(revisions=Count('versions'))
 
         if self.request.user.is_authenticated:
             profile = self.request.profile

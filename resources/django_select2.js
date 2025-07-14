@@ -42,16 +42,16 @@
 
     $(function () {
         $('.django-select2:not([id*=__prefix__])').djangoSelect2({
-            width: 'style'
+            dropdownAutoWidth: true
         });
     });
 
     if ('django' in window && 'jQuery' in window.django)
-        django.jQuery(document).on('formset:added', function (event) {
-            $(event.target).find('.django-select2').each(function () {
+        django.jQuery(document).on('formset:added', function(event, $row) {
+            $row.find('.django-select2').each(function () {
                 // Notice how we are passing it into a different jQuery.
                 $(this).djangoSelect2({
-                    width: 'style'
+                    dropdownAutoWidth: true
                 })
             });
         });

@@ -21,7 +21,6 @@ TIMEZONE = make_timezones()
 del make_timezones
 
 ACE_THEMES = (
-    ('auto', _('Follow site theme')),
     ('ambiance', 'Ambiance'),
     ('chaos', 'Chaos'),
     ('chrome', 'Chrome'),
@@ -65,9 +64,3 @@ MATH_ENGINES_CHOICES = (
 )
 
 EFFECTIVE_MATH_ENGINES = ('svg', 'mml', 'tex', 'jax')
-
-SITE_THEMES = (
-    ('auto', _('Follow system default')),
-    ('light', _('Light')),
-    ('dark', _('Dark')),
-)

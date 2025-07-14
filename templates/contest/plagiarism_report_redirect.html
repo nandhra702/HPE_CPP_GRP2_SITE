@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block title %}Generating Plagiarism Report...{% endblock %}
+
+{% block body %}
+<h3>Plagiarism Report is being generated...</h3>
+
+<p>You should be prompted to download a zip file. If not, <a href="{{ zip_url }}">click here</a> to download manually.
+</p>
+
+{% if dolos_ports %}
+<h4>Dolos Reports (click to open):</h4>
+<ul>
+    {% for port in dolos_ports %}
+    <li><a href="http://localhost:{{ port }}" target="_blank">http://localhost:{{ port }}</a></li>
+    {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

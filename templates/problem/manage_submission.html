@@ -51,15 +51,13 @@
     <script>
         $(function () {
             $('#by-lang-filter').select2({
-                theme: '{{ DMOJ_SELECT2_THEME }}',
                 multiple: true,
-                placeholder: {{ _('Leave empty to not filter by language')|htmltojs }}
+                placeholder: '{{ _('Leave empty to not filter by language') }}'
             });
 
             $('#by-result-filter').select2({
-                theme: '{{ DMOJ_SELECT2_THEME }}',
                 multiple: true,
-                placeholder: {{ _('Leave empty to not filter by result')|htmltojs }}
+                placeholder: '{{ _('Leave empty to not filter by result') }}'
             });
 
             $('#rescore-all').click(function (e) {
@@ -78,10 +76,10 @@
                     var start = parseInt($id_start.val());
                     var end = parseInt($id_end.val());
                     if (!start || !end) {
-                        alert({{ _('Need valid values for both start and end IDs.')|htmltojs }});
+                        alert("{{ _('Need valid values for both start and end IDs.') }}");
                         return;
                     } else if (start > end) {
-                        alert({{ _('End ID must be after start ID.')|htmltojs }});
+                        alert("{{ _('End ID must be after start ID.') }}");
                         return;
                     }
                 }
@@ -89,13 +87,13 @@
                 var $form = $(this).parents('form');
                 $.post('{{ url('problem_submissions_rejudge_preview', problem.code) }}', $form.serialize(), 'text')
                     .done(function (count) {
-                        if (confirm({{ _('You are about to rejudge {count} submissions. Are you sure you want to do this?')|htmltojs }}
+                        if (confirm("{{ _('You are about to rejudge {count} submissions. Are you sure you want to do this?') }}"
                             .replace('{count}', count))) {
                             $form.submit();
                         }
                     })
                     .fail(function () {
-                        if (confirm({{ _('You are about to rejudge a few submissions. Are you sure you want to do this?')|htmltojs }})) {
+                        if (confirm("{{ _('You are about to rejudge a few submissions. Are you sure you want to do this?') }}")) {
                             $form.submit();
                         }
                     });

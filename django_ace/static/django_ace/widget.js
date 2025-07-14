@@ -76,8 +76,6 @@
             editor = ace.edit(div),
             mode = widget.getAttribute('data-mode'),
             theme = widget.getAttribute('data-theme'),
-            default_light_theme = widget.getAttribute('data-default-light-theme'),
-            default_dark_theme = widget.getAttribute('data-default-dark-theme'),
             wordwrap = widget.getAttribute('data-wordwrap'),
             toolbar = prev(widget),
             main_block = toolbar.parentNode;
@@ -100,27 +98,6 @@
         }
         if (theme) {
             editor.setTheme("ace/theme/" + theme);
-        } else {
-            if (window.matchMedia) {
-                const setEditorTheme = function (is_dark) {
-                    if (is_dark) {
-                        editor.setTheme("ace/theme/" + default_dark_theme);
-                    } else {
-                        editor.setTheme("ace/theme/" + default_light_theme);
-                    }
-                }
-
-                setEditorTheme(window.matchMedia('(prefers-color-scheme: dark)').matches);
-                try {
-                    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(ev) {
-                        setEditorTheme(ev.matches);
-                    })
-                } catch (err) {
-                    window.matchMedia('(prefers-color-scheme: dark)').addListener(function(ev) {
-                        setEditorTheme(ev.matches);
-                    })
-                }
-            }
         }
         if (wordwrap == "true") {
             editor.getSession().setUseWrapMode(true);

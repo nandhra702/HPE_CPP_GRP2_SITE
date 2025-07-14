@@ -1,5 +1,5 @@
 """
-Django-ace originally from https://github.com/django-ace/django-ace.
+Django-ace originally from https://github.com/bradleyayers/django-ace.
 """
 
 from urllib.parse import urljoin
@@ -25,7 +25,10 @@ class AceWidget(forms.Textarea):
     def media(self):
         js = [urljoin(settings.ACE_URL, 'ace.js')] if self.ace_media else []
         js.append('django_ace/widget.js')
-        return forms.Media(js=js)
+        css = {
+            'screen': ['django_ace/widget.css'],
+        }
+        return forms.Media(js=js, css=css)
 
     def render(self, name, value, attrs=None, renderer=None):
         attrs = attrs or {}
@@ -39,8 +42,6 @@ class AceWidget(forms.Textarea):
             ace_attrs['data-mode'] = self.mode
         if self.theme:
             ace_attrs['data-theme'] = self.theme
-        ace_attrs['data-default-light-theme'] = settings.ACE_DEFAULT_LIGHT_THEME
-        ace_attrs['data-default-dark-theme'] = settings.ACE_DEFAULT_DARK_THEME
         if self.wordwrap:
             ace_attrs['data-wordwrap'] = 'true'
 
@@ -50,8 +51,7 @@ class AceWidget(forms.Textarea):
         html = '<div%s><div></div></div>%s' % (flatatt(ace_attrs), textarea)
 
         # add toolbar
-        html = ('<div style="width: 100%%" class="django-ace-editor">'
-                '<div style="width: 100%%" class="django-ace-toolbar">'
+        html = ('<div class="django-ace-editor"><div style="width: 100%%" class="django-ace-toolbar">'
                 '<a href="./" class="django-ace-max_min"></a></div>%s</div>') % html
 
         return mark_safe(html)
