@@ -56,3 +56,20 @@
 .django-ace-editor-fullscreen .django-ace-max_min {
     background-image: url(img/contract.png);
 }
+
+.custom-copy-paste-btn {
+    display: inline-block;
+    margin-right: 5px;
+    padding: 3px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    background-color: #337ab7;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    user-select: none;
+}
+
+.custom-copy-paste-btn:hover {
+    background-color: #286090;
+}

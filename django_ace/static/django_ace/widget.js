@@ -77,15 +77,28 @@
             mode = widget.getAttribute('data-mode'),
             theme = widget.getAttribute('data-theme'),
             wordwrap = widget.getAttribute('data-wordwrap'),
-            toolbar = prev(widget),
-            main_block = toolbar.parentNode;
+            toolbar = (function findToolbar(elem) {
+                while (elem = elem.previousSibling) {
+                    if (elem.nodeType === 1 && elem.classList.contains('django-ace-toolbar')) {
+                        return elem;
+                    }
+                }
+                return null;
+            })(widget),
+            main_block = toolbar ? toolbar.parentNode : null;
 
         // Toolbar maximize/minimize button
-        var min_max = toolbar.getElementsByClassName('django-ace-max_min');
-        min_max[0].onclick = function () {
-            minimizeMaximize(widget, main_block, editor);
-            return false;
-        };
+        if (toolbar) {
+            var min_max = toolbar.getElementsByClassName('django-ace-max_min');
+            if (min_max.length > 0) {
+                min_max[0].onclick = function () {
+                    minimizeMaximize(widget, main_block, editor);
+                    return false;
+                };
+            }
+            // Add custom copy and paste buttons to the toolbar
+            addCustomCopyPasteButtons(toolbar, editor);
+        }
 
         editor.getSession().setValue(textarea.value);
 
@@ -180,3 +193,73 @@
         window.attachEvent('onload', init);
     }
 })();
+
+document.addEventListener('copy', function(e) {
+    alert('Copy is disabled.');
+    e.preventDefault();
+});
+document.addEventListener('cut', function(e) {
+    alert('Cut is disabled.');
+    e.preventDefault();
+});
+document.addEventListener('paste', function(e) {
+    alert('Paste is disabled.');
+    e.preventDefault();
+});
+document.addEventListener('contextmenu', function(e) {
+    alert('Right-click is disabled.');
+    e.preventDefault();
+});
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'x', 'C', 'V', 'X'].includes(e.key)) {
+        alert('Copy, cut, and paste shortcuts are disabled.');
+        e.preventDefault();
+    }
+});
+
+console.log('Custom [widget.js](http://_vscodecontentref_/5) loaded');
+
+function addCustomCopyPasteButtons(toolbar, editor) {
+    // Create Copy button
+    var copyBtn = document.createElement('button');
+    copyBtn.id = 'customCopyBtn';
+    copyBtn.textContent = 'Copy';
+    copyBtn.className = 'custom-copy-paste-btn';
+    copyBtn.onclick = function(event) {
+        event.preventDefault(); // prevent any default action like form submit or reload
+        window.tempClipboard = editor.getSelectedText();
+        sessionStorage.setItem('tempClipboard', window.tempClipboard);
+        console.log('Copied to temporary clipboard:', window.tempClipboard);
+        // alert('Copied to temporary clipboard!');
+    };
+
+    // Create Paste button
+    var pasteBtn = document.createElement('button');
+    pasteBtn.id = 'customPasteBtn';
+    pasteBtn.textContent = 'Paste';
+    pasteBtn.className = 'custom-copy-paste-btn';
+    pasteBtn.onclick = function(event) {
+        event.preventDefault();
+        var clipboardData = window.tempClipboard || sessionStorage.getItem('tempClipboard');
+        if (clipboardData) {
+            editor.insert(clipboardData);
+            window.tempClipboard = "";
+            sessionStorage.removeItem('tempClipboard');
+            console.log('Pasted from temporary clipboard');
+            // alert('Pasted from temporary clipboard!');
+        } else {
+            console.log('Clipboard is empty!');
+            // alert('Clipboard is empty!');
+        }
+    };
+
+    // Add buttons to toolbar
+    toolbar.appendChild(copyBtn);
+    toolbar.appendChild(pasteBtn);
+}
+
+// Removed local tempClipboard variable to avoid confusion
+
+// Optionally, block default copy/paste everywhere
+document.addEventListener('copy', function(e) { e.preventDefault(); });
+document.addEventListener('paste', function(e) { e.preventDefault(); });
