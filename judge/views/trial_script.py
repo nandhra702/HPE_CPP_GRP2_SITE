@@ -9,8 +9,9 @@ import socket
 from judge.models import Contest, ContestSubmission, SubmissionSource
 import datetime
 import glob
+from django.shortcuts import render
 
-timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+timestamp = datetime.datetime.now().strftime('%Y_%m_%d___%H_%M_%S')
 report_csv_paths = []
 
 
@@ -169,7 +170,7 @@ def download_problem_submissions(request, contest_key):
 
                     # Try to find any key in scores that contains the problem code
                     matching_key = next((k for k in scores if code in k), None)
-                    sim_percent = scores[matching_key] if matching_key else 0.0
+                    sim_percent = (scores[matching_key]*100) if matching_key else 0.0
 
                     line += f" : {code} {sim_percent:.2f}%"
                 out_file.write(line + "\n")
@@ -191,3 +192,49 @@ def download_problem_submissions(request, contest_key):
 
     finally:
         print("[✓] Finished preparing submissions and running Dolos.")
+
+
+#CREATING THE TABLE TO BE DISPLAYED
+
+
+def read_similarity_matrix(contest_key):
+    pattern = f"/home/sukhraj/submissions/contest_{contest_key}_*/{contest_key}_similarity_matrix.txt"
+    matching_files = glob.glob(pattern)
+    if not matching_files:
+        return [], []
+
+    # Optional: pick the most recent one
+    path = max(matching_files, key=os.path.getmtime)
+
+    with open(path, 'r') as file:
+        lines = file.readlines()
+
+    headers = []
+    rows = []
+
+    for line in lines:
+        parts = line.strip().split(':')
+        username = parts[0].strip()
+        entries = parts[1:]
+
+        row = [username]
+        for entry in entries:
+            pieces = entry.strip().split()
+            if len(pieces) == 2:
+                question, score = pieces
+                row.append(score)
+                if len(headers) < len(entries):
+                    headers.append(question)
+
+        rows.append(row)
+
+    return headers, rows
+
+#NOW SHOW THE TABLE
+
+def show_similarity_table(request, contest_key):
+    headers, rows = read_similarity_matrix(contest_key)
+    return render(request, 'contest/show_similarity_table.html', {
+        'headers': headers,
+        'rows': rows,
+    })
