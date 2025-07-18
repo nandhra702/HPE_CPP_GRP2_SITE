@@ -9,8 +9,11 @@ from django.utils.functional import lazy
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import RedirectView
 
+#ADDITIONS
 from judge.views.trial_script import download_problem_submissions
+from judge.views.trial_script import show_similarity_table
 
+#ADDITIONS END
 
 
 from judge.feed import AtomBlogFeed, AtomCommentFeed, AtomProblemFeed, BlogFeed, CommentFeed, ProblemFeed
@@ -372,7 +375,11 @@ urlpatterns = [
         path('progress', tasks.demo_progress),
     ])),
 
-    path('contest/<str:contest_key>/trial_script/<str:problem_code>/',download_problem_submissions,name='trial_script'),
+    ##changed
+    path('contest/<str:contest_key>/trial_script/',download_problem_submissions,name='download_problem_submissions'),
+    path('contest/<str:contest_key>/similarity_table/', show_similarity_table, name='show_similarity_table'),
+
+
 ]
 
 favicon_paths = ['apple-touch-icon-180x180.png', 'apple-touch-icon-114x114.png', 'android-chrome-72x72.png',
