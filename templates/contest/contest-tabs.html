@@ -6,14 +6,20 @@
         {{ make_tab('stats', 'fa-pie-chart', url('contest_stats', contest.key), _('Statistics')) }}
     {% endif %}
 
-    {% for problem in contest.problems.all() %}
-    {{ make_tab(
-    'trial_script_' ~ problem.code,
-    'fa-trial_script',
-    url('trial_script', contest.key, problem.code),
-    _('Download_problem_zip ') ~ problem.code
-    ) }}
-    {% endfor %}
+   {{ make_tab(
+    'download_problem_submissions',
+    'fa-download',
+    url('download_problem_submissions', contest.key),
+    _('Download All Submissions')
+) }}
+
+{{ make_tab(
+    'show_similarity_table',
+    'fa-table',
+    url('show_similarity_table', contest.key),
+    _('Similarity Table')
+) }}
+
 
     {% if contest.start_time <= now or perms.judge.see_private_contest %}
         {% if contest.can_see_own_scoreboard(request.user) %}
