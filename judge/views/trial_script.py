@@ -84,7 +84,7 @@ def find_free_port(start_port=3001, max_port=3100, used_ports=set()):
 
     # ///////////////////////////////////
 
-def download_problem_submissions(request, contest_key):
+def download_problem_submissions(request, contest_key,problem_code):
     contest = Contest.objects.get(key=contest_key)
     problems = contest.problems.all()
     base_dir = "/home/sukhraj/submissions"  # or any path you want
@@ -192,6 +192,7 @@ def download_problem_submissions(request, contest_key):
 
     finally:
         print("[✓] Finished preparing submissions and running Dolos.")
+<<<<<<< HEAD
 
 
 #CREATING THE TABLE TO BE DISPLAYED
@@ -238,3 +239,5 @@ def show_similarity_table(request, contest_key):
         'headers': headers,
         'rows': rows,
     })
+=======
+>>>>>>> b9fb526b16791f843692a3e526b91105d2b02777
