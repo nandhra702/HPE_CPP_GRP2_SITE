@@ -83,7 +83,7 @@ def find_free_port(start_port=3001, max_port=3100, used_ports=set()):
 
     # ///////////////////////////////////
 
-def download_problem_submissions(request, contest_key):
+def download_problem_submissions(request, contest_key,problem_code):
     contest = Contest.objects.get(key=contest_key)
     problems = contest.problems.all()
     base_dir = "/home/sukhraj/submissions"  # or any path you want
