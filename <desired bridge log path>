@@ -326,3 +326,165 @@ INFO 2025-07-14 14:58:21,995 judge_handler Trishal: Updated problem list
 INFO 2025-07-14 14:59:56,392 judge_handler Trishal: Updated problem list
 INFO 2025-07-14 14:59:56,401 judge_handler Trishal: Updated problem list
 INFO 2025-07-14 14:59:56,406 judge_handler Trishal: Updated problem list
+INFO 2025-07-18 18:55:18,719 judge_handler Judge disconnected from: ('127.0.0.1', 38466) with name Trishal
+INFO 2025-07-20 12:09:28,519 judge_handler Judge connected from: ('127.0.0.1', 46874)
+INFO 2025-07-20 12:09:28,684 judge_handler Judge authenticated: ('127.0.0.1', 46874) (Trishal)
+INFO 2025-07-22 13:33:58,971 daemon Exiting due to SIGINT
+INFO 2025-07-22 14:25:01,328 judge_handler Judge connected from: ('127.0.0.1', 55150)
+INFO 2025-07-22 14:25:01,363 judge_handler Judge authenticated: ('127.0.0.1', 55150) (Trishal)
+INFO 2025-07-22 14:28:15,461 judge_handler Trishal: Updated problem list
+INFO 2025-07-22 14:28:15,478 judge_handler Trishal: Updated problem list
+INFO 2025-07-22 14:28:17,919 judge_handler Trishal: Updated problem list
+INFO 2025-07-22 14:28:17,924 judge_handler Trishal: Updated problem list
+INFO 2025-07-22 14:28:17,933 judge_handler Trishal: Updated problem list
+INFO 2025-07-22 14:28:17,956 judge_handler Trishal: Updated problem list
+INFO 2025-07-22 14:28:18,500 judge_handler Trishal: Updated problem list
+INFO 2025-07-22 14:28:18,578 judge_handler Trishal: Updated problem list
+INFO 2025-07-22 14:28:25,314 judge_handler Trishal: Updated problem list
+INFO 2025-07-22 14:28:25,352 judge_handler Trishal: Updated problem list
+INFO 2025-07-22 14:28:25,499 judge_handler Trishal: Updated problem list
+INFO 2025-07-22 14:28:25,587 judge_handler Trishal: Updated problem list
+INFO 2025-07-22 14:28:25,600 judge_handler Trishal: Updated problem list
+INFO 2025-07-22 14:28:25,655 judge_handler Trishal: Updated problem list
+INFO 2025-07-22 14:28:37,983 judge_handler Trishal: Updated problem list
+INFO 2025-07-22 14:28:37,988 judge_handler Trishal: Updated problem list
+INFO 2025-07-22 14:28:39,724 judge_handler Trishal: Updated problem list
+INFO 2025-07-22 14:28:39,730 judge_handler Trishal: Updated problem list
+INFO 2025-07-22 14:28:42,796 judge_handler Trishal: Updated problem list
+INFO 2025-07-22 14:28:42,802 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:38:56,728 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:38:56,734 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:38:57,674 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:38:57,680 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:39:01,605 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:39:01,609 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:39:01,657 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:39:01,661 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:39:02,201 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:39:02,243 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:39:12,802 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:39:12,813 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:39:12,917 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:39:12,953 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:39:13,027 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:39:13,073 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:44:04,920 judge_list Specified judge Trishal is available
+INFO 2025-07-24 13:44:04,921 judge_list Dispatched submission 18 to: Trishal
+INFO 2025-07-24 13:44:04,928 judge_handler Submission acknowledged: 18
+INFO 2025-07-24 13:44:05,008 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:44:05,013 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:44:05,017 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:44:05,247 judge_handler Trishal: Submission failed to compile: 18
+INFO 2025-07-24 13:44:05,248 judge_list Judge available after grading 18: Trishal
+INFO 2025-07-24 13:44:05,260 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:44:27,972 judge_list Free judges: 1
+INFO 2025-07-24 13:44:27,973 judge_list Dispatched submission 19 to: Trishal
+INFO 2025-07-24 13:44:27,981 judge_handler Submission acknowledged: 19
+INFO 2025-07-24 13:44:28,015 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:44:28,019 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:44:28,023 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:44:28,160 judge_handler Trishal: Submission failed to compile: 19
+INFO 2025-07-24 13:44:28,161 judge_list Judge available after grading 19: Trishal
+INFO 2025-07-24 13:44:28,169 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:44:48,838 judge_list Free judges: 1
+INFO 2025-07-24 13:44:48,839 judge_list Dispatched submission 20 to: Trishal
+INFO 2025-07-24 13:44:48,847 judge_handler Submission acknowledged: 20
+INFO 2025-07-24 13:44:48,873 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:44:48,877 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:44:49,009 judge_handler Trishal: Submission failed to compile: 20
+INFO 2025-07-24 13:44:49,009 judge_list Judge available after grading 20: Trishal
+INFO 2025-07-24 13:44:49,015 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:44:53,796 judge_list Specified judge Trishal is available
+INFO 2025-07-24 13:44:53,796 judge_list Dispatched submission 21 to: Trishal
+INFO 2025-07-24 13:44:53,805 judge_handler Submission acknowledged: 21
+INFO 2025-07-24 13:44:53,821 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:44:53,825 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:44:53,977 judge_handler Trishal: Submission failed to compile: 21
+INFO 2025-07-24 13:44:53,977 judge_list Judge available after grading 21: Trishal
+INFO 2025-07-24 13:44:53,986 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:45:08,784 judge_list Free judges: 1
+INFO 2025-07-24 13:45:08,785 judge_list Dispatched submission 22 to: Trishal
+INFO 2025-07-24 13:45:08,793 judge_handler Submission acknowledged: 22
+INFO 2025-07-24 13:45:08,879 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:45:08,884 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:45:08,971 judge_handler Trishal: Submission failed to compile: 22
+INFO 2025-07-24 13:45:08,972 judge_list Judge available after grading 22: Trishal
+INFO 2025-07-24 13:45:08,985 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:45:48,015 judge_list Free judges: 1
+INFO 2025-07-24 13:45:48,015 judge_list Dispatched submission 23 to: Trishal
+INFO 2025-07-24 13:45:48,023 judge_handler Submission acknowledged: 23
+INFO 2025-07-24 13:45:48,064 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:45:48,070 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:45:48,194 judge_handler Trishal: Submission generated compiler messages: 23
+INFO 2025-07-24 13:45:48,214 judge_handler Trishal: Grading has begun on: 23
+INFO 2025-07-24 13:45:48,308 judge_handler Trishal: 1 test case(s) completed on: 23
+INFO 2025-07-24 13:45:48,358 judge_handler Trishal: 1 test case(s) completed on: 23
+INFO 2025-07-24 13:45:48,380 judge_handler Trishal: Grading has ended on: 23
+INFO 2025-07-24 13:45:48,381 judge_list Judge available after grading 23: Trishal
+INFO 2025-07-24 13:45:48,420 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:46:46,630 judge_list Specified judge Trishal is available
+INFO 2025-07-24 13:46:46,631 judge_list Dispatched submission 24 to: Trishal
+INFO 2025-07-24 13:46:46,638 judge_handler Submission acknowledged: 24
+INFO 2025-07-24 13:46:46,650 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:46:46,655 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:46:46,816 judge_handler Trishal: Submission generated compiler messages: 24
+INFO 2025-07-24 13:46:46,825 judge_handler Trishal: Grading has begun on: 24
+INFO 2025-07-24 13:46:46,902 judge_handler Trishal: 1 test case(s) completed on: 24
+INFO 2025-07-24 13:46:46,969 judge_handler Trishal: 1 test case(s) completed on: 24
+INFO 2025-07-24 13:46:46,991 judge_handler Trishal: Grading has ended on: 24
+INFO 2025-07-24 13:46:46,992 judge_list Judge available after grading 24: Trishal
+INFO 2025-07-24 13:46:47,592 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 13:57:00,359 judge_handler Judge disconnected from: ('127.0.0.1', 55150) with name Trishal
+INFO 2025-07-24 13:58:09,321 judge_handler Judge connected from: ('127.0.0.1', 34828)
+INFO 2025-07-24 13:58:09,326 judge_handler Judge authenticated: ('127.0.0.1', 34828) (Trishal)
+INFO 2025-07-24 14:04:14,663 judge_list Free judges: 1
+INFO 2025-07-24 14:04:14,664 judge_list Dispatched submission 25 to: Trishal
+INFO 2025-07-24 14:04:14,672 judge_handler Submission acknowledged: 25
+INFO 2025-07-24 14:04:14,685 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 14:04:14,689 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 14:04:14,850 judge_handler Trishal: Submission generated compiler messages: 25
+INFO 2025-07-24 14:04:14,857 judge_handler Trishal: Grading has begun on: 25
+INFO 2025-07-24 14:04:14,997 judge_handler Trishal: 2 test case(s) completed on: 25
+INFO 2025-07-24 14:04:15,034 judge_handler Trishal: Grading has ended on: 25
+INFO 2025-07-24 14:04:15,035 judge_list Judge available after grading 25: Trishal
+INFO 2025-07-24 14:04:15,180 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 14:04:56,627 judge_list Free judges: 1
+INFO 2025-07-24 14:04:56,628 judge_list Dispatched submission 26 to: Trishal
+INFO 2025-07-24 14:04:56,634 judge_handler Submission acknowledged: 26
+INFO 2025-07-24 14:04:56,735 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 14:04:56,740 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 14:04:56,814 judge_handler Trishal: Submission generated compiler messages: 26
+INFO 2025-07-24 14:04:56,838 judge_handler Trishal: Grading has begun on: 26
+INFO 2025-07-24 14:04:56,959 judge_handler Trishal: 2 test case(s) completed on: 26
+INFO 2025-07-24 14:04:56,994 judge_handler Trishal: Grading has ended on: 26
+INFO 2025-07-24 14:04:56,994 judge_list Judge available after grading 26: Trishal
+INFO 2025-07-24 14:04:57,175 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 14:08:19,909 judge_list Free judges: 1
+INFO 2025-07-24 14:08:19,909 judge_list Dispatched submission 27 to: Trishal
+INFO 2025-07-24 14:08:19,918 judge_handler Submission acknowledged: 27
+INFO 2025-07-24 14:08:19,933 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 14:08:19,938 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 14:08:20,098 judge_handler Trishal: Submission generated compiler messages: 27
+INFO 2025-07-24 14:08:20,108 judge_handler Trishal: Grading has begun on: 27
+INFO 2025-07-24 14:08:20,237 judge_handler Trishal: 2 test case(s) completed on: 27
+INFO 2025-07-24 14:08:20,264 judge_handler Trishal: Grading has ended on: 27
+INFO 2025-07-24 14:08:20,264 judge_list Judge available after grading 27: Trishal
+INFO 2025-07-24 14:08:20,356 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 14:09:16,593 judge_list Free judges: 1
+INFO 2025-07-24 14:09:16,594 judge_list Dispatched submission 28 to: Trishal
+INFO 2025-07-24 14:09:16,602 judge_handler Submission acknowledged: 28
+INFO 2025-07-24 14:09:16,684 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 14:09:16,689 judge_handler Trishal: Updated problem list
+INFO 2025-07-24 14:09:16,776 judge_handler Trishal: Submission generated compiler messages: 28
+INFO 2025-07-24 14:09:16,789 judge_handler Trishal: Grading has begun on: 28
+INFO 2025-07-24 14:09:16,866 judge_handler Trishal: 1 test case(s) completed on: 28
+INFO 2025-07-24 14:09:16,900 judge_handler Trishal: 1 test case(s) completed on: 28
+INFO 2025-07-24 14:09:16,922 judge_handler Trishal: Grading has ended on: 28
+INFO 2025-07-24 14:09:16,923 judge_list Judge available after grading 28: Trishal
+INFO 2025-07-24 14:09:17,015 judge_handler Trishal: Updated problem list
+INFO 2025-07-29 09:33:15,778 judge_handler Trishal: Updated problem list
+INFO 2025-07-29 09:33:15,794 judge_handler Trishal: Updated problem list
+INFO 2025-07-29 09:33:15,806 judge_handler Trishal: Updated problem list
+INFO 2025-07-29 09:33:15,811 judge_handler Trishal: Updated problem list
+INFO 2025-07-29 09:33:15,817 judge_handler Trishal: Updated problem list
+INFO 2025-07-29 09:33:15,822 judge_handler Trishal: Updated problem list

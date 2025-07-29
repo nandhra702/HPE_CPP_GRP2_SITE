@@ -1,4 +1,5 @@
-from django.http import FileResponse, HttpResponseNotFound
+from judge.models.similarity import SimilarityScore
+from django.http import FileResponse
 import tempfile
 import os
 import zipfile
@@ -6,12 +7,17 @@ import subprocess
 import csv
 from collections import defaultdict
 import socket
+from judge.models import Contest, ContestSubmission, SubmissionSource
 import datetime
 import glob
+from django.shortcuts import render
+from django.contrib.auth.models import User
+from judge.models.similarity import SimilarityScore  
 
-from judge.models import Contest, ContestSubmission, SubmissionSource
 
-timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+timestamp = datetime.datetime.now().strftime('%Y_%m_%d___%H_%M_%S')
+report_csv_paths = []
+
 
 LANGUAGE_EXTENSIONS = {
     'C': 'c', 'C++': 'cpp', 'C++11': 'cpp', 'Python 2': 'py', 'Python 3': 'py',
@@ -22,47 +28,70 @@ LANGUAGE_EXTENSIONS = {
 DOLOS_LANGUAGE_FLAGS = {
     'C': 'c', 'C++': 'cpp', 'C++11': 'cpp', 'Python 2': 'python', 'Python 3': 'python',
     'Java': 'java', 'Rust': 'rs', 'Go': 'go', 'Kotlin': 'kt', 'Pascal': 'pas',
-    'Ruby': 'rb', 'Haskell': 'hs', 'Perl': 'pl', 'Scala': 'scala', 'JavaScript': 'javascript',
+    'Ruby': 'rb', 'Haskell': 'hs','Perl': 'pl', 'Scala': 'scala', 'JavaScript': 'javascript',
 }
 
 
 def extract_username(filename):
-    name = filename.rsplit('.', 1)[0]
+   
+    name = filename.rsplit('.', 1)[0]  # Remove extension
     parts = name.split('_')
     if len(parts) >= 2 and parts[-1].isdigit():
-        return '_'.join(parts[:-1])
-    return name
+        return '_'.join(parts[:-1])  # Remove submission ID
+    return name  # fallback (e.g. no underscore or submission ID)
 
 
-def extract_similarity_data(report_dirs):
-    similarity_data = defaultdict(lambda: defaultdict(float))
+def extract_similarity_data(report_csv_paths, contest_key):
+    similarity_data = defaultdict(lambda: defaultdict(float))  # username -> problem_code -> max_similarity
 
-    for report_dir in report_dirs:
-        similarities_csv = os.path.join(report_dir, "similarities.csv")
-        if not os.path.isfile(similarities_csv):
-            print(f"[!] similarities.csv not found in: {report_dir}")
+    for path in report_csv_paths:
+        if not os.path.exists(path):
+            print(f"[!] Missing Dolos output: {path}")
             continue
 
-        # Extract problem code
-        problem_code = os.path.basename(report_dir)
-        if "submissions" in problem_code:
-            problem_code = problem_code.split("submissions")[0]
-            problem_code = problem_code.split('-')[-1]
+        # Extract problem code from directory name
+        parent_dir = os.path.basename(os.path.dirname(path))
+        problem_lang_label = parent_dir.split('-')[-1]  # e.g. 'twosumPython3submissions'
 
-        with open(similarities_csv, newline='') as csvfile:
+        if problem_lang_label.endswith('submissions'):
+            problem_lang_label = problem_lang_label[:-11]  # now 'twosumPython3'
+
+        # Remove the language suffix from 'twosumPython3'
+        for lang in DOLOS_LANGUAGE_FLAGS.values():
+            if problem_lang_label.endswith(lang):
+                problem_code = problem_lang_label[: -len(lang)]
+                break
+        else:
+            problem_code = problem_lang_label  # fallback if no language match
+
+
+        with open(path, newline='') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
                 file1 = os.path.basename(row['leftFilePath'])
                 file2 = os.path.basename(row['rightFilePath'])
                 similarity = float(row['similarity'])
-
                 user1 = extract_username(file1)
                 user2 = extract_username(file2)
 
                 similarity_data[user1][problem_code] = max(similarity_data[user1][problem_code], similarity)
                 similarity_data[user2][problem_code] = max(similarity_data[user2][problem_code], similarity)
 
+    # ✅ Store in DB
+    for username, problems in similarity_data.items():
+        for problem_code, score in problems.items():
+            contest = Contest.objects.get(key=contest_key)
+            user = User.objects.get(username=username)
+
+            SimilarityScore.objects.update_or_create(
+                contest=contest,
+                user=user,
+                problem_code=problem_code,
+                defaults={'similarity_percent': score * 100}
+)
+
     return similarity_data
+
 
 
 
@@ -78,15 +107,12 @@ def find_free_port(start_port=3001, max_port=3100, used_ports=set()):
                 return port
     raise RuntimeError("No free port found in range.")
 
+    # ///////////////////////////////////
 
-def download_problem_submissions(request, contest_key, problem_code):
+def download_problem_submissions(request, contest_key):
     contest = Contest.objects.get(key=contest_key)
-    problem = contest.problems.filter(code=problem_code).first()
-    if not problem:
-        return HttpResponseNotFound("Problem not found in this contest.")
-    problems = [problem]
-
-    base_dir = "/home/trishal/submissions"
+    problems = contest.problems.all()
+    base_dir = "/home/trishal/submissions"  # or any path you want
     os.makedirs(base_dir, exist_ok=True)
     tmp_dir = os.path.join(base_dir, f"contest_{contest_key}_{timestamp}")
     os.makedirs(tmp_dir, exist_ok=True)
@@ -113,7 +139,10 @@ def download_problem_submissions(request, contest_key, problem_code):
                 user = submission.user
                 lang = submission.language.name
                 ext = LANGUAGE_EXTENSIONS.get(lang, 'txt')
-                filename = f"{user.username}_{submission.id}.{ext}"
+                username = user.username
+                sub_id = submission.id
+
+                filename = f"{username}_{sub_id}.{ext}"
 
                 try:
                     source = SubmissionSource.objects.get(pk=submission.id)
@@ -133,59 +162,120 @@ def download_problem_submissions(request, contest_key, problem_code):
                     for filename, code in files:
                         zipf.writestr(filename, code)
 
-                lang_flag = DOLOS_LANGUAGE_FLAGS.get(lang)
+                lang_flag = DOLOS_LANGUAGE_FLAGS.get(lang, None)
                 if lang_flag:
                     try:
                         free_port = find_free_port(start_port=3001, used_ports=used_ports)
                         subprocess.Popen([
                             "dolos", "run", "-f", "web", "-l", lang_flag,
-                            "--port", str(free_port), zip_path
-                        ], cwd=tmp_dir)
+                            "--port", str(free_port), zip_path],cwd=tmp_dir)
 
-                        csv_output_dir = f"dolos-report-{timestamp}-{problem_code}{lang.replace(' ', '')}submissions"
-                        csv_output_path = os.path.join(tmp_dir, csv_output_dir)
-
+                        csv_output_path = zip_path.replace(".zip", "_report.csv")
                         with open(csv_output_path, 'w') as csv_file:
-                            ssubprocess.run([
+                            subprocess.run([
                                 "dolos", "run", "-f", "csv", "-l", lang_flag,
-                                zip_path, "-o", csv_output_path
-                        ], cwd=tmp_dir)
+                                zip_path], stdout=csv_file, cwd=tmp_dir)    
                     except Exception as e:
                         print(f"[✗] Dolos failed for {zip_filename}: {e}")
                 else:
                     print(f"[!] Skipping Dolos: No language flag for '{lang}'")
 
-        report_dirs = glob.glob(os.path.join(tmp_dir, "dolos-report-*"))
-        sim_data = extract_similarity_data(report_dirs)
+      
 
-        print("Final similarity data:", sim_data)
-        print("[Debug] Extracted Similarity Data:")
-        for user, scores in sim_data.items():
-            print(f"  {user} -> {scores}")
+        report_csv_paths = glob.glob(os.path.join(tmp_dir, "dolos-report-*/pairs.csv"))
 
+        sim_data = extract_similarity_data(report_csv_paths, contest_key)       
+        for username, scores in sim_data.items():
+            try:
+                user = User.objects.get(username=username)
+            except User.DoesNotExist:
+                print(f"[!] User '{username}' not found in database.")
+                continue
 
-        similarity_matrix_path = os.path.join(tmp_dir, f"{contest_key}_similarity_matrix.txt")
-        with open(similarity_matrix_path, 'w') as out_file:
-            for username, scores in sim_data.items():
-                line = f"{username}"
-                
-                for problem in problems:
+            for problem in problems:
+                code = problem.code
+                matching_key = next((k for k in scores if code in k), None)
+                sim_percent = (scores[matching_key] * 100) if matching_key else 0.0
 
-                    code = problem.code
-                    matching_key = next((k for k in scores if code in k), None)
-                    sim_percent = scores[matching_key] if matching_key else 0.0
-                    line += f" : {code} {sim_percent:.2f}%"
-                out_file.write(line + "\n")
-
+                SimilarityScore.objects.update_or_create(
+                    contest=contest,
+                    user=user,
+                    problem_code=code,
+                    defaults={'similarity_percent': sim_percent}
+        )
+        
         final_zip_path = os.path.join(tmp_dir, f"{contest_key}_grouped_submissions.zip")
         with zipfile.ZipFile(final_zip_path, 'w', zipfile.ZIP_DEFLATED) as final_zip:
             for zip_file in lang_zip_paths:
                 arcname = os.path.basename(zip_file)
                 final_zip.write(zip_file, arcname=arcname)
-            final_zip.write(similarity_matrix_path, arcname=os.path.basename(similarity_matrix_path))
+
+
 
         return FileResponse(open(final_zip_path, 'rb'), as_attachment=True,
                             filename=f"{contest_key}_grouped_submissions.zip")
 
     finally:
         print("[✓] Finished preparing submissions and running Dolos.")
+
+
+
+#CREATING THE TABLE TO BE DISPLAYED
+
+
+def read_similarity_matrix(contest_key):
+    try:
+        contest = Contest.objects.get(key=contest_key)
+    except Contest.DoesNotExist:
+        return [], []
+
+    scores = SimilarityScore.objects.filter(contest=contest)
+    if not scores.exists():
+        return [], []
+
+    users = sorted(set(s.user.username for s in scores))
+
+    # Strip language suffixes from problem_code
+    def normalize_problem_code(code):
+        for lang in ['C', 'C++', 'C++11', 'Python 2', 'Python 3', 'Java', 'Rust', 'Go',
+                     'Kotlin', 'Pascal', 'Ruby', 'Haskell', 'Perl', 'Scala', 'JavaScript']:
+            suffix = lang.replace(' ', '')  # e.g., 'Python3'
+            if code.endswith(suffix):
+                return code[:-len(suffix)]
+        return code
+
+    normalized_scores = defaultdict(dict)  # normalized_problem -> user -> score
+
+    for score in scores:
+        user = score.user.username
+        problem = normalize_problem_code(score.problem_code)
+        if user not in normalized_scores[problem]:
+            normalized_scores[problem][user] = score.similarity_percent
+        else:
+            # Take the max score if multiple entries for same problem (e.g., Python3 and C++)
+            normalized_scores[problem][user] = max(
+                normalized_scores[problem][user], score.similarity_percent
+            )
+
+    problems = sorted(normalized_scores.keys())
+    headers = problems
+    rows = []
+
+    for user in users:
+        row = [user]
+        for problem in problems:
+            score = normalized_scores[problem].get(user, 0.0)
+            row.append(f"{score:.2f}%")
+        rows.append(row)
+
+    return headers, rows
+
+
+#NOW SHOW THE TABLE
+
+def show_similarity_table(request, contest_key):
+    headers, rows = read_similarity_matrix(contest_key)
+    return render(request, 'contest/show_similarity_table.html', {
+        'headers': headers,
+        'rows': rows,
+    })

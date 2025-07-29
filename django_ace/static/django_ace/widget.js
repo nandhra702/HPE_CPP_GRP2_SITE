@@ -110,7 +110,7 @@
         editor.commands.addCommands([
             {
                 name: 'Full screen',
-                bindKey: {win: 'Ctrl-F11', mac: 'Command-F11'},
+                bindKey: { win: 'Ctrl-F11', mac: 'Command-F11' },
                 exec: function (editor) {
                     minimizeMaximize(widget, main_block, editor);
                 },
@@ -118,7 +118,7 @@
             },
             {
                 name: 'submit',
-                bindKey: {win: 'Ctrl+Enter', mac: 'Command+Enter'},
+                bindKey: { win: 'Ctrl+Enter', mac: 'Command+Enter' },
                 exec: function (editor) {
                     $('form#problem_submit').submit();
                 },
@@ -126,7 +126,7 @@
             },
             {
                 name: "showKeyboardShortcuts",
-                bindKey: {win: "Ctrl-Shift-/", mac: "Command-Shift-/"},
+                bindKey: { win: "Ctrl-Shift-/", mac: "Command-Shift-/" },
                 exec: function (editor) {
                     ace.config.loadModule("ace/ext/keybinding_menu", function (module) {
                         module.init(editor);

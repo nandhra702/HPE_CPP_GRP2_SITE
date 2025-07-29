@@ -1,5 +1,4 @@
 from django.views.generic import TemplateView
-from . import download
 from . import trial_script
 
 

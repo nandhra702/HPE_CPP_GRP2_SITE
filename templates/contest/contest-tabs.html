@@ -1,41 +1,24 @@
 {% extends "tabs-base.html" %}
-{% set problem_languages = problem_languages_for(contest) %}
-
-
 
 {% block tabs %}
 {{ make_tab('detail', 'fa-info-circle', url('contest_view', contest.key), _('Info')) }}
 {% if contest.ended or can_edit %}
 {{ make_tab('stats', 'fa-pie-chart', url('contest_stats', contest.key), _('Statistics')) }}
-{% if perms.judge.moss_contest and has_moss_api_key %}
-{{ make_tab('moss', 'fa-gavel', url('contest_moss', contest.key), _('MOSS')) }}
 {% endif %}
+{% if can_edit %}
 {{ make_tab(
-'plagiarism_reports',
-'fa-shield-alt',
-url('plagiarism_report_page', contest.key),
-_('Plagiarism Reports')
-) }}
-
-
-
-
-
-
-<!-- {% for problem in contest.problems.all() %}
-{% set langs = problem_languages.get(problem.code, []) %}
-{% for lang in langs|sort %}
-{{ make_tab(
-'download_' ~ problem.code ~ '_' ~ lang|replace(' ', '_')|lower,
+'download_problem_submissions',
 'fa-download',
-url('download_lang', contest.key, problem.code, lang),
-_('Plag Report ') ~ problem.code ~ ' - ' ~ lang
+url('download_problem_submissions', contest.key),
+_('Download All Submissions')
 ) }}
-{% endfor %}
-{% endfor %} -->
 
-
-
+{{ make_tab(
+'show_similarity_table',
+'fa-table',
+url('show_similarity_table', contest.key),
+_('Similarity Table')
+) }}
 {% endif %}
 
 {% if contest.start_time <= now or perms.judge.see_private_contest %} {% if contest.can_see_own_scoreboard(request.user)
@@ -68,11 +51,11 @@ _('Plag Report ') ~ problem.code ~ ' - ' ~ lang
         class="contest-join-pseudotab unselectable button">
         {% csrf_token %}
         <input type="submit" value="
-                        {%- if request.participation.spectate %}
-                            {{- _('Stop spectating') -}}
-                        {% else %}
-                            {{- _('Leave contest') -}}
-                        {% endif %}">
+                            {%- if request.participation.spectate %}
+                                {{- _('Stop spectating') -}}
+                            {% else %}
+                                {{- _('Leave contest') -}}
+                            {% endif %}">
     </form>
     {% elif contest.is_live_joinable_by(request.user) %}
     <form action="{{ url('contest_join', contest.key) }}" method="post"

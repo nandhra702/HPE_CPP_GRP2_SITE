@@ -23,15 +23,17 @@ from judge.views.select2 import AssigneeSelect2View, ClassSelect2View, CommentSe
     ContestUserSearchSelect2View, OrganizationSelect2View, ProblemSelect2View, TicketUserSelect2View, \
     UserSearchSelect2View, UserSelect2View
 from judge.views.widgets import martor_image_uploader
-from judge.views.download import download_problem_submissions
-# from judge.views.download import show_problem_submissions
-from judge.views.download import download_and_analyze
-# from judge.views.reports import contest_reports
-# from judge.views.reports import run_dolos
-from judge.views.download import download_problem_language_submissions
-# from judge.views.reports import generate_report
+# from judge.views.download import download_problem_submissions
+# # from judge.views.download import show_problem_submissions
+# from judge.views.download import download_and_analyze
+# # from judge.views.reports import contest_reports
+# # from judge.views.reports import run_dolos
+# from judge.views.download import download_problem_language_submissions
+# # from judge.views.reports import generate_report
+# from judge.views.trial_script import download_problem_submissions
+# from judge.views.reports import plagiarism_report_page, generate_plagiarism_report
 from judge.views.trial_script import download_problem_submissions
-from judge.views.reports import plagiarism_report_page, generate_plagiarism_report
+from judge.views.trial_script import show_similarity_table
 
 
 
@@ -399,34 +401,36 @@ urlpatterns = [
         path('failure', tasks.demo_failure),
         path('progress', tasks.demo_progress),
     ])),
-    # path('contest/<str:contest_key>/trial_script/<str:problem_code>/',download_problem_submissions,name='trial_script'),
-    # path('contests/<str:contest_key>/download/<str:problem_code>/', download_problem_submissions, name='contest_problem_download'),
-    path(
-    'contest/<slug:contest_slug>/<slug:problem_code>/<str:language>/download/',
-    download_and_analyze,
-    name='download_and_analyze',
-),
-    #  path('contest/<str:contest_key>/plagiarism_reports/', plagiarism_report_page, name='plagiarism_reports'),
-    #  path('contest/<str:contest_key>/plagiarism_reports/', plagiarism_report_page, name='plagiarism_report_page'),
+#     # path('contest/<str:contest_key>/trial_script/<str:problem_code>/',download_problem_submissions,name='trial_script'),
+#     # path('contests/<str:contest_key>/download/<str:problem_code>/', download_problem_submissions, name='contest_problem_download'),
+#     path(
+#     'contest/<slug:contest_slug>/<slug:problem_code>/<str:language>/download/',
+#     download_and_analyze,
+#     name='download_and_analyze',
+# ),
+#     #  path('contest/<str:contest_key>/plagiarism_reports/', plagiarism_report_page, name='plagiarism_reports'),
+#     #  path('contest/<str:contest_key>/plagiarism_reports/', plagiarism_report_page, name='plagiarism_report_page'),
 
 
-    # path('contest/<slug:contest_key>/reports/', contest_reports, name='contest_reports'),
+#     # path('contest/<slug:contest_key>/reports/', contest_reports, name='contest_reports'),
 
-    # path('contest/<slug:contest_key>/<slug:problem_code>/run_dolos/', run_dolos, name='run_dolos'),
-    # path('contest/<str:contest_key>/report/<int:problem_id>/', generate_plagiarism_report, name='generate_plagiarism_report'),
-    path('contest/<str:contest_key>/plagiarism_reports/', plagiarism_report_page, name='plagiarism_report_page'),
-    path('contest/<str:contest_key>/download/<str:problem_code>/', download_problem_submissions, name='download_problem_submissions'),
-    path('contest/<str:contest_key>/report/<int:problem_id>/', generate_plagiarism_report, name='generate_plagiarism_report'),
+#     # path('contest/<slug:contest_key>/<slug:problem_code>/run_dolos/', run_dolos, name='run_dolos'),
+#     # path('contest/<str:contest_key>/report/<int:problem_id>/', generate_plagiarism_report, name='generate_plagiarism_report'),
+#     path('contest/<str:contest_key>/plagiarism_reports/', plagiarism_report_page, name='plagiarism_report_page'),
+#     path('contest/<str:contest_key>/download/<str:problem_code>/', download_problem_submissions, name='download_problem_submissions'),
+#     path('contest/<str:contest_key>/report/<int:problem_id>/', generate_plagiarism_report, name='generate_plagiarism_report'),
 
 
-    # path('contests/<slug:contest_slug>/reports/', reports_view, name='contest_reports'),
-    # path('contests/<slug:contest_slug>/reports/', contest_reports, name='contest_reports'),
-    # path('contests/<slug:contest_slug>/reports/<slug:problem_key>/<str:language>/', download_submissions, name='download_submissions'),
-    # path('contest/<slug:contest_key>/<slug:problem_code>/run_dolos/', run_dolos, name='run_dolos'),
+#     # path('contests/<slug:contest_slug>/reports/', reports_view, name='contest_reports'),
+#     # path('contests/<slug:contest_slug>/reports/', contest_reports, name='contest_reports'),
+#     # path('contests/<slug:contest_slug>/reports/<slug:problem_key>/<str:language>/', download_submissions, name='download_submissions'),
+#     # path('contest/<slug:contest_key>/<slug:problem_code>/run_dolos/', run_dolos, name='run_dolos'),
 
-    # path('contests/<str:contest_key>/<str:problem_code>/run-dolos/', run_dolos,name='run_dolos'),
-    path('contest/<str:contest_key>/<str:problem_code>/<str:language>/download/', download_problem_language_submissions, name='download_lang'),
-    # path('contest/<slug:contest_key>/generate-report/', generate_report, name='generate_report'),
+#     # path('contests/<str:contest_key>/<str:problem_code>/run-dolos/', run_dolos,name='run_dolos'),
+#     path('contest/<str:contest_key>/<str:problem_code>/<str:language>/download/', download_problem_language_submissions, name='download_lang'),
+#     # path('contest/<slug:contest_key>/generate-report/', generate_report, name='generate_report'),
+    path('contest/<str:contest_key>/trial_script/',download_problem_submissions,name='download_problem_submissions'),
+    path('contest/<str:contest_key>/similarity_table/', show_similarity_table, name='show_similarity_table'),
 
 
 ]

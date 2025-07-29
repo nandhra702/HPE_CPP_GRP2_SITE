@@ -3,7 +3,7 @@
     position: relative;
 }
 
-.django-ace-widget > div {
+.django-ace-widget>div {
     position: absolute;
     top: 0;
     left: 0;

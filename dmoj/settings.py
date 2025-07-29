@@ -340,7 +340,7 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'match_extension': ('.html', '.txt'),
-            'match_regex': '^(?!admin/)',
+            'match_regex': '^(?!admin/|martor/)',
             'context_processors': [
                 'django.template.context_processors.media',
                 'django.template.context_processors.tz',
