@@ -51,6 +51,17 @@
         <script src="{{ static('libs/chart.js/Chart.js') }}" type="text/javascript"></script>
         <script src="{{ static('problem-vote.js') }}" type="text/javascript"></script>
     {% endif %}
+    
+    <script>
+        // If this page is loaded inside an iframe, notify the parent wrapper
+        if (window.parent !== window) {
+            // Notify the parent wrapper that this page has loaded.
+            window.parent.postMessage(
+                { proctoringPage: 'problem_detail' },
+                window.location.origin
+            );
+        }
+    </script>
 {% endblock %}
 
 {% block title_row %}

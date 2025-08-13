@@ -23,6 +23,8 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.timezone import make_aware
 from django.utils.translation import gettext as _, gettext_lazy
+from django.utils.decorators import method_decorator
+from django.views.decorators.clickjacking import xframe_options_exempt
 from django.views.generic import ListView, TemplateView, View
 from django.views.generic.detail import DetailView, SingleObjectMixin
 from django.views.generic.list import BaseListView
@@ -43,7 +45,7 @@ from judge.utils.stats import get_bar_chart, get_pie_chart
 from judge.utils.views import DiggPaginatorMixin, QueryStringSortMixin, SingleObjectFormView, TitleMixin, \
     generic_message
 
-__all__ = ['ContestList', 'ContestDetail', 'ContestRanking', 'ContestJoin', 'ContestLeave', 'ContestCalendar',
+__all__ = ['ContestList', 'ContestDetail', 'ContestProctoringWrapperView' , 'ContestRanking', 'ContestJoin', 'ContestLeave', 'ContestCalendar',
            'ContestClone', 'ContestStats', 'ContestMossView', 'ContestMossDelete', 'contest_ranking_ajax',
            'ContestParticipationList', 'ContestParticipationDisqualify', 'get_contest_ranking_list',
            'base_contest_ranking_list']
@@ -263,6 +265,7 @@ class ContestMixin(object):
             }, status=403)
 
 
+@method_decorator(xframe_options_exempt, name='dispatch')
 class ContestDetail(ContestMixin, TitleMixin, CommentedDetailView):
     template_name = 'contest/contest.html'
 
@@ -468,6 +471,97 @@ class ContestJoin(LoginRequiredMixin, ContestMixin, SingleObjectMixin, View):
             'title': _('Enter access code for "%s"') % contest.name,
         })
 
+class ContestProctoringWrapperView(ContestMixin, TitleMixin, DetailView):
+    template_name = 'contest/proctor_contest_wrapper.html'
+    context_object_name = 'contest'
+    title = gettext_lazy('Proctoring Session')
+
+    def get_title(self):
+        return _('Proctoring for {0}').format(self.object.name)
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        
+        # Auto-join the contest if user is authenticated and not already joined
+        if request.user.is_authenticated and not self.object.is_in_contest(request.user):
+            try:
+                self._join_contest(request)
+            except Exception as e:
+                # If joining fails, redirect to regular contest view or show error
+                return HttpResponseRedirect(reverse('contest_view', args=[self.object.key]))
+        
+        return super().get(request, *args, **kwargs)
+
+    def _join_contest(self, request):
+        """Auto-join contest logic similar to ContestJoin.join_contest"""
+        contest = self.object
+        profile = request.profile
+
+        if not contest.started and not (self.is_editor or self.is_tester):
+            raise Exception('Contest not ongoing')
+
+        if not request.user.is_superuser and contest.banned_users.filter(id=profile.id).exists():
+            raise Exception('User banned from contest')
+
+        # Handle access code requirement - for now, skip contests that require access codes
+        if not self.can_edit and contest.access_code:
+            raise Exception('Contest requires access code')
+
+        if contest.ended:
+            # Virtual join for ended contests
+            while True:
+                virtual_id = max((ContestParticipation.objects.filter(contest=contest, user=profile)
+                                  .aggregate(virtual_id=Max('virtual'))['virtual_id'] or 0) + 1, 1)
+                try:
+                    participation = ContestParticipation.objects.create(
+                        contest=contest, user=profile, virtual=virtual_id,
+                        real_start=timezone.now(),
+                    )
+                    break
+                except IntegrityError:
+                    pass
+        else:
+            # Live contest joining
+            SPECTATE = ContestParticipation.SPECTATE
+            LIVE = ContestParticipation.LIVE
+
+            if contest.is_live_joinable_by(request.user):
+                participation_type = LIVE
+            elif contest.is_spectatable_by(request.user):
+                participation_type = SPECTATE
+            else:
+                raise Exception('Cannot enter contest')
+
+            try:
+                participation = ContestParticipation.objects.get(
+                    contest=contest, user=profile, virtual=participation_type,
+                )
+            except ContestParticipation.DoesNotExist:
+                participation = ContestParticipation.objects.create(
+                    contest=contest, user=profile, virtual=participation_type,
+                    real_start=timezone.now(),
+                )
+            else:
+                if participation.ended:
+                    participation = ContestParticipation.objects.get_or_create(
+                        contest=contest, user=profile, virtual=SPECTATE,
+                        defaults={'real_start': timezone.now()},
+                    )[0]
+
+        profile.current_contest = participation
+        profile.save()
+        contest._updating_stats_only = True
+        contest.update_user_count()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        context['dmoj_data'] = {
+            'userId': user.id if user.is_authenticated else None,
+            'username': user.username if user.is_authenticated else 'AnonymousUser',
+            'contestKey': self.object.key,
+        }
+        return context
 
 class ContestLeave(LoginRequiredMixin, ContestMixin, SingleObjectMixin, View):
     def post(self, request, *args, **kwargs):

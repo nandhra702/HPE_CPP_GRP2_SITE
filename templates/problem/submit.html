@@ -123,6 +123,17 @@
             });
         </script>
     {% endcompress %}
+    
+    <script>
+        // If this page is loaded inside an iframe, notify the parent wrapper
+        if (window.parent !== window) {
+            // Notify the parent wrapper that this page has loaded.
+            window.parent.postMessage(
+                { proctoringPage: 'problem_submit' },
+                window.location.origin
+            );
+        }
+    </script>
 {% endblock %}
 
 {% block media %}

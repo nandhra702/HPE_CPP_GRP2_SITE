@@ -18,6 +18,60 @@
 
             console.log('Contest page loaded - contest mode handled by global script');
         });
+
+        // If this page is loaded inside an iframe, show proctoring controls and notify the parent.
+        if (window.parent !== window) {
+            // Show proctoring controls
+            const proctoringControls = document.getElementById('proctoring-controls');
+            if (proctoringControls) proctoringControls.style.display = 'block';
+
+            // Handle end proctoring button
+            const endButton = document.getElementById('end-proctoring-btn');
+            if (endButton) {
+                endButton.addEventListener('click', function () {
+                    if (confirm('Are you sure you want to end the proctoring session? This cannot be undone.')) {
+                        window.parent.postMessage(
+                            { proctoringAction: 'end_session' },
+                            window.location.origin
+                        );
+                    }
+                });
+            }
+
+            // Handle leave contest button clicks
+            const leaveContestButtons = document.querySelectorAll('input[type="submit"]');
+            leaveContestButtons.forEach(button => {
+                const buttonValue = button.value.toLowerCase();
+                // Check if this is a leave/stop button
+                if (buttonValue.includes('leave contest') || 
+                    buttonValue.includes('stop spectating') || 
+                    buttonValue.includes('leave') && button.closest('form[action*="leave"]')) {
+                    button.addEventListener('click', function(event) {
+                        event.preventDefault();
+                        if (confirm('Are you sure you want to leave the contest? This will end the proctoring session.')) {
+                            // Get the form action URL for leaving the contest
+                            const form = button.closest('form');
+                            const leaveUrl = form ? form.action : null;
+                            
+                            // Send message to parent to end proctoring and leave contest
+                            window.parent.postMessage(
+                                { 
+                                    proctoringAction: 'leave_contest',
+                                    leaveUrl: leaveUrl
+                                },
+                                window.location.origin
+                            );
+                        }
+                    });
+                }
+            });
+
+            // Notify the parent wrapper that this page has loaded.
+            window.parent.postMessage(
+                { proctoringPage: 'contest_detail' },
+                window.location.origin
+            );
+        }
     </script>
     {% include "contest/media-js.html" %}
     {% include "comments/media-js.html" %}

@@ -18,10 +18,12 @@ from django.shortcuts import get_object_or_404
 from django.template.loader import get_template
 from django.urls import reverse
 from django.utils import timezone, translation
+from django.utils.decorators import method_decorator
 from django.utils.functional import cached_property
 from django.utils.html import escape, format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext as _, gettext_lazy
+from django.views.decorators.clickjacking import xframe_options_exempt
 from django.views.generic import DetailView, ListView, View
 from django.views.generic.detail import SingleObjectMixin
 from reversion import revisions
@@ -139,6 +141,7 @@ class ProblemSolution(SolvedProblemMixin, ProblemMixin, TitleMixin, CommentedDet
                                _('Could not find an editorial with the code "%s".') % code, status=404)
 
 
+@method_decorator(xframe_options_exempt, name='dispatch')
 class ProblemDetail(ProblemMixin, SolvedProblemMixin, CommentedDetailView):
     context_object_name = 'problem'
     template_name = 'problem/problem.html'
@@ -350,6 +353,7 @@ class ProblemPdfView(ProblemMixin, SingleObjectMixin, View):
         return response
 
 
+@method_decorator(xframe_options_exempt, name='dispatch')
 class ProblemList(QueryStringSortMixin, TitleMixin, SolvedProblemMixin, ListView):
     model = Problem
     title = gettext_lazy('Problems')
@@ -613,6 +617,7 @@ class RandomProblem(ProblemList):
 user_logger = logging.getLogger('judge.user')
 
 
+@method_decorator(xframe_options_exempt, name='dispatch')
 class ProblemSubmit(LoginRequiredMixin, ProblemMixin, TitleMixin, SingleObjectFormView):
     template_name = 'problem/submit.html'
     form_class = ProblemSubmitForm
