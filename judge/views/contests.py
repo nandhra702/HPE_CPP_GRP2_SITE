@@ -13,7 +13,7 @@ from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
 from django.db import IntegrityError
 from django.db.models import BooleanField, Case, Count, F, FloatField, IntegerField, Max, Min, Q, Sum, Value, When
 from django.db.models.expressions import CombinedExpression, Exists, OuterRef
-from django.http import Http404, HttpResponse, HttpResponseBadRequest, HttpResponseRedirect
+from django.http import Http404, HttpResponse, HttpResponseBadRequest, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.defaultfilters import date as date_filter
 from django.urls import reverse
@@ -569,6 +569,11 @@ class ContestLeave(LoginRequiredMixin, ContestMixin, SingleObjectMixin, View):
 
         profile = request.profile
         if profile.current_contest is None or profile.current_contest.contest_id != contest.id:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': _('You are not in contest "%s".') % contest.key
+                }, status=404)
             return generic_message(request, _('No such contest'),
                                    _('You are not in contest "%s".') % contest.key, 404)
 
@@ -578,6 +583,15 @@ class ContestLeave(LoginRequiredMixin, ContestMixin, SingleObjectMixin, View):
         participation.save(update_fields=['has_exited'])
 
         profile.remove_contest()
+        
+        # Handle AJAX requests from iframe
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'message': _('Successfully left the contest.'),
+                'redirect_url': reverse('contest_view', args=(contest.key,))
+            })
+        
         return HttpResponseRedirect(reverse('contest_view', args=(contest.key,)))
 
 
