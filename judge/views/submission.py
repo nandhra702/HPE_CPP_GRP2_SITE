@@ -17,6 +17,8 @@ from django.utils.html import escape, format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext as _, gettext_lazy
 from django.views.decorators.http import require_POST
+from django.views.decorators.clickjacking import xframe_options_exempt
+from django.utils.decorators import method_decorator
 from django.views.generic import DetailView, ListView
 
 from judge import event_poster as event
@@ -96,6 +98,7 @@ class SubmissionDetailBase(LoginRequiredMixin, TitleMixin, SubmissionMixin, Deta
         })
 
 
+@method_decorator(xframe_options_exempt, name='dispatch')
 class SubmissionSource(SubmissionDetailBase):
     template_name = 'submission/source.html'
 
@@ -168,6 +171,7 @@ def group_test_cases(cases):
     return result, status, max_execution_time
 
 
+@method_decorator(xframe_options_exempt, name='dispatch')
 class SubmissionStatus(SubmissionDetailBase):
     template_name = 'submission/status.html'
 
@@ -391,6 +395,7 @@ class ConditionalUserTabMixin(object):
         return context
 
 
+@method_decorator(xframe_options_exempt, name='dispatch')
 class AllUserSubmissions(ConditionalUserTabMixin, UserMixin, SubmissionsListBase):
     def get_queryset(self):
         return super(AllUserSubmissions, self).get_queryset().filter(user_id=self.profile.id)
@@ -474,6 +479,7 @@ class ProblemSubmissionsBase(SubmissionsListBase):
         return context
 
 
+@method_decorator(xframe_options_exempt, name='dispatch')
 class ProblemSubmissions(ProblemSubmissionsBase):
     def get_my_submissions_page(self):
         if self.request.user.is_authenticated:
@@ -544,6 +550,7 @@ def single_submission(request):
     })
 
 
+@method_decorator(xframe_options_exempt, name='dispatch')
 class AllSubmissions(InfinitePaginationMixin, SubmissionsListBase):
     stats_update_interval = 3600
 

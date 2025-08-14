@@ -28,6 +28,8 @@ from django.utils.functional import cached_property
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext as _, gettext_lazy
 from django.views.decorators.http import require_POST
+from django.views.decorators.clickjacking import xframe_options_exempt
+from django.utils.decorators import method_decorator
 from django.views.generic import DetailView, FormView, ListView, TemplateView, View
 from reversion import revisions
 
@@ -65,6 +67,7 @@ class UserMixin(object):
         return super(UserMixin, self).render_to_response(context, **response_kwargs)
 
 
+@method_decorator(xframe_options_exempt, name='dispatch')
 class UserPage(TitleMixin, UserMixin, DetailView):
     template_name = 'user/user-base.html'
 

@@ -2,6 +2,8 @@ from django.urls import reverse
 from django.utils.html import escape, format_html
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext as _
+from django.utils.decorators import method_decorator
+from django.views.decorators.clickjacking import xframe_options_exempt
 
 from judge.models import Language, Submission
 from judge.utils.problems import get_result_data
@@ -11,6 +13,7 @@ from judge.views.submission import ForceContestMixin, ProblemSubmissions
 __all__ = ['RankedSubmissions', 'ContestRankedSubmission']
 
 
+@method_decorator(xframe_options_exempt, name='dispatch')
 class RankedSubmissions(ProblemSubmissions):
     tab = 'best_submissions_list'
     dynamic_update = False

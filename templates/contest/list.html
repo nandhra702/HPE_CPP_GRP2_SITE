@@ -4,6 +4,33 @@
 {% endblock %}
 
 {% block js_media %}
+    <style>
+        /* Proctoring controls */
+        #proctoring-controls {
+            display: none;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        body.iframe-mode #proctoring-controls {
+            display: block;
+        }
+        
+        #proctoring-controls button {
+            margin: 0 5px;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            background-color: #dc3545;
+            color: white;
+        }
+    </style>
+    
     <script src="{{ static('libs/featherlight/featherlight.min.js') }}" type="text/javascript"></script>
     <script type="text/javascript">
         $(document).ready(function () {
@@ -28,6 +55,33 @@
             //         link.removeClass(tooltip_classes).removeAttr('aria-label');
             //     });
             // });
+        });
+        
+        // Iframe detection and proctoring functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.parent !== window) {
+                document.body.classList.add('iframe-mode');
+                console.log('Contest list: iframe mode detected');
+                
+                // Handle end proctoring button
+                const endButton = document.getElementById('end-proctoring-btn');
+                if (endButton) {
+                    endButton.addEventListener('click', function () {
+                        if (confirm('Are you sure you want to end the proctoring session? This cannot be undone.')) {
+                            window.parent.postMessage(
+                                { proctoringAction: 'end_session' },
+                                window.location.origin
+                            );
+                        }
+                    });
+                }
+                
+                // Notify parent of page load
+                window.parent.postMessage(
+                    { proctoringPage: 'contest_list' },
+                    window.location.origin
+                );
+            }
         });
     </script>
 {% endblock %}
@@ -142,6 +196,14 @@
 {% endmacro %}
 
 {% block body %}
+    <!-- Proctoring controls - shown only in iframe mode -->
+    <div id="proctoring-controls">
+        <div class="proctoring-status">
+            <span>🔒 Proctoring Active</span>
+            <button id="end-proctoring-btn">End Session</button>
+        </div>
+    </div>
+    
     <div class="content-description">
         {% if active_participations %}
             <h4>{{ _('Active contests') }}</h4>

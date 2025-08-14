@@ -618,6 +618,7 @@ user_logger = logging.getLogger('judge.user')
 
 
 @method_decorator(xframe_options_exempt, name='dispatch')
+@method_decorator(xframe_options_exempt, name='dispatch')
 class ProblemSubmit(LoginRequiredMixin, ProblemMixin, TitleMixin, SingleObjectFormView):
     template_name = 'problem/submit.html'
     form_class = ProblemSubmitForm

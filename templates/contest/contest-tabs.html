@@ -1,6 +1,102 @@
 {% extends "tabs-base.html" %}
 
+{% block extra_head %}
+    <style>
+        /* Proctoring controls */
+        #proctoring-controls {
+            display: none;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        body.iframe-mode #proctoring-controls {
+            display: block;
+        }
+        
+        #proctoring-controls button {
+            margin: 0 5px;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            background-color: #dc3545;
+            color: white;
+        }
+    </style>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if we're in iframe mode
+            if (window.parent !== window) {
+                document.body.classList.add('iframe-mode');
+                console.log('Contest tabs: iframe mode detected');
+                
+                // Handle end proctoring button
+                const endButton = document.getElementById('end-proctoring-btn');
+                if (endButton) {
+                    endButton.addEventListener('click', function () {
+                        if (confirm('Are you sure you want to end the proctoring session? This cannot be undone.')) {
+                            window.parent.postMessage(
+                                { proctoringAction: 'end_session' },
+                                window.location.origin
+                            );
+                        }
+                    });
+                }
+                
+                // Handle leave contest buttons
+                document.addEventListener('click', function(event) {
+                    if (event.target.type === 'submit' && event.target.closest('form')) {
+                        const form = event.target.closest('form');
+                        const formAction = form.action;
+                        const buttonValue = event.target.value.toLowerCase();
+                        
+                        if ((buttonValue.includes('leave contest') || 
+                             buttonValue.includes('stop spectating') ||
+                             buttonValue.includes('leave')) &&
+                            (formAction.includes('contest_leave') || formAction.includes('/leave'))) {
+                            
+                            event.preventDefault();
+                            event.stopPropagation();
+                            
+                            if (confirm('Are you sure you want to leave the contest? This will end the proctoring session.')) {
+                                // Send leave contest message to parent
+                                window.parent.postMessage(
+                                    { 
+                                        proctoringAction: 'leave_contest',
+                                        leaveUrl: formAction
+                                    },
+                                    window.location.origin
+                                );
+                            }
+                        }
+                    }
+                });
+                
+                // Notify parent of page load
+                window.parent.postMessage(
+                    { proctoringPage: 'contest_tabs' },
+                    window.location.origin
+                );
+            }
+        });
+    </script>
+{% endblock %}
+
 {% block tabs %}
+    <!-- Proctoring controls - shown only in iframe mode -->
+    <div id="proctoring-controls">
+        <strong>🔒 Proctored Contest Mode</strong>
+        <button id="end-proctoring-btn">End Proctoring Session</button>
+        <span style="margin-left: 15px; font-size: 0.9em; color: #6c757d;">
+            You are being monitored during this contest.
+        </span>
+    </div>
+    
     {{ make_tab('detail', 'fa-info-circle', url('contest_view', contest.key), _('Info')) }}
     {% if contest.ended or can_edit %}
         {{ make_tab('stats', 'fa-pie-chart', url('contest_stats', contest.key), _('Statistics')) }}

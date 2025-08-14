@@ -67,6 +67,7 @@ class ContestListMixin(object):
         return Contest.get_visible_contests(self.request.user)
 
 
+@method_decorator(xframe_options_exempt, name='dispatch')
 class ContestList(QueryStringSortMixin, DiggPaginatorMixin, TitleMixin, ContestListMixin, ListView):
     model = Contest
     paginate_by = 20
@@ -701,6 +702,7 @@ class ContestICal(TitleMixin, ContestListMixin, BaseListView):
         return HttpResponse(self.generate_ical(), content_type='text/calendar')
 
 
+@method_decorator(xframe_options_exempt, name='dispatch')
 class ContestStats(TitleMixin, ContestMixin, DetailView):
     template_name = 'contest/stats.html'
 
@@ -876,6 +878,7 @@ class ContestRankingBase(ContestMixin, TitleMixin, DetailView):
         return context
 
 
+@method_decorator(xframe_options_exempt, name='dispatch')
 class ContestRanking(ContestRankingBase):
     tab = 'ranking'
 
@@ -899,6 +902,7 @@ class ContestRanking(ContestRankingBase):
         return context
 
 
+@method_decorator(xframe_options_exempt, name='dispatch')
 class ContestParticipationList(LoginRequiredMixin, ContestRankingBase):
     tab = 'participation'
 

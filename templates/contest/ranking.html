@@ -9,6 +9,31 @@
 
 {% block users_media %}
     <style>
+        /* Proctoring controls */
+        #proctoring-controls {
+            display: none;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        body.iframe-mode #proctoring-controls {
+            display: block;
+        }
+        
+        #proctoring-controls button {
+            margin: 0 5px;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            background-color: #dc3545;
+            color: white;
+        }
+        
         .select2-selection__arrow {
             display: none;
         }
@@ -38,6 +63,35 @@
 {% endblock %}
 
 {% block users_js_media %}
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if we're in iframe mode
+            if (window.parent !== window) {
+                document.body.classList.add('iframe-mode');
+                console.log('Contest ranking: iframe mode detected');
+                
+                // Handle end proctoring button
+                const endButton = document.getElementById('end-proctoring-btn');
+                if (endButton) {
+                    endButton.addEventListener('click', function () {
+                        if (confirm('Are you sure you want to end the proctoring session? This cannot be undone.')) {
+                            window.parent.postMessage(
+                                { proctoringAction: 'end_session' },
+                                window.location.origin
+                            );
+                        }
+                    });
+                }
+                
+                // Notify parent of page load
+                window.parent.postMessage(
+                    { proctoringPage: 'contest_ranking' },
+                    window.location.origin
+                );
+            }
+        });
+    </script>
+    
     {% if can_edit %}
         <script type="text/javascript">
             $(function () {
@@ -118,6 +172,15 @@
 {% endblock %}
 
 {% block before_users_table %}
+    <!-- Proctoring controls - shown only in iframe mode -->
+    <div id="proctoring-controls">
+        <strong>🔒 Proctored Contest Mode</strong>
+        <button id="end-proctoring-btn">End Proctoring Session</button>
+        <span style="margin-left: 15px; font-size: 0.9em; color: #6c757d;">
+            You are being monitored during this contest.
+        </span>
+    </div>
+    
     <div style="margin-bottom: 0.5em">
         {% if tab == 'participation' %}
             {% if contest.can_see_full_scoreboard(request.user) %}
