@@ -1,32 +1,6 @@
 {% extends "tabs-base.html" %}
 
 {% block extra_head %}
-    <style>
-        /* Proctoring controls */
-        #proctoring-controls {
-            display: none;
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 5px;
-            text-align: center;
-        }
-        
-        body.iframe-mode #proctoring-controls {
-            display: block;
-        }
-        
-        #proctoring-controls button {
-            margin: 0 5px;
-            padding: 5px 10px;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-            background-color: #dc3545;
-            color: white;
-        }
-    </style>
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -88,15 +62,6 @@
 {% endblock %}
 
 {% block tabs %}
-    <!-- Proctoring controls - shown only in iframe mode -->
-    <div id="proctoring-controls">
-        <strong>🔒 Proctored Contest Mode</strong>
-        <button id="end-proctoring-btn">End Proctoring Session</button>
-        <span style="margin-left: 15px; font-size: 0.9em; color: #6c757d;">
-            You are being monitored during this contest.
-        </span>
-    </div>
-    
     {{ make_tab('detail', 'fa-info-circle', url('contest_view', contest.key), _('Info')) }}
     {% if contest.ended or can_edit %}
         {{ make_tab('stats', 'fa-pie-chart', url('contest_stats', contest.key), _('Statistics')) }}

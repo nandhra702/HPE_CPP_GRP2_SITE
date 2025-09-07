@@ -562,7 +562,7 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'resources'),
 ]
 STATIC_URL = '/static/'
-STATIC_ROOT = '/home/sukhraj/site/staticfiles'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Define a cache
 CACHES = {}
 

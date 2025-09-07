@@ -1,28 +1,28 @@
 <!-- Global Contest Mode Script - Include this in base template when user is in contest -->
 <script type="text/javascript">
-(function() {
-    'use strict';
+    (function () {
+        'use strict';
 
-    // Contest mode state - available globally
-    window.dmojContestMode = window.dmojContestMode || {
-        inContest: {{ 'true' if request.user.is_authenticated and request.profile.current_contest and not request.participation.spectate else 'false' }},
-        contestKey: {{ request.profile.current_contest.contest.key|escapejs if request.user.is_authenticated and request.profile.current_contest else 'null' }},
-        hasExitedContest: false,
+        // Contest mode state - available globally
+        window.dmojContestMode = window.dmojContestMode || {
+            inContest: {{ 'true' if request.user.is_authenticated and request.profile.current_contest and not request.participation.spectate else 'false' }},
+            contestKey: {{ request.profile.current_contest.contest.key | escapejs if request.user.is_authenticated and request.profile.current_contest else 'null' }},
+            hasExitedContest: false,
         tabSwitchCount: null, // Will be loaded from localStorage
-        maxTabSwitches: 3,
-        initialized: false
+            maxTabSwitches: 15,
+                initialized: false
     };
-    
+
     // Only initialize if user is in contest and not already initialized
     if (!window.dmojContestMode.inContest || window.dmojContestMode.initialized) {
         return;
     }
-    
+
     console.log('Initializing global contest mode for contest:', window.dmojContestMode.contestKey);
-    
+
     // Mark as initialized to prevent multiple initializations
     window.dmojContestMode.initialized = true;
-    
+
     // Cookie utility functions
     function getCookie(name) {
         var value = "; " + document.cookie;
@@ -30,61 +30,61 @@
         if (parts.length == 2) return parts.pop().split(";").shift();
         return null;
     }
-    
+
     function setCookie(name, value, maxAge) {
         document.cookie = name + "=" + value + "; path=/; max-age=" + (maxAge || 3600) + "; SameSite=Lax";
     }
-    
+
     function deleteCookie(name) {
         document.cookie = name + "=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     }
-    
+
     // Tab switch persistence functions
     function getStoredTabSwitchCount() {
         var storageKey = 'dmoj_tab_switch_count_' + window.dmojContestMode.contestKey;
         var storedCount = localStorage.getItem(storageKey);
         return storedCount ? parseInt(storedCount, 10) : 0;
     }
-    
+
     function storeTabSwitchCount(count) {
         var storageKey = 'dmoj_tab_switch_count_' + window.dmojContestMode.contestKey;
         localStorage.setItem(storageKey, count.toString());
     }
-    
+
     function clearStoredTabSwitchCount() {
         var storageKey = 'dmoj_tab_switch_count_' + window.dmojContestMode.contestKey;
         console.log('Clearing stored tab switch count for key:', storageKey);
         localStorage.removeItem(storageKey);
     }
-    
+
     // Load stored tab switch count on initialization
     if (window.dmojContestMode.tabSwitchCount === null) {
         window.dmojContestMode.tabSwitchCount = getStoredTabSwitchCount();
         console.log('Initial load of tab switch count:', window.dmojContestMode.tabSwitchCount);
     }
-    
+
     // Check if we need to show contest overlay
     function shouldShowContestOverlay() {
         var joinFlag = getCookie('dmoj_joining_contest');
         var contestJustJoined = getCookie('dmoj_contest_just_joined_' + window.dmojContestMode.contestKey);
         var overlayShown = getCookie('dmoj_contest_overlay_shown_' + window.dmojContestMode.contestKey);
-        
+
         return (joinFlag === 'true' || contestJustJoined === 'true' || !overlayShown);
     }
-    
+
     // Create and show contest overlay
     function showContestOverlay() {
         console.log('Creating contest overlay');
-        
+
         // Remove any existing overlay
         var existingOverlay = document.getElementById('contest-mode-overlay');
         if (existingOverlay) {
             document.body.removeChild(existingOverlay);
         }
-        
+
         var overlay = document.createElement('div');
         overlay.id = 'contest-mode-overlay';
-        overlay.style.cssText = 
+        overlay.style.cssText =
             'position: fixed;' +
             'top: 0;' +
             'left: 0;' +
@@ -100,51 +100,51 @@
             'text-align: center;' +
             'cursor: pointer;' +
             'font-family: Arial, sans-serif;';
-        
+
         var heading = document.createElement('h1');
         heading.textContent = '{{ _("Contest Mode Activated") }}';
         heading.style.cssText = 'margin-bottom: 20px; font-size: 2.5em; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);';
-        
+
         var instructions = document.createElement('p');
         instructions.textContent = '{{ _("Click anywhere to start contest monitoring") }}';
         instructions.style.cssText = 'font-size: 18px; margin-bottom: 30px; max-width: 600px; line-height: 1.5;';
-        
+
         var warning = document.createElement('p');
         warning.textContent = '{{ _("⚠️ Switching tabs more than 3 times will remove you from the contest") }}';
         warning.style.cssText = 'font-size: 16px; color: #ff6b6b; font-weight: bold; max-width: 600px; line-height: 1.5;';
-        
+
         var contestInfo = document.createElement('p');
         contestInfo.textContent = '{{ _("Contest:") }} ' + (window.dmojContestMode.contestKey || 'Unknown');
         contestInfo.style.cssText = 'font-size: 14px; color: #aaa; margin-top: 30px;';
-        
+
         overlay.appendChild(heading);
         overlay.appendChild(instructions);
         overlay.appendChild(warning);
         overlay.appendChild(contestInfo);
-        
+
         document.body.appendChild(overlay);
-        
+
         // Handle overlay click
-        overlay.addEventListener('click', function() {
+        overlay.addEventListener('click', function () {
             console.log('User clicked overlay, starting contest monitoring');
-            
+
             // Mark that contest overlay has been shown for this contest
             setCookie('dmoj_contest_overlay_shown_' + window.dmojContestMode.contestKey, 'true', 3600);
-            
+
             // Clean up cookies
             deleteCookie('dmoj_joining_contest');
             deleteCookie('dmoj_contest_just_joined_' + window.dmojContestMode.contestKey);
-            
+
             // Remove overlay
             if (document.body.contains(overlay)) {
                 document.body.removeChild(overlay);
             }
-            
+
             // Initialize contest monitoring
             initializeContestMonitoring();
         });
     }
-    
+
     // Create tab switch counter display
     function createTabSwitchCounter() {
         // Remove any existing counter first
@@ -152,10 +152,10 @@
         if (existingCounter) {
             document.body.removeChild(existingCounter);
         }
-        
+
         var counter = document.createElement('div');
         counter.id = 'tab-switch-counter';
-        counter.style.cssText = 
+        counter.style.cssText =
             'position: fixed;' +
             'top: 10px;' +
             'right: 10px;' +
@@ -169,21 +169,21 @@
             'z-index: 10000;' +
             'box-shadow: 0 2px 8px rgba(0,0,0,0.3);' +
             'border: 2px solid #ff4757;';
-        
+
         // Update display with current stored count
         updateTabSwitchDisplay(counter);
         document.body.appendChild(counter);
         console.log('Tab switch counter created and displayed with count:', window.dmojContestMode.tabSwitchCount);
         return counter;
     }
-    
+
     // Update tab switch counter display
     function updateTabSwitchDisplay(counter) {
         var remaining = window.dmojContestMode.maxTabSwitches - window.dmojContestMode.tabSwitchCount;
-        counter.innerHTML = 
+        counter.innerHTML =
             '<div>{{ _("Tab Switches") }}: ' + window.dmojContestMode.tabSwitchCount + '/' + window.dmojContestMode.maxTabSwitches + '</div>' +
             '<div style="font-size: 12px; margin-top: 2px;">' + (remaining > 0 ? remaining + ' {{ _("remaining") }}' : '{{ _("LIMIT REACHED!") }}') + '</div>';
-        
+
         // Change color based on remaining switches
         if (remaining <= 1) {
             counter.style.backgroundColor = 'rgba(255, 0, 0, 0.9)';
@@ -192,11 +192,11 @@
             counter.style.backgroundColor = 'rgba(255, 165, 0, 0.9)';
         }
     }
-    
+
     // Initialize contest monitoring (tab switching, etc.)
     function initializeContestMonitoring() {
         console.log('Initializing contest monitoring with comprehensive multi-method detection');
-        
+
         // Get existing tab counter or create one if it doesn't exist
         var tabCounter = document.getElementById('tab-switch-counter');
         if (!tabCounter) {
@@ -206,62 +206,62 @@
             console.log('Using existing tab counter, updating display with stored count:', window.dmojContestMode.tabSwitchCount);
             updateTabSwitchDisplay(tabCounter);
         }
-        
+
         // Comprehensive state tracking for reliable detection
         var detectionState = {
             // Current states
             isWindowFocused: document.hasFocus(),
             isDocumentVisible: !document.hidden,
             isUserActive: true,
-            
+
             // Timestamps for timing analysis
             lastFocusTime: Date.now(),
             lastBlurTime: 0,
             lastVisibilityChangeTime: Date.now(),
             lastUserActivityTime: Date.now(),
             lastSwitchTime: 0,
-            
+
             // Detection flags
             focusLossPending: false,
             visibilityLossPending: false,
             internalNavigationPending: false,
             switchCooldownActive: false,
-            
+
             // Validation counters
             consecutiveFocusLosses: 0,
             missedDetectionAttempts: 0,
-            
+
             // Browser-specific handling
             isChrome: navigator.userAgent.indexOf('Chrome') > -1,
             isFirefox: navigator.userAgent.indexOf('Firefox') > -1,
             isSafari: navigator.userAgent.indexOf('Safari') > -1 && navigator.userAgent.indexOf('Chrome') === -1
         };
-        
+
         // Helper function to log detailed detection info
         function logDetection(method, decision, details) {
             console.log(`[${method}] ${decision}:`, details);
         }
-        
+
         // Helper function to check if current event is internal navigation
         function isInternalNavigation() {
             var now = Date.now();
             var pageTransition = sessionStorage.getItem('dmoj.pageTransition') === 'true';
             var transitionTime = sessionStorage.getItem('dmoj.transitionTime');
             var isQuickTransition = transitionTime && (now - parseInt(transitionTime)) < 1000;
-            
+
             return (pageTransition || detectionState.internalNavigationPending || isQuickTransition);
         }
-        
+
         // Helper function to safely increment tab switch count with comprehensive validation
         function incrementTabSwitchCount(detectionMethod, details) {
             if (window.dmojContestMode.hasExitedContest) {
                 logDetection(detectionMethod, 'IGNORED - Contest exited', details);
                 return false;
             }
-            
+
             var now = Date.now();
             var timeSinceLastSwitch = now - detectionState.lastSwitchTime;
-            
+
             // Prevent duplicate counting within reasonable timeframe
             if (detectionState.switchCooldownActive || timeSinceLastSwitch < 1500) {
                 logDetection(detectionMethod, 'IGNORED - Cooldown active', {
@@ -271,70 +271,70 @@
                 });
                 return false;
             }
-            
+
             // Check for internal navigation
             if (isInternalNavigation()) {
                 logDetection(detectionMethod, 'IGNORED - Internal navigation', details);
                 return false;
             }
-            
+
             // Valid switch detected - increment counter
             window.dmojContestMode.tabSwitchCount++;
             detectionState.lastSwitchTime = now;
             detectionState.switchCooldownActive = true;
-            
+
             logDetection(detectionMethod, 'TAB SWITCH COUNTED', {
                 ...details,
                 newCount: window.dmojContestMode.tabSwitchCount,
                 maxSwitches: window.dmojContestMode.maxTabSwitches
             });
-            
+
             // Store the count persistently
             storeTabSwitchCount(window.dmojContestMode.tabSwitchCount);
-            
+
             // Update counter display
             updateTabSwitchDisplay(tabCounter);
-            
+
             // Check if limit reached
             if (window.dmojContestMode.tabSwitchCount >= window.dmojContestMode.maxTabSwitches) {
                 console.log('Tab switch limit reached, auto-exiting contest');
                 exitContest('Tab switch limit exceeded (' + window.dmojContestMode.tabSwitchCount + ' switches)');
                 return true;
             }
-            
+
             // Reset cooldown after appropriate time
-            setTimeout(function() {
+            setTimeout(function () {
                 detectionState.switchCooldownActive = false;
                 logDetection('COOLDOWN', 'Reset', { method: detectionMethod });
             }, 1500);
-            
+
             return true;
         }
-        
+
         // Method 1: Detect internal navigation via beforeunload
-        window.addEventListener('beforeunload', function(e) {
+        window.addEventListener('beforeunload', function (e) {
             console.log('Page unloading - marking as internal navigation');
             detectionState.internalNavigationPending = true;
             sessionStorage.setItem('dmoj.pageTransition', 'true');
             sessionStorage.setItem('dmoj.transitionTime', Date.now().toString());
         });
-        
+
         // Method 2: Focus/Blur detection - PRIMARY METHOD for window switching
-        window.addEventListener('focus', function(e) {
+        window.addEventListener('focus', function (e) {
             var now = Date.now();
             var timeSinceBlur = detectionState.lastBlurTime > 0 ? now - detectionState.lastBlurTime : 0;
             var timeSinceFocus = now - detectionState.lastFocusTime;
-            
+
             detectionState.lastFocusTime = now;
             detectionState.lastUserActivityTime = now;
-            
+
             logDetection('FOCUS', 'Window gained focus', {
                 timeSinceBlur: timeSinceBlur,
                 timeSinceFocus: timeSinceFocus,
                 focusLossPending: detectionState.focusLossPending,
                 previouslyFocused: detectionState.isWindowFocused
             });
-            
+
             // If we had a pending focus loss, this confirms a genuine switch
             if (detectionState.focusLossPending && !detectionState.isWindowFocused) {
                 incrementTabSwitchCount('FOCUS_REGAIN', {
@@ -342,51 +342,51 @@
                     previousState: 'blurred'
                 });
             }
-            
+
             // Update state
             detectionState.isWindowFocused = true;
             detectionState.focusLossPending = false;
             detectionState.consecutiveFocusLosses = 0;
-            
+
             // Clear navigation flags when focus returns
             sessionStorage.removeItem('dmoj.pageTransition');
             sessionStorage.removeItem('dmoj.transitionTime');
             detectionState.internalNavigationPending = false;
         });
-        
-        window.addEventListener('blur', function(e) {
+
+        window.addEventListener('blur', function (e) {
             var now = Date.now();
             detectionState.lastBlurTime = now;
             detectionState.consecutiveFocusLosses++;
-            
+
             logDetection('BLUR', 'Window lost focus', {
                 consecutiveLosses: detectionState.consecutiveFocusLosses,
                 wasInternalNav: isInternalNavigation()
             });
-            
+
             // Mark focus loss as pending (will be confirmed on focus regain)
             detectionState.isWindowFocused = false;
             detectionState.focusLossPending = true;
         });
-        
+
         // Method 3: Visibility change detection - BACKUP METHOD
-        document.addEventListener('visibilitychange', function(e) {
+        document.addEventListener('visibilitychange', function (e) {
             var now = Date.now();
             var timeSinceLastVisibility = now - detectionState.lastVisibilityChangeTime;
             detectionState.lastVisibilityChangeTime = now;
-            
+
             logDetection('VISIBILITY', 'Visibility changed', {
                 hidden: document.hidden,
                 timeSinceLastChange: timeSinceLastVisibility,
                 focusState: detectionState.isWindowFocused,
                 visibilityLossPending: detectionState.visibilityLossPending
             });
-            
+
             if (document.hidden) {
                 // Document became hidden
                 detectionState.isDocumentVisible = false;
                 detectionState.visibilityLossPending = true;
-                
+
                 // If focus events didn't catch this, count it as a switch
                 if (!detectionState.focusLossPending && !isInternalNavigation()) {
                     incrementTabSwitchCount('VISIBILITY_HIDDEN', {
@@ -397,7 +397,7 @@
             } else {
                 // Document became visible
                 detectionState.isDocumentVisible = true;
-                
+
                 // If we had pending visibility loss, this is a confirmed switch
                 if (detectionState.visibilityLossPending && !isInternalNavigation()) {
                     incrementTabSwitchCount('VISIBILITY_REGAIN', {
@@ -405,19 +405,19 @@
                         method: 'visibility-return'
                     });
                 }
-                
+
                 detectionState.visibilityLossPending = false;
-                
+
                 // Clear navigation flags
                 sessionStorage.removeItem('dmoj.pageTransition');
                 sessionStorage.removeItem('dmoj.transitionTime');
                 detectionState.internalNavigationPending = false;
             }
         });
-        
+
         // Method 4: Page lifecycle events for mobile and background detection
         if ('onfreeze' in document) {
-            document.addEventListener('freeze', function(e) {
+            document.addEventListener('freeze', function (e) {
                 logDetection('FREEZE', 'Page frozen (mobile background)', {});
                 if (!isInternalNavigation()) {
                     incrementTabSwitchCount('PAGE_FREEZE', {
@@ -427,90 +427,90 @@
                 }
             });
         }
-        
+
         if ('onresume' in document) {
-            document.addEventListener('resume', function(e) {
+            document.addEventListener('resume', function (e) {
                 logDetection('RESUME', 'Page resumed', {});
                 detectionState.lastUserActivityTime = Date.now();
             });
         }
-        
+
         // Method 5: Mouse activity monitoring - catches Alt+Tab and task switching
         var mouseTracker = {
             lastPosition: { x: 0, y: 0 },
             lastMoveTime: Date.now(),
             leftWindow: false
         };
-        
-        document.addEventListener('mousemove', function(e) {
+
+        document.addEventListener('mousemove', function (e) {
             var now = Date.now();
             mouseTracker.lastPosition = { x: e.clientX, y: e.clientY };
             mouseTracker.lastMoveTime = now;
             detectionState.lastUserActivityTime = now;
             mouseTracker.leftWindow = false;
         });
-        
-        document.addEventListener('mouseleave', function(e) {
+
+        document.addEventListener('mouseleave', function (e) {
             // Check if mouse actually left the window boundaries
-            var leftWindow = (e.clientY < 0 || e.clientX < 0 || 
-                             e.clientX > window.innerWidth || e.clientY > window.innerHeight);
-            
+            var leftWindow = (e.clientY < 0 || e.clientX < 0 ||
+                e.clientX > window.innerWidth || e.clientY > window.innerHeight);
+
             if (leftWindow) {
                 mouseTracker.leftWindow = true;
-                logDetection('MOUSE', 'Mouse left window', { 
+                logDetection('MOUSE', 'Mouse left window', {
                     coordinates: { x: e.clientX, y: e.clientY },
                     windowSize: { w: window.innerWidth, h: window.innerHeight }
                 });
-                
+
                 // Check for focus loss shortly after mouse leave
-                setTimeout(function() {
+                setTimeout(function () {
                     if (!detectionState.isWindowFocused && mouseTracker.leftWindow) {
                         logDetection('MOUSE', 'Mouse leave confirmed switch', {});
                     }
                 }, 100);
             }
         });
-        
+
         // Method 6: Keyboard shortcuts detection
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function (e) {
             detectionState.lastUserActivityTime = Date.now();
-            
+
             // Alt+Tab detection
             if (e.altKey && e.key === 'Tab') {
                 logDetection('KEYBOARD', 'Alt+Tab detected', {});
                 detectionState.focusLossPending = true;
                 e.preventDefault(); // Try to prevent the switch, but it might still happen
             }
-            
+
             // Windows/Meta key detection
             if (e.key === 'Meta' || e.metaKey) {
                 logDetection('KEYBOARD', 'Meta/Windows key detected', {});
                 detectionState.focusLossPending = true;
             }
-            
+
             // Ctrl+Tab (browser tab switching)
             if (e.ctrlKey && e.key === 'Tab') {
                 logDetection('KEYBOARD', 'Ctrl+Tab detected', {});
                 detectionState.focusLossPending = true;
             }
         });
-        
+
         // Method 7: User activity monitoring
         var activityEvents = ['mousedown', 'mouseup', 'keydown', 'keyup', 'scroll', 'touchstart', 'touchend'];
-        activityEvents.forEach(function(eventType) {
-            document.addEventListener(eventType, function() {
+        activityEvents.forEach(function (eventType) {
+            document.addEventListener(eventType, function () {
                 detectionState.lastUserActivityTime = Date.now();
                 detectionState.isUserActive = true;
             }, { passive: true });
         });
-        
+
         // Method 8: Comprehensive state validation and missed detection recovery
-        setInterval(function() {
+        setInterval(function () {
             var now = Date.now();
             var currentFocus = document.hasFocus();
             var currentVisibility = !document.hidden;
             var timeSinceActivity = now - detectionState.lastUserActivityTime;
-            
+
             // Detect missed focus changes
             if (currentFocus !== detectionState.isWindowFocused) {
                 logDetection('VALIDATION', 'Focus state mismatch detected', {
@@ -518,7 +518,7 @@
                     actual: currentFocus,
                     timeSinceActivity: timeSinceActivity
                 });
-                
+
                 if (!currentFocus && !isInternalNavigation()) {
                     // Lost focus but missed the blur event
                     incrementTabSwitchCount('MISSED_FOCUS_LOSS', {
@@ -526,14 +526,14 @@
                         detection: 'validation-loop'
                     });
                 }
-                
+
                 detectionState.isWindowFocused = currentFocus;
                 if (currentFocus) {
                     detectionState.focusLossPending = false;
                     detectionState.consecutiveFocusLosses = 0;
                 }
             }
-            
+
             // Detect missed visibility changes
             if (currentVisibility !== detectionState.isDocumentVisible) {
                 logDetection('VALIDATION', 'Visibility state mismatch detected', {
@@ -541,7 +541,7 @@
                     actual: currentVisibility,
                     timeSinceActivity: timeSinceActivity
                 });
-                
+
                 if (!currentVisibility && !isInternalNavigation()) {
                     // Document hidden but missed the visibilitychange event
                     incrementTabSwitchCount('MISSED_VISIBILITY_CHANGE', {
@@ -549,13 +549,13 @@
                         detection: 'validation-loop'
                     });
                 }
-                
+
                 detectionState.isDocumentVisible = currentVisibility;
                 if (currentVisibility) {
                     detectionState.visibilityLossPending = false;
                 }
             }
-            
+
             // Detect suspicious inactivity patterns
             if (timeSinceActivity > 60000) { // 1 minute of inactivity
                 if (currentFocus && currentVisibility) {
@@ -565,12 +565,12 @@
                         focus: currentFocus,
                         visibility: currentVisibility
                     });
-                    
+
                     // Reset activity to prevent false positives
                     detectionState.lastUserActivityTime = now - 30000; // Backdate by 30 seconds
                 }
             }
-            
+
             // Check for pending focus/visibility losses that haven't been resolved
             var maxPendingTime = 5000; // 5 seconds
             if (detectionState.focusLossPending && (now - detectionState.lastBlurTime) > maxPendingTime) {
@@ -584,7 +584,7 @@
                 }
                 detectionState.focusLossPending = false;
             }
-            
+
             if (detectionState.visibilityLossPending && (now - detectionState.lastVisibilityChangeTime) > maxPendingTime) {
                 logDetection('VALIDATION', 'Resolving stale visibility loss', {
                     pendingTime: now - detectionState.lastVisibilityChangeTime
@@ -596,13 +596,13 @@
                 }
                 detectionState.visibilityLossPending = false;
             }
-            
+
         }, 500); // Check every 500ms for high responsiveness
-        
+
         // Method 9: Browser-specific additional detection
         if (detectionState.isChrome) {
             // Chrome-specific pagehide event
-            window.addEventListener('pagehide', function(e) {
+            window.addEventListener('pagehide', function (e) {
                 logDetection('CHROME', 'Page hide event', { persisted: e.persisted });
                 if (!isInternalNavigation() && !e.persisted) {
                     incrementTabSwitchCount('CHROME_PAGEHIDE', {
@@ -611,33 +611,33 @@
                 }
             });
         }
-        
+
         if (detectionState.isFirefox) {
             // Firefox-specific handling
-            window.addEventListener('mozvisibilitychange', function() {
-                logDetection('FIREFOX', 'Mozilla visibility change', { 
-                    hidden: document.mozHidden 
+            window.addEventListener('mozvisibilitychange', function () {
+                logDetection('FIREFOX', 'Mozilla visibility change', {
+                    hidden: document.mozHidden
                 });
             });
         }
-        
+
         // Method 10: Network connectivity changes (can indicate system switching)
         if ('onLine' in navigator) {
-            window.addEventListener('online', function() {
+            window.addEventListener('online', function () {
                 logDetection('NETWORK', 'Came back online', {});
                 detectionState.lastUserActivityTime = Date.now();
             });
-            
-            window.addEventListener('offline', function() {
+
+            window.addEventListener('offline', function () {
                 logDetection('NETWORK', 'Went offline', {});
                 // Don't count this as a switch, but note it for context
             });
         }
-        
+
         // Method 11: Performance observer for frame drops (can indicate tab switching)
         if ('PerformanceObserver' in window) {
             try {
-                var perfObserver = new PerformanceObserver(function(list) {
+                var perfObserver = new PerformanceObserver(function (list) {
                     var entries = list.getEntries();
                     for (var i = 0; i < entries.length; i++) {
                         var entry = entries[i];
@@ -656,7 +656,7 @@
                 console.log('Performance Observer not available');
             }
         }
-        
+
         console.log('Contest monitoring initialized with comprehensive detection:');
         console.log('- Focus/Blur (primary)');
         console.log('- Visibility changes (backup)');
@@ -670,20 +670,20 @@
         console.log('- Performance monitoring');
         console.log('Detection state initialized:', detectionState);
     }
-    
+
     // Exit contest function
     function exitContest(reason) {
         if (window.dmojContestMode.hasExitedContest) {
             console.log('Contest exit already in progress, ignoring');
             return;
         }
-        
+
         console.log('ATTEMPTING TO EXIT CONTEST, reason:', reason);
         console.log('Current tab switch count:', window.dmojContestMode.tabSwitchCount);
         console.log('Stack trace:', new Error().stack);
-        
+
         window.dmojContestMode.hasExitedContest = true;
-        
+
         // Only clear stored tab switch count if exiting due to tab switch limit
         if (reason && reason.includes('Tab switch limit exceeded')) {
             console.log('Clearing stored count due to tab switch limit');
@@ -691,9 +691,9 @@
         } else {
             console.log('NOT clearing stored count - reason does not include tab switch limit');
         }
-        
+
         // Try to submit leave form
-        submitLeaveForm().then(function(success) {
+        submitLeaveForm().then(function (success) {
             if (success) {
                 console.log('Contest leave form submitted successfully');
             } else {
@@ -703,7 +703,7 @@
                 tempForm.method = 'POST';
                 tempForm.action = '/contest/' + window.dmojContestMode.contestKey + '/leave';
                 tempForm.style.display = 'none';
-                
+
                 // Add CSRF token
                 var csrfToken = getCookie('csrftoken');
                 if (csrfToken) {
@@ -713,28 +713,28 @@
                     csrfInput.value = csrfToken;
                     tempForm.appendChild(csrfInput);
                 }
-                
+
                 document.body.appendChild(tempForm);
                 console.log('Submitting temporary form to:', tempForm.action);
                 tempForm.submit();
             }
         });
     }
-    
+
     // Submit leave form
     function submitLeaveForm() {
-        return new Promise(function(resolve) {
+        return new Promise(function (resolve) {
             console.log('Attempting to submit leave form');
-            
+
             // Try multiple selectors to find the leave form
             var leaveForm = document.querySelector('form[action*="contest_leave"]') ||
-                           document.querySelector('form[action*="/leave"]') ||
-                           document.querySelector('.contest-join-pseudotab form') ||
-                           document.querySelector('form[action*="' + window.dmojContestMode.contestKey + '/leave"]');
-            
+                document.querySelector('form[action*="/leave"]') ||
+                document.querySelector('.contest-join-pseudotab form') ||
+                document.querySelector('form[action*="' + window.dmojContestMode.contestKey + '/leave"]');
+
             if (leaveForm) {
                 console.log('Found leave form, submitting:', leaveForm);
-                
+
                 // Ensure CSRF token is present
                 var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
                 if (csrfToken && !leaveForm.querySelector('[name=csrfmiddlewaretoken]')) {
@@ -744,7 +744,7 @@
                     csrfInput.value = csrfToken.value;
                     leaveForm.appendChild(csrfInput);
                 }
-                
+
                 // Submit the form
                 try {
                     leaveForm.submit();
@@ -759,7 +759,7 @@
             }
         });
     }
-    
+
     // Initialize when DOM is ready
     function initialize() {
         console.log('DOM ready, checking contest state and cookies');
@@ -773,7 +773,7 @@
             deleteCookie('dmoj_joining_contest');
             console.log('Cleared join flag cookie and old count data');
         }
-        
+
         // Load stored tab switch count (will be 0 if we just cleared it above)
         if (window.dmojContestMode.tabSwitchCount === null) {
             window.dmojContestMode.tabSwitchCount = getStoredTabSwitchCount();
@@ -781,13 +781,13 @@
         } else {
             console.log('Tab switch count already loaded:', window.dmojContestMode.tabSwitchCount);
         }
-        
+
         // Always create tab counter first if we're in a contest (it will show current count)
         if (window.dmojContestMode.inContest) {
             console.log('User is in contest, creating tab counter immediately');
             createTabSwitchCounter();
         }
-        
+
         if (shouldShowContestOverlay()) {
             console.log('Showing contest overlay');
             showContestOverlay();
@@ -795,12 +795,12 @@
             console.log('Contest overlay not needed, initializing monitoring');
             initializeContestMonitoring();
         }
-        
+
         // Add leave button confirmation to any existing leave buttons
-        setTimeout(function() {
-            document.querySelectorAll('.contest-leave-btn, .leaving-forever, form[action*="contest_leave"] input[type="submit"]').forEach(function(button) {
+        setTimeout(function () {
+            document.querySelectorAll('.contest-leave-btn, .leaving-forever, form[action*="contest_leave"] input[type="submit"]').forEach(function (button) {
                 console.log('Found leave button, adding confirmation:', button);
-                button.addEventListener('click', function(e) {
+                button.addEventListener('click', function (e) {
                     console.log('Leave button clicked');
                     if (!window.dmojContestMode.hasExitedContest && !confirm("{{ _('Are you sure you want to exit the contest? You will not be able to rejoin.') }}")) {
                         e.preventDefault();
@@ -813,17 +813,17 @@
             });
         }, 1000);
     }
-    
+
     // Add CSS for pulse animation
     var style = document.createElement('style');
-    style.textContent = 
+    style.textContent =
         '@keyframes pulse {' +
         '0% { opacity: 1; }' +
         '50% { opacity: 0.5; }' +
         '100% { opacity: 1; }' +
         '}';
     document.head.appendChild(style);
-    
+
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initialize);
@@ -831,5 +831,5 @@
         initialize();
     }
     
-})();
+}) ();
 </script>

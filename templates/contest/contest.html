@@ -9,36 +9,6 @@
 {% endblock %}
 
 {% block content_js_media %}
-    <style>
-        /* Proctoring controls - hidden by default, shown in iframe mode */
-        #proctoring-controls {
-            display: none;
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 5px;
-            text-align: center;
-        }
-        
-        #proctoring-controls button {
-            margin: 0 5px;
-            padding: 5px 10px;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-        }
-        
-        #end-proctoring-btn {
-            background-color: #dc3545;
-            color: white;
-        }
-        
-        body.iframe-mode #proctoring-controls {
-            display: block;
-        }
-    </style>
-    
     <script type="text/javascript">
         // Ensure this script runs after the page is loaded
         document.addEventListener('DOMContentLoaded', function() {
@@ -157,15 +127,6 @@
 {% endblock %}
 
 {% block body %}
-    <!-- Proctoring controls - shown only in iframe mode -->
-    <div id="proctoring-controls">
-        <strong>🔒 Proctored Contest Mode</strong>
-        <button id="end-proctoring-btn">End Proctoring Session</button>
-        <span style="margin-left: 15px; font-size: 0.9em; color: #6c757d;">
-            You are being monitored during this contest.
-        </span>
-    </div>
-    
     <div id="banner">
         <a href="https://www.timeanddate.com/worldclock/fixedtime.html?msg={{ contest.name|urlquote('') }}&amp;iso=
                 {{- (contest.start_time if contest.start_time >= now else contest.end_time)|utc|date('Y-m-d\TH:i:s') }}" class="date">

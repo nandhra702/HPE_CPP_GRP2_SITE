@@ -1,5 +1,445 @@
-{% extends "base.html" %} {% block title %}{{ title }}{% endblock %} {% block
-body %}
+{% extends "base.html" %} 
+
+{% block title %}{{ title }}{% endblock %} 
+
+{% block js_media %}
+<script>
+  window.dmojData = {{ dmoj_data|tojson }};
+</script>
+
+<script>
+  {%- raw -%}
+  // Wait for DOM to be ready - using vanilla JS for better reliability
+  document.addEventListener('DOMContentLoaded', function() {
+      console.log("[DEBUG] DOM loaded, initializing proctoring system...");
+      
+      // The window.dmojData object is now available here.
+      console.log("[DEBUG] dmojData available:", window.dmojData ? "Yes" : "No");
+
+      // --- UI & Server Configuration ---
+      const API_BASE_URL = "https://0a8a53f9a398.ngrok-free.app";
+      const startBtn = document.getElementById("startBtn");
+      const startupInfo = document.getElementById("startup-info");
+      const proctoringLayout = document.getElementById("proctoring-layout");
+      
+      console.log("[DEBUG] Button found:", startBtn ? "Yes" : "No");
+      console.log("[DEBUG] Startup info found:", startupInfo ? "Yes" : "No");
+      const iframe = document.getElementById("dmoj-contest-frame");
+      const sidebar = document.getElementById("proctoring-sidebar");
+      const toggleBtn = document.getElementById("toggle-sidebar-btn");
+      const video = document.getElementById("webcam");
+      const canvas = document.getElementById("canvas");
+      const statusDiv = document.getElementById("status");
+      const endProctoringBtn = document.getElementById("end-proctoring-btn");
+      const contestUrl = startupInfo ? startupInfo.getAttribute('data-contest-url') : null;
+
+      console.log("[DEBUG] All elements found check:");
+      console.log("- iframe:", iframe ? "Yes" : "No");
+      console.log("- sidebar:", sidebar ? "Yes" : "No");
+      console.log("- toggleBtn:", toggleBtn ? "Yes" : "No");
+      console.log("- video:", video ? "Yes" : "No");
+      console.log("- canvas:", canvas ? "Yes" : "No");
+      console.log("- statusDiv:", statusDiv ? "Yes" : "No");
+      console.log("- endProctoringBtn:", endProctoringBtn ? "Yes" : "No");
+      console.log("- contestUrl:", contestUrl);
+
+      // --- Proctoring State & Config ---
+      let socket, mediaRecorder, analysisInterval;
+      let recordedChunks = [];
+      let isProctoring = false;
+      let isUploading = false;
+      const ANALYSIS_INTERVAL_MS = 5000; // 5 seconds for HTTP polling (slower than WebSocket)
+      const ROLLING_BUFFER_SECONDS = 20;
+
+      // --- Event Listeners for UI ---
+      console.log("[DEBUG] Setting up event listeners...");
+      
+      if (startBtn) {
+          console.log("[DEBUG] Adding click listener to start button");
+          startBtn.addEventListener("click", function(e) {
+              e.preventDefault();
+              console.log("[DEBUG] Start button clicked!");
+              if (!isProctoring) {
+                  console.log("[DEBUG] Starting proctoring...");
+                  startProctoring();
+              } else {
+                  console.log("[DEBUG] Proctoring already active");
+              }
+          });
+          console.log("[DEBUG] Start button listener added successfully");
+      } else {
+          console.error("[DEBUG] ERROR: Start button not found! Cannot add event listener.");
+      }
+      if (toggleBtn) {
+          toggleBtn.addEventListener("click", () => {
+              console.log("[DEBUG] Sidebar toggled.");
+              sidebar.classList.toggle("collapsed")
+          });
+      }
+      if (endProctoringBtn) {
+          endProctoringBtn.addEventListener("click", () => {
+              if (confirm('Are you sure you want to end the proctoring session? This will return you to the normal contest view.')) {
+                  console.log("[DEBUG] End proctoring button clicked.");
+                  stopProctoring();
+                  
+                  // Show ending message and redirect
+                  proctoringLayout.innerHTML = '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;"><h1>Proctoring Session Ended</h1><p>Returning to contest page...</p></div>';
+                  document.body.classList.remove('proctoring-active');
+                  
+                  setTimeout(() => {
+                      window.location.href = "/contests/";
+                  }, 1500);
+              }
+          });
+      }
+      
+      window.addEventListener("message", (event) => {
+          if (event.origin !== window.location.origin || !event.data) return;
+          if (event.data.proctoringPage) {
+              console.log(`[DEBUG] Iframe navigated to: ${event.data.proctoringPage}`);
+          }
+          if (event.data.proctoringAction === "end_session") {
+              console.log("[DEBUG] Received 'end_session' command from iframe.");
+              stopProctoring();
+              
+              // Show ending message briefly then redirect to contest list page
+              proctoringLayout.innerHTML = '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;"><h1>Proctoring Session Ended</h1><p>Returning to contest list...</p></div>';
+              document.body.classList.remove('proctoring-active');
+              
+              // Redirect to the contest list page
+              setTimeout(() => {
+                  window.location.href = "/contests/";
+              }, 1500);
+          }
+          if (event.data.proctoringAction === "leave_contest") {
+              console.log("[DEBUG] Received 'leave_contest' command from iframe.");
+              stopProctoring();
+              proctoringLayout.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><h1>Leaving Contest...</h1><p>Please wait...</p></div>';
+              document.body.classList.remove('proctoring-active');
+              
+              // If we have a leave URL, submit the leave request
+              if (event.data.leaveUrl) {
+                 
+                  const form = document.createElement('form');
+                  form.method = 'POST';
+                  form.action = event.data.leaveUrl;
+                  
+                  // Add CSRF token
+                  const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+                  if (csrfToken) {
+                      const csrfInput = document.createElement('input');
+                      csrfInput.type = 'hidden';
+                      csrfInput.name = 'csrfmiddlewaretoken';
+                      csrfInput.value = csrfToken.value;
+                      form.appendChild(csrfInput);
+                  }
+                  
+                  document.body.appendChild(form);
+                  form.submit();
+              } else {
+                  // If no leave URL, just redirect to contest list page
+                  setTimeout(() => {
+                      window.location.href = "/contests/";
+                  }, 2000);
+              }
+          }
+      });
+
+      // --- Core Proctoring Functions ---
+
+      async function startProctoring() {
+          console.log("[DEBUG] Attempting to start proctoring session...");
+          
+          // Prevent multiple calls
+          if (isProctoring) {
+              console.log("[DEBUG] Proctoring already active, ignoring duplicate call");
+              return;
+          }
+          
+          try {
+              statusDiv.textContent = 'Requesting camera access...';
+              
+              // Try to get camera access, but don't fail if denied
+              let stream = null;
+              try {
+                  stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                  video.srcObject = stream;
+                  await video.play(); // Wait for play to complete
+                  statusDiv.textContent = 'Camera access granted.';
+              } catch (mediaError) {
+                  console.warn('Camera access denied or not available:', mediaError);
+                  statusDiv.textContent = 'Camera access denied. Continuing without camera.';
+              }
+
+              isProctoring = true;
+              startBtn.disabled = true;
+              startBtn.textContent = 'Proctoring Active';
+
+              // Setup UI
+              startupInfo.style.display = "none";
+              proctoringLayout.style.display = "flex";
+              document.body.classList.add('proctoring-active');
+              
+              // Use relative URL to avoid X-Frame-Options issues
+              const problemsUrl = `/contest/${window.dmojData.contestKey}/`;
+              iframe.src = problemsUrl;
+              console.log(`[DEBUG] Iframe src set to: ${problemsUrl}`);
+
+              // Enable backend connections for full proctoring
+              if (stream) {
+                  // Initialize cloud backend connection via HTTP
+                  testCloudConnection();
+                  initMediaRecorder(stream);
+                  analysisInterval = setInterval(sendFrameForAnalysis, ANALYSIS_INTERVAL_MS);
+                  statusDiv.textContent = 'Connecting to cloud AI backend...';
+              } else {
+                  statusDiv.textContent = 'Proctoring active (camera not available).';
+              }
+          } catch (error) {
+              console.error('Error starting proctoring:', error);
+              statusDiv.textContent = 'Error starting proctoring. Check console for details.';
+              isProctoring = false; // Reset state on error
+              startBtn.disabled = false;
+              startBtn.textContent = 'Start Proctoring Session';
+          }
+      }
+
+      /**
+       * Test cloud backend connection via HTTP
+       */
+      async function testCloudConnection() {
+          console.log(`[DEBUG] Testing cloud backend connection to: ${API_BASE_URL}/upload-clip`);
+          
+          try {
+              const response = await fetch(`${API_BASE_URL}/upload-clip`, {
+                  method: 'OPTIONS',
+                  headers: {
+                      'ngrok-skip-browser-warning': 'true',
+                      'Access-Control-Allow-Origin': '*'
+                  },
+                  // Add these options to handle SSL certificate issues
+                  mode: 'cors',
+                  credentials: 'omit'
+              });
+              
+              if (response.status < 500) {
+                  console.log('[DEBUG] Cloud backend connection successful');
+                  statusDiv.textContent = 'Connected to cloud AI backend. Monitoring active.';
+              } else {
+                  console.warn('[DEBUG] Cloud backend returned server error');
+                  statusDiv.textContent = 'Cloud backend connection issue. Continuing monitoring.';
+              }
+          } catch (error) {
+              console.error('[DEBUG] Cloud backend connection failed:', error);
+              // Try to provide more helpful error message
+              if (error.message.includes('ERR_CERT_AUTHORITY_INVALID')) {
+                  statusDiv.textContent = 'SSL certificate issue. Please visit ngrok URL in browser first.';
+              } else {
+                  statusDiv.textContent = 'Cloud backend unavailable. Monitoring active locally.';
+              }
+          }
+      }
+
+      /**
+       * Initializes MediaRecorder with rolling buffer
+       */
+      function initMediaRecorder(stream) {
+          console.log("[DEBUG] Initializing MediaRecorder.");
+          const options = { mimeType: 'video/webm; codecs=vp9' };
+          mediaRecorder = new MediaRecorder(stream, options);
+
+          mediaRecorder.ondataavailable = (event) => {
+              if (event.data.size > 0) {
+                  recordedChunks.push(event.data);
+              }
+              const maxBufferLength = ROLLING_BUFFER_SECONDS + 1;
+              while (recordedChunks.length > maxBufferLength) {
+                  recordedChunks.splice(1, 1);
+              }
+          };
+
+          mediaRecorder.onstop = async () => {
+              console.log(`[DEBUG] MediaRecorder stopped. Buffer has ${recordedChunks.length} chunks.`);
+              if (recordedChunks.length === 0) {
+                  console.warn("[DEBUG] No video chunks recorded, skipping upload.");
+                  isUploading = false;
+                  if (isProctoring) mediaRecorder.start(1000);
+                  return;
+              }
+
+              const clipBlob = new Blob(recordedChunks, { type: 'video/webm' });
+              const formData = new FormData();
+              formData.append('file', clipBlob, `violation_${new Date().toISOString()}.webm`);
+
+              // Add contest-specific data
+              formData.append('dmoj_user_id', window.dmojData.userId);
+              formData.append('dmoj_user_name', window.dmojData.username);
+              formData.append('dmoj_contest_key', window.dmojData.contestKey);
+
+              try {
+                  statusDiv.textContent = 'Uploading evidence...';
+                  const response = await fetch(`${API_BASE_URL}/upload-clip`, {
+                      method: 'POST',
+                      body: formData,
+                      headers: {
+                          'ngrok-skip-browser-warning': 'true'
+                      },
+                      // Add these options to handle SSL certificate issues
+                      mode: 'cors',
+                      credentials: 'omit'
+                  });
+                  if (!response.ok) {
+                      const errorText = await response.text();
+                      throw new Error(`Server responded with ${response.status}: ${errorText}`);
+                  }
+                  const result = await response.json();
+                  console.log('Upload result:', result);
+                  statusDiv.textContent = 'Evidence uploaded. Resuming proctoring.';
+              } catch (error) {
+                  console.error('Error uploading clip:', error);
+                  statusDiv.textContent = 'Upload failed (backend unavailable). Continuing monitoring.';
+              } finally {
+                  recordedChunks = [];
+                  isUploading = false;
+                  if (isProctoring) {
+                      mediaRecorder.start(1000);
+                  }
+              }
+          };
+
+          mediaRecorder.start(1000);
+          console.log(`[DEBUG] MediaRecorder started, maintaining a ${ROLLING_BUFFER_SECONDS}s buffer.`);
+      }
+
+      function handleViolationUpload() {
+          if (!mediaRecorder || mediaRecorder.state !== 'recording' || isUploading) return;
+          isUploading = true;
+          console.log('Pattern violation detected. Uploading existing buffer.');
+          statusDiv.textContent = 'Violation detected. Uploading evidence...';
+          mediaRecorder.stop();
+      }
+
+      function sendFrameForAnalysis() {
+          // Use HTTP polling instead of WebSocket for frame analysis
+          if (video.videoWidth > 0 && video.videoHeight > 0) {
+              try {
+                  canvas.width = video.videoWidth;
+                  canvas.height = video.videoHeight;
+                  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                  
+                  // Convert frame to blob and send via HTTP
+                  canvas.toBlob(async (blob) => {
+                      if (!blob) return;
+                      
+                      const formData = new FormData();
+                      formData.append('frame', blob, `frame_${Date.now()}.jpg`);
+                      formData.append('dmoj_user_id', window.dmojData.userId);
+                      formData.append('dmoj_user_name', window.dmojData.username);
+                      formData.append('dmoj_contest_key', window.dmojData.contestKey);
+                      formData.append('analysis_type', 'realtime');
+                      
+                      try {
+                          const response = await fetch(`${API_BASE_URL}/upload-clip`, {
+                              method: 'POST',
+                              body: formData,
+                              headers: {
+                                  'ngrok-skip-browser-warning': 'true'
+                              },
+                              // Add these options to handle SSL certificate issues
+                              mode: 'cors',
+                              credentials: 'omit'
+                          });
+                          
+                          if (response.ok) {
+                              const result = await response.json();
+                              if (result.violations && result.violations.length > 0) {
+                                  statusDiv.textContent = `AI DETECTION: ${result.violations[0].message}`;
+                                  if (result.trigger_pattern_upload && !isUploading) {
+                                      handleViolationUpload();
+                                  }
+                              } else {
+                                  statusDiv.textContent = 'AI Analysis: Compliant';
+                              }
+                          }
+                      } catch (error) {
+                          // Silently fail for frame analysis, don't spam console
+                          console.debug('Frame analysis failed:', error.message);
+                      }
+                  }, 'image/jpeg', 0.7);
+              } catch (error) {
+                  console.debug('Frame capture failed:', error);
+              }
+          }
+      }
+
+      function stopProctoring() {
+          if (!isProctoring) return;
+          console.log("[DEBUG] Stopping proctoring session and cleaning up resources.");
+          isProctoring = false;
+
+          // Clear intervals properly
+          if (analysisInterval) clearInterval(analysisInterval);
+          if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+          if (video.srcObject) video.srcObject.getTracks().forEach(track => track.stop());
+
+          startBtn.disabled = false;
+          startBtn.textContent = 'Start Proctoring Session';
+      }
+
+      // Add a test function to window for manual debugging
+      window.testProctoringStart = function() {
+          console.log("[DEBUG] Manual test function called");
+          if (typeof startProctoring === 'function') {
+              startProctoring();
+          } else {
+              console.error("[DEBUG] startProctoring function not available");
+          }
+      };
+
+      // Add backend connectivity test function
+      window.testBackendConnection = async function() {
+          console.log("[DEBUG] Testing backend connection manually...");
+          try {
+              const response = await fetch(`${API_BASE_URL}/upload-clip`, {
+                  method: 'OPTIONS', // Just test if endpoint exists
+                  headers: {
+                      'ngrok-skip-browser-warning': 'true'
+                  },
+                  mode: 'cors',
+                  credentials: 'omit'
+              });
+              console.log(`[DEBUG] Backend upload-clip endpoint status: ${response.status}`);
+              return response.status < 500; // Any response < 500 means server is reachable
+          } catch (error) {
+              console.error("[DEBUG] Backend connection test failed:", error);
+              return false;
+          }
+      };
+
+      // Add function to help user trust ngrok certificate
+      window.trustNgrokCertificate = function() {
+          console.log("[DEBUG] Opening ngrok URL to trust certificate...");
+          const newWindow = window.open(`${API_BASE_URL}`, '_blank');
+          console.log("Please accept the certificate in the new window, then return and restart proctoring.");
+          return newWindow;
+      };
+
+      console.log("[DEBUG] Proctoring system initialization complete");
+      console.log("[DEBUG] Test functions added:");
+      console.log("- window.testProctoringStart() - Start proctoring manually");
+      console.log("- window.testBackendConnection() - Test backend connectivity");
+      console.log("- window.trustNgrokCertificate() - Open ngrok URL to trust SSL certificate");
+      console.log("");
+      console.log("🔒 SSL Certificate Issue Fix:");
+      console.log(`1. Run: window.trustNgrokCertificate()`);
+      console.log(`2. Click "Advanced" → "Proceed to ${API_BASE_URL}" in the new tab`);
+      console.log("3. Return here and restart proctoring");
+  });
+  {%- endraw -%}
+</script>
+{% endblock %}
+
+{% block body %}
 
 <!-- Hidden CSRF token for leave contest functionality -->
 {% csrf_token %}
@@ -164,304 +604,4 @@ body %}
   </div>
 </div>
 
-<script>
-  window.dmojData = {{ dmoj_data|tojson }};
-</script>
-
-<script>
-  {%- raw -%}
-  document.addEventListener("DOMContentLoaded", function () {
-      // The window.dmojData object is now available here.
-
-      // --- UI & Server Configuration ---
-      //https://7a94254a0b79.ngrok-free.app
-      const API_BASE_URL = "https://7sssssa94254a0b79.ngrok-free.app";
-      const startBtn = document.getElementById("startBtn");
-      const startupInfo = document.getElementById("startup-info");
-      const proctoringLayout = document.getElementById("proctoring-layout");
-      const iframe = document.getElementById("dmoj-contest-frame");
-      const sidebar = document.getElementById("proctoring-sidebar");
-      const toggleBtn = document.getElementById("toggle-sidebar-btn");
-      const video = document.getElementById("webcam");
-      const canvas = document.getElementById("canvas");
-      const statusDiv = document.getElementById("status");
-      const endProctoringBtn = document.getElementById("end-proctoring-btn");
-      const contestUrl = startupInfo.getAttribute('data-contest-url');
-
-      // --- Proctoring State & Config (from your new script) ---
-      let socket, mediaRecorder;
-      let recordedChunks = [];
-      let isProctoring = false;
-      let isUploading = false;
-      const ANALYSIS_INTERVAL_MS = 500;
-      const ROLLING_BUFFER_SECONDS = 20;
-
-      // --- Event Listeners for UI (from existing template) ---
-      if (startBtn) {
-          startBtn.addEventListener("click", () => {
-              console.log("[DEBUG] Start button clicked.");
-              if (!isProctoring) startProctoring();
-          });
-      }
-      if (toggleBtn) {
-          toggleBtn.addEventListener("click", () => {
-              console.log("[DEBUG] Sidebar toggled.");
-              sidebar.classList.toggle("collapsed")
-          });
-      }
-      if (endProctoringBtn) {
-          endProctoringBtn.addEventListener("click", () => {
-              if (confirm('Are you sure you want to end the proctoring session? This will return you to the normal contest view.')) {
-                  console.log("[DEBUG] End proctoring button clicked.");
-                  stopProctoring();
-                  
-                  // Show ending message and redirect
-                  proctoringLayout.innerHTML = '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;"><h1>Proctoring Session Ended</h1><p>Returning to contest page...</p></div>';
-                  document.body.classList.remove('proctoring-active');
-                  
-                  setTimeout(() => {
-                      window.location.href = "/contests/";
-                  }, 1500);
-              }
-          });
-      }
-      window.addEventListener("message", (event) => {
-          if (event.origin !== window.location.origin || !event.data) return;
-          if (event.data.proctoringPage) {
-              console.log(`[DEBUG] Iframe navigated to: ${event.data.proctoringPage}`);
-          }
-          if (event.data.proctoringAction === "end_session") {
-              console.log("[DEBUG] Received 'end_session' command from iframe.");
-              stopProctoring();
-              
-              // Show ending message briefly then redirect to contest list page
-              proctoringLayout.innerHTML = '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;"><h1>Proctoring Session Ended</h1><p>Returning to contest list...</p></div>';
-              document.body.classList.remove('proctoring-active');
-              
-              // Redirect to the contest list page
-              setTimeout(() => {
-                  window.location.href = "/contests/";
-              }, 1500);
-          }
-          if (event.data.proctoringAction === "leave_contest") {
-              console.log("[DEBUG] Received 'leave_contest' command from iframe.");
-              stopProctoring();
-              proctoringLayout.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><h1>Leaving Contest...</h1><p>Please wait...</p></div>';
-              document.body.classList.remove('proctoring-active');
-              
-              // If we have a leave URL, submit the leave request
-              if (event.data.leaveUrl) {
-                 
-                  const form = document.createElement('form');
-                  form.method = 'POST';
-                  form.action = event.data.leaveUrl;
-                  
-                  // Add CSRF token
-                  const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
-                  if (csrfToken) {
-                      const csrfInput = document.createElement('input');
-                      csrfInput.type = 'hidden';
-                      csrfInput.name = 'csrfmiddlewaretoken';
-                      csrfInput.value = csrfToken.value;
-                      form.appendChild(csrfInput);
-                  }
-                  
-                  document.body.appendChild(form);
-                  form.submit();
-              } else {
-                  // If no leave URL, just redirect to contest list page
-                  setTimeout(() => {
-                      window.location.href = "/contests/";
-                  }, 2000);
-              }
-          }
-      });
-
-      // --- Core Proctoring Functions (Merged Logic) ---
-
-      async function startProctoring() {
-          console.log("[DEBUG] Attempting to start proctoring session...");
-          try {
-              statusDiv.textContent = 'Requesting camera access...';
-              
-              // Try to get camera access, but don't fail if denied
-              let stream = null;
-              try {
-                  stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                  video.srcObject = stream;
-                  video.play();
-                  statusDiv.textContent = 'Camera access granted.';
-              } catch (mediaError) {
-                  console.warn('Camera access denied or not available:', mediaError);
-                  statusDiv.textContent = 'Camera access denied. Continuing without camera.';
-              }
-
-              isProctoring = true;
-              startBtn.disabled = true;
-              startBtn.textContent = 'Proctoring Active';
-
-              // Setup UI
-              startupInfo.style.display = "none";
-              proctoringLayout.style.display = "flex";
-              document.body.classList.add('proctoring-active');
-              
-              // Use relative URL to avoid X-Frame-Options issues
-              const problemsUrl = `/contest/${window.dmojData.contestKey}/`;
-              iframe.src = problemsUrl;
-              console.log(`[DEBUG] Iframe src set to: ${problemsUrl}`);
-
-              // Temporarily disable backend connections for testing
-              // initWebSocket();
-              // initMediaRecorder(stream);
-              // setInterval(sendFrameForAnalysis, ANALYSIS_INTERVAL_MS);
-              
-              statusDiv.textContent = 'Proctoring UI loaded (backend disabled for testing).';
-          } catch (error) {
-              console.error('Error starting proctoring:', error);
-              statusDiv.textContent = 'Error starting proctoring. Check console for details.';
-          }
-      }
-
-      /**
-       * Initializes the WebSocket connection. (Using your new logic)
-       */
-      function initWebSocket() {
-          // Use the API_BASE_URL we defined earlier
-          const wsUrl = `${API_BASE_URL.replace('http', 'ws')}/ws`;
-          console.log(`[DEBUG] Initializing WebSocket to: ${wsUrl}`);
-          socket = new WebSocket(wsUrl);
-
-          socket.onopen = () => statusDiv.textContent = 'Connected. Proctoring started.';
-          socket.onclose = () => {
-              statusDiv.textContent = 'Connection lost.';
-              if (isProctoring) stopProctoring();
-          };
-          socket.onerror = (error) => {
-              console.error('WebSocket error:', error);
-              statusDiv.textContent = 'An error occurred.';
-              if (isProctoring) stopProctoring();
-          };
-          socket.onmessage = (event) => {
-              const data = JSON.parse(event.data);
-              console.log('Server response:', data);
-              let violationMessage = 'Pattern detected';
-              if (Array.isArray(data.violations) && data.violations.length > 0) {
-                  violationMessage = data.violations[0]?.message || 'Pattern detected';
-              }
-              statusDiv.textContent = data.is_compliant ? 'Status: Compliant' : `VIOLATION: ${violationMessage}`;
-
-              if (data.trigger_pattern_upload && !isUploading) {
-                  handleViolationUpload();
-              }
-          };
-      }
-
-      /**
-       * Initializes MediaRecorder with rolling buffer. (Using your new logic)
-       */
-      function initMediaRecorder(stream) {
-          console.log("[DEBUG] Initializing MediaRecorder.");
-          const options = { mimeType: 'video/webm; codecs=vp9' };
-          mediaRecorder = new MediaRecorder(stream, options);
-
-          mediaRecorder.ondataavailable = (event) => {
-              if (event.data.size > 0) {
-                  recordedChunks.push(event.data);
-              }
-              const maxBufferLength = ROLLING_BUFFER_SECONDS + 1; // +1 for the header
-              while (recordedChunks.length > maxBufferLength) {
-                  // The header is at index 0. The oldest data chunk is at index 1.
-                  recordedChunks.splice(1, 1);
-              }
-          };
-
-          mediaRecorder.onstop = async () => {
-              console.log(`[DEBUG] MediaRecorder stopped. Buffer has ${recordedChunks.length} chunks.`);
-              if (recordedChunks.length === 0) {
-                  console.warn("[DEBUG] No video chunks recorded, skipping upload.");
-                  isUploading = false;
-                  if (isProctoring) mediaRecorder.start(1000);
-                  return;
-              }
-
-              const clipBlob = new Blob(recordedChunks, { type: 'video/webm' });
-              const formData = new FormData();
-              formData.append('file', clipBlob, `violation_${new Date().toISOString()}.webm`);
-
-              // This now correctly reads the user ID, username, and contest key
-              // from the global dmojData object and adds them to the form data.
-              formData.append('dmoj_user_id', window.dmojData.userId);
-              formData.append('dmoj_user_name', window.dmojData.username);
-              formData.append('dmoj_contest_key', window.dmojData.contestKey);
-
-              try {
-                  statusDiv.textContent = 'Uploading evidence...';
-                  const response = await fetch(`${API_BASE_URL}/upload-clip`, {
-                      method: 'POST',
-                      body: formData,
-                      headers: {
-                          'ngrok-skip-browser-warning': 'true'
-                      }
-                  });
-                  if (!response.ok) {
-                      // Provide more detail on error
-                      const errorText = await response.text();
-                      throw new Error(`Server responded with ${response.status}: ${errorText}`);
-                  }
-                  const result = await response.json();
-                  console.log('Upload result:', result);
-                  statusDiv.textContent = 'Evidence uploaded. Resuming proctoring.';
-              } catch (error) {
-                  console.error('Error uploading clip:', error);
-                  statusDiv.textContent = 'Failed to upload evidence. See console for details.';
-              } finally {
-                  recordedChunks = [];
-                  isUploading = false;
-                  if (isProctoring) {
-                      mediaRecorder.start(1000);
-                  }
-              }
-          };
-
-          mediaRecorder.start(1000); // Capture chunks every second
-          console.log(`[DEBUG] MediaRecorder started, maintaining a ${ROLLING_BUFFER_SECONDS}s buffer.`);
-      }
-
-      /**
-      * Handles violation upload trigger. (Using your new function)
-      */
-      function handleViolationUpload() {
-          if (!mediaRecorder || mediaRecorder.state !== 'recording' || isUploading) return;
-          isUploading = true;
-          console.log('Pattern violation detected. Uploading existing buffer.');
-          statusDiv.textContent = 'Violation detected. Uploading evidence...';
-          mediaRecorder.stop();
-      }
-
-      function sendFrameForAnalysis() {
-          if (socket && socket.readyState === WebSocket.OPEN) {
-              canvas.width = video.videoWidth;
-              canvas.height = video.videoHeight;
-              canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-              socket.send(canvas.toDataURL('image/jpeg', 0.5).split(',')[1]);
-          }
-      }
-
-      function stopProctoring() {
-          if (!isProctoring) return;
-          console.log("[DEBUG] Stopping proctoring session and cleaning up resources.");
-          isProctoring = false;
-
-          // Clear all intervals and stop all media
-          for (let i = 1; i < 99999; i++) window.clearInterval(i);
-          if (socket) socket.close();
-          if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
-          if (video.srcObject) video.srcObject.getTracks().forEach(track => track.stop());
-
-          startBtn.disabled = false;
-          startBtn.textContent = 'Start Proctoring Session';
-      }
-  });
-  {%- endraw -%}
-</script>
 {% endblock %}

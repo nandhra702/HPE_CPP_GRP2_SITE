@@ -9,6 +9,9 @@ from django.utils.functional import lazy
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import RedirectView
 
+# Add static file serving for development
+from django.conf.urls.static import static as static_serve
+
 #ADDITIONS
 from judge.views.trial_script import download_problem_submissions
 from judge.views.trial_script import show_similarity_table
@@ -408,3 +411,10 @@ if 'newsletter' in settings.INSTALLED_APPS:
     urlpatterns.append(path('newsletter/', include('newsletter.urls')))
 if 'impersonate' in settings.INSTALLED_APPS:
     urlpatterns.append(path('impersonate/', include('impersonate.urls')))
+
+# Serve static files during development
+if settings.DEBUG:
+    urlpatterns += static_serve(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    # Also serve media files if needed
+    if hasattr(settings, 'MEDIA_URL') and hasattr(settings, 'MEDIA_ROOT'):
+        urlpatterns += static_serve(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
