@@ -1,12 +1,42 @@
-id: firstjudge
-key: "PV8xe+ADPphD7O7my7ApH3D2/6uIRAVjJXzzfVTSD0e9kDCUxbqw5bpXj9p6DsE56XW6qvx1FIfuZYPeU8RjdQWp4poA/Phg4kBW"
-bridged_judge: true
-isolated: false
-
-runtimes:
-  - type: autoconf
-
+id: judge_test  # <-- Judge name matching your admin panel
+key: Ci9+rYdd92y9rRa9uWKCDImDLTeGT+UnbMYHanYqz9D7v55ieXOc1QHQraQDOqaT41d24T1Gx3Zi2+cfxS38+nnl8lvOvv+lGzwW
 problem_storage_globs:
-  - /problems/**/
+  - /home/lalith/Desktop/Test_demoj_1/site/problems/*  # <-- Matches where your problems are stored
 
-logging_level: DEBUG
+runtime:
+  awk: /usr/bin/mawk
+  cat: /usr/bin/cat
+  chicken-csc: /usr/bin/csc
+  clang: /usr/bin/clang
+  clang++: /usr/bin/clang++
+  clang_target_arch: null
+  cobc: /usr/bin/cobc
+  fpc: /usr/bin/fpc
+  g++: /usr/bin/g++
+  g++11: /usr/bin/g++
+  g++14: /usr/bin/g++
+  g++17: /usr/bin/g++
+  g++20: /usr/bin/g++-11
+  gcc: /usr/bin/gcc
+  gcc11: /usr/bin/gcc
+  gfortran: /usr/bin/gfortran
+  ghc: /usr/bin/ghc
+  gnatmake: /usr/bin/gnatmake
+  go: /usr/bin/go
+  java8: /usr/lib/jvm/java-8-openjdk-arm64/bin/java
+  javac8: /usr/lib/jvm/java-8-openjdk-arm64/bin/javac
+  ld_arm: /usr/bin/aarch64-linux-gnu-ld
+  llc: /usr/bin/llc
+  lua: /usr/bin/lua
+  mono: /usr/bin/mono
+  mono-csc: /usr/bin/mono-csc
+  opt: /usr/bin/opt
+  perl: /usr/bin/perl
+  php: /usr/bin/php
+  pypy: /usr/bin/pypy
+  pypy3: /usr/bin/pypy3
+  python3: /home/lalith/Desktop/Test-Dmoj/dmojsite/bin/python3
+  racket: /usr/bin/racket
+  raco: /usr/bin/raco
+  sed: /usr/bin/sed
+  tclsh: /usr/bin/tclsh

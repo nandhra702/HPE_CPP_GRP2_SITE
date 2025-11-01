@@ -31,7 +31,7 @@ from reversion import revisions
 
 from judge import event_poster as event
 from judge.comments import CommentedDetailView
-from judge.debug import get_contest_rejoin_debug, get_contest_template_debug
+from judge.debug import get_contest_rejoin_debug, get_contest_template_debug, get_proctoring_disable_backend
 from judge.forms import ContestCloneForm
 from judge.models import Contest, ContestMoss, ContestParticipation, ContestProblem, ContestTag, \
     Problem, Profile, Submission
@@ -421,6 +421,7 @@ class ContestJoin(LoginRequiredMixin, ContestMixin, SingleObjectMixin, View):
                 'username': profile.user.username,
                 'contestKey': contest.key,
                 'contestName': contest.name,
+                'disableBackend': get_proctoring_disable_backend(),
             },
         })
 
@@ -539,11 +540,13 @@ class ContestProctoredJoin(LoginRequiredMixin, ContestMixin, SingleObjectMixin, 
         return render(request, 'contest/contest_proctor_wrapper.html', {
             'contest': contest,
             'title': _('Start Proctored Contest: %(contest)s') % {'contest': contest.name},
+            'user': profile,
             'dmoj_data': {
                 'userId': profile.id,
                 'username': profile.user.username,
                 'contestKey': contest.key,
                 'contestName': contest.name,
+                'disableBackend': get_proctoring_disable_backend(),
             },
         })
 

@@ -1,0 +1,852 @@
+<script>
+  
+  (function () {
+    "use strict";
+
+    // Debug flag - set to false in production
+    const DEBUG = true;
+
+    function log(...args) {
+      if (DEBUG) console.log(...args);
+    }
+
+    function warn(...args) {
+      if (DEBUG) console.warn(...args);
+    }
+
+    function error(...args) {
+      console.error(...args);
+    }
+
+    log("[VIDEO-BUFFER] Module loaded");
+
+    
+    class SlidingVideoBuffer {
+      constructor(maxDurationSeconds = 20, chunkIntervalMs = 1000) {
+        this.maxDuration = maxDurationSeconds * 1000;
+        this.chunkInterval = chunkIntervalMs;
+        this.chunks = [];
+        this.mediaRecorder = null;
+        this.isRecording = false;
+        this._restarting = false;
+        this._cleanupInterval = null;
+        this._lastCodec = null;
+        this._uploadTriggered = false; 
+
+        // Periodic recorder reset to prevent memory leaks
+        this._resetInterval = null;
+        this._resetIntervalMs = 30 * 60 * 1000; // 30 minutes
+        this._lastResetTime = Date.now();
+        this._currentStream = null;
+        this._currentCallback = null;
+
+        log(
+          `[VIDEO-BUFFER] Buffer initialized - Max: ${maxDurationSeconds}s, Interval: ${chunkIntervalMs}ms, Reset: ${
+            this._resetIntervalMs / 60000
+          }min`
+        );
+      }
+
+      /**
+       * Initialize the MediaRecorder with the provided stream
+       */
+      initializeRecorder(stream, onViolationCallback) {
+        // Store stream and callback for periodic resets
+        this._currentStream = stream;
+        this._currentCallback = onViolationCallback;
+
+        // Create the recorder
+        this._createRecorder();
+
+        // Setup periodic reset timer
+        this._setupPeriodicReset();
+
+        log(
+          "[VIDEO-BUFFER] MediaRecorder initialized successfully (VIDEO ONLY)"
+        );
+      }
+
+      /**
+       * Create/recreate the MediaRecorder instance
+       */
+      _createRecorder() {
+        // Clean up existing recorder if any
+        if (this.mediaRecorder) {
+          try {
+            if (this.mediaRecorder.state === "recording") {
+              this.mediaRecorder.stop();
+            }
+          } catch (err) {
+            warn("[VIDEO-BUFFER] Error stopping old recorder:", err);
+          }
+          this.mediaRecorder = null;
+        }
+
+        // Create video-only stream (NO AUDIO)
+        const videoOnlyStream = new MediaStream(
+          this._currentStream.getVideoTracks()
+        );
+
+        const options = {
+          mimeType: this.getSupportedMimeType(),
+          videoBitsPerSecond: 1000000,
+        };
+
+        log("[VIDEO-BUFFER] Creating MediaRecorder (VIDEO ONLY - NO AUDIO)");
+        log(
+          `[VIDEO-BUFFER] Video tracks: ${
+            videoOnlyStream.getVideoTracks().length
+          }`
+        );
+        log(
+          `[VIDEO-BUFFER] Audio tracks: ${
+            videoOnlyStream.getAudioTracks().length
+          }`
+        );
+        log(`[VIDEO-BUFFER] Requested MIME type: "${options.mimeType}"`);
+
+        this.mediaRecorder = new MediaRecorder(videoOnlyStream, options);
+
+        // Reset codec tracking
+        this._requestedCodec = options.mimeType;
+        this._lastCodec = null;
+
+        this.mediaRecorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            // Set actual codec from first chunk
+            if (!this._lastCodec) {
+              this._lastCodec = event.data.type;
+              log(
+                `[VIDEO-BUFFER] Actual codec (from first chunk): "${this._lastCodec}"`
+              );
+
+              const normalize = (str) => str.replace(/\s+/g, "").toLowerCase();
+              if (
+                normalize(this._requestedCodec) !== normalize(this._lastCodec)
+              ) {
+                log(`[VIDEO-BUFFER] ℹ️ Browser normalized codec string:`);
+                log(`  Requested: "${this._requestedCodec}"`);
+                log(`  Actual:    "${this._lastCodec}"`);
+              }
+            }
+
+            // Check for REAL codec changes
+            if (this._lastCodec && event.data.type !== this._lastCodec) {
+              warn(`[VIDEO-BUFFER] ⚠️ REAL CODEC CHANGE DETECTED:`);
+              warn(`  Previous: "${this._lastCodec}"`);
+              warn(`  Current:  "${event.data.type}"`);
+              this._lastCodec = event.data.type;
+            }
+
+            this.addChunk({
+              data: event.data,
+              timestamp: Date.now(),
+              size: event.data.size,
+            });
+          }
+        };
+
+        this.mediaRecorder.onstop = async () => {
+          log("[VIDEO-BUFFER] MediaRecorder stopped");
+
+          if (this._restarting) {
+            warn("[VIDEO-BUFFER] Restarting, skipping onstop upload logic");
+            return;
+          }
+
+          // Only upload if triggered by violation, not by periodic reset
+          if (this._uploadTriggered && this._currentCallback) {
+            this._uploadTriggered = false; // Reset flag
+            const videoBlob = this.createVideoBlob();
+
+            if (videoBlob.size === 0) {
+              warn("[VIDEO-BUFFER] Empty blob created, skipping upload");
+              this.clearBuffer();
+            } else {
+              log(
+                `[VIDEO-BUFFER] Created violation blob: ${(
+                  videoBlob.size /
+                  1024 /
+                  1024
+                ).toFixed(2)}MB from ${this.chunks.length} chunks`
+              );
+
+              // Upload with the blob (chunks still in memory)
+              await this._currentCallback(videoBlob);
+
+              // Clear buffer AFTER upload completes
+              const chunksCleared = this.chunks.length;
+              this.clearBuffer();
+              log(
+                `[VIDEO-BUFFER] Upload complete - cleared ${chunksCleared} chunks`
+              );
+            }
+          }
+
+          // Restart recording with fresh buffer
+          if (this.isRecording) {
+            this._restarting = true;
+            setTimeout(() => {
+              if (
+                this.isRecording &&
+                this.mediaRecorder &&
+                this.mediaRecorder.state === "inactive"
+              ) {
+                try {
+                  this.mediaRecorder.start(this.chunkInterval);
+                  log("[VIDEO-BUFFER] Recording restarted with empty buffer");
+                } catch (err) {
+                  error("[VIDEO-BUFFER] Failed to restart recording:", err);
+                }
+              }
+              this._restarting = false;
+            }, 100);
+          }
+        };
+
+        this.mediaRecorder.onerror = (event) => {
+          error("[VIDEO-BUFFER] MediaRecorder error:", event.error);
+          this._handleRecorderError();
+        };
+      }
+
+      
+      _setupPeriodicReset() {
+        // Clear existing timer
+        if (this._resetInterval) {
+          clearInterval(this._resetInterval);
+        }
+
+        this._resetInterval = setInterval(() => {
+          if (this.isRecording && !this._restarting) {
+            log(
+              "[VIDEO-BUFFER] 🔄 Proactive recorder reset (30min maintenance)"
+            );
+            this._performPeriodicReset();
+          }
+        }, this._resetIntervalMs);
+
+        log(
+          `[VIDEO-BUFFER] Periodic reset scheduled every ${
+            this._resetIntervalMs / 60000
+          } minutes`
+        );
+      }
+
+      /**
+       * Perform periodic reset without losing data
+       */
+      async _performPeriodicReset() {
+        if (this._restarting) {
+          warn("[VIDEO-BUFFER] Reset already in progress");
+          return;
+        }
+
+        this._restarting = true;
+
+        try {
+          log("[VIDEO-BUFFER] 🔄 Starting periodic recorder reset...");
+
+          // Stop current recorder
+          if (this.mediaRecorder && this.mediaRecorder.state === "recording") {
+            this.mediaRecorder.stop();
+          }
+
+          // Wait for stop to complete
+          await new Promise((resolve) => setTimeout(resolve, 500));
+
+          
+          log(`[VIDEO-BUFFER] Buffer preserved: ${this.chunks.length} chunks retained`);
+          
+          log("[VIDEO-BUFFER] Recreating MediaRecorder instance...");
+
+          // Recreate recorder with same stream
+          this._createRecorder();
+
+          // Restart recording
+          if (this.isRecording) {
+            this.mediaRecorder.start(this.chunkInterval);
+            this._lastResetTime = Date.now();
+            log(
+                "[VIDEO-BUFFER] ✅ Periodic reset complete - recording resumed with buffer intact"
+            );
+          }
+        } catch (err) {
+          error("[VIDEO-BUFFER] Error during periodic reset:", err);
+          this._handleRecorderError();
+        } finally {
+          this._restarting = false;
+        }
+      }
+
+      
+      async _handleRecorderError() {
+        error("[VIDEO-BUFFER] Attempting error recovery...");
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        try {
+          
+          log(`[VIDEO-BUFFER] Preserving buffer during recovery: ${this.chunks.length} chunks`);
+          
+          log("[VIDEO-BUFFER] Recreating recorder after error...");
+          this._createRecorder();
+
+          if (this.isRecording) {
+            this.mediaRecorder.start(this.chunkInterval);
+            log("[VIDEO-BUFFER] ✅ Error recovery successful - buffer preserved");
+          }
+        } catch (err) {
+          error("[VIDEO-BUFFER] ❌ Error recovery failed:", err);
+         
+          log("[VIDEO-BUFFER] ⚠️ Fatal error - clearing buffer");
+          this.clearBuffer();
+        }
+      }
+
+      getSupportedMimeType() {
+        const types = [
+          "video/webm; codecs=vp9",
+          "video/webm; codecs=vp8",
+          "video/webm",
+          "video/mp4",
+        ];
+
+        for (const type of types) {
+          if (MediaRecorder.isTypeSupported(type)) {
+            log(`[VIDEO-BUFFER] Using MIME type: ${type}`);
+            return type;
+          }
+        }
+
+        log("[VIDEO-BUFFER] Using fallback MIME type: video/webm");
+        return "video/webm";
+      }
+
+      addChunk(chunkInfo) {
+        this.chunks.push(chunkInfo);
+        this.maintainSlidingWindow();
+
+        if (DEBUG && this.chunks.length % 5 === 0) {
+          const totalSize = this.chunks.reduce(
+            (sum, chunk) => sum + chunk.size,
+            0
+          );
+          const duration = this.getBufferDuration();
+          const timeSinceReset = (
+            (Date.now() - this._lastResetTime) /
+            60000
+          ).toFixed(1);
+          log(
+            `[VIDEO-BUFFER] Status: ${this.chunks.length} chunks, ` +
+              `${(totalSize / 1024 / 1024).toFixed(2)}MB, ` +
+              `${(duration / 1000).toFixed(1)}s | ` +
+              `Uptime: ${timeSinceReset}min`
+          );
+        }
+      }
+
+      maintainSlidingWindow() {
+        const now = Date.now();
+        const cutoffTime = now - this.maxDuration;
+
+        let removedCount = 0;
+
+        while (
+          this.chunks.length > 0 &&
+          this.chunks[0].timestamp < cutoffTime
+        ) {
+          const removedChunk = this.chunks.shift();
+          if (removedChunk.data) {
+            removedChunk.data = null;
+          }
+          removedCount++;
+        }
+
+        if (removedCount > 0) {
+          log(`[VIDEO-BUFFER] Removed ${removedCount} old chunks from buffer`);
+        }
+
+        const maxChunks = Math.ceil(this.maxDuration / this.chunkInterval) + 2;
+        while (this.chunks.length > maxChunks) {
+          const removedChunk = this.chunks.shift();
+          if (removedChunk.data) {
+            removedChunk.data = null;
+          }
+        }
+      }
+
+      clearBuffer() {
+        const count = this.chunks.length;
+
+        this.chunks.forEach((chunk) => {
+          if (chunk.data) {
+            chunk.data = null;
+          }
+        });
+
+        this.chunks = [];
+        log(`[VIDEO-BUFFER] Buffer cleared - removed ${count} chunks`);
+      }
+
+      getBufferDuration() {
+        if (this.chunks.length < 2) return 0;
+        return (
+          this.chunks[this.chunks.length - 1].timestamp -
+          this.chunks[0].timestamp
+        );
+      }
+
+      createVideoBlob() {
+        if (this.chunks.length === 0) {
+          warn("[VIDEO-BUFFER] No chunks available for blob creation");
+          return new Blob([], { type: "video/webm" });
+        }
+
+        const dataChunks = this.chunks
+          .map((chunk) => chunk.data)
+          .filter((data) => data && data.size > 0);
+
+        if (dataChunks.length === 0) {
+          warn("[VIDEO-BUFFER] No valid data chunks");
+          return new Blob([], { type: "video/webm" });
+        }
+
+        const types = new Set(dataChunks.map((chunk) => chunk.type));
+        if (types.size > 1) {
+          warn("[VIDEO-BUFFER] Multiple codecs detected:", Array.from(types));
+        }
+
+        const mimeType = dataChunks[0].type || "video/webm;codecs=vp9";
+        const blob = new Blob(dataChunks, { type: mimeType });
+
+        log(
+          `[VIDEO-BUFFER] Created blob from ${dataChunks.length}/${this.chunks.length} chunks, ` +
+            `size: ${(blob.size / 1024 / 1024).toFixed(2)}MB, ` +
+            `duration: ${(this.getBufferDuration() / 1000).toFixed(1)}s, ` +
+            `type: ${mimeType}`
+        );
+
+        return blob;
+      }
+
+      startRecording() {
+        if (!this.mediaRecorder) {
+          throw new Error(
+            "MediaRecorder not initialized. Call initializeRecorder() first."
+          );
+        }
+
+        if (this.mediaRecorder.state === "recording") {
+          log("[VIDEO-BUFFER] Already recording");
+          return;
+        }
+
+        this.isRecording = true;
+        this._lastResetTime = Date.now();
+        this.mediaRecorder.start(this.chunkInterval);
+
+        // Start periodic cleanup
+        this._cleanupInterval = setInterval(() => {
+          this.maintainSlidingWindow();
+        }, 10000);
+
+        log(
+          `[VIDEO-BUFFER] Started recording with ${this.chunkInterval}ms chunk intervals`
+        );
+      }
+
+      stopRecording() {
+        this.isRecording = false;
+
+        if (this._cleanupInterval) {
+          clearInterval(this._cleanupInterval);
+          this._cleanupInterval = null;
+        }
+
+        if (this._resetInterval) {
+          clearInterval(this._resetInterval);
+          this._resetInterval = null;
+        }
+
+        if (this.mediaRecorder && this.mediaRecorder.state === "recording") {
+          this.mediaRecorder.stop();
+          log("[VIDEO-BUFFER] Stopped recording");
+        }
+      }
+
+      triggerViolationUpload() {
+        if (!this.mediaRecorder || this.mediaRecorder.state !== "recording") {
+          warn("[VIDEO-BUFFER] Cannot trigger upload - not recording");
+          return false;
+        }
+
+        if (this._restarting) {
+          warn("[VIDEO-BUFFER] Reset in progress, skipping upload trigger");
+          return false;
+        }
+
+        this._uploadTriggered = true; 
+        log("[VIDEO-BUFFER] Triggering violation upload - stopping recorder");
+        this.mediaRecorder.stop();
+        return true;
+      }
+
+      getBufferInfo() {
+        const totalSize = this.chunks.reduce(
+          (sum, chunk) => sum + chunk.size,
+          0
+        );
+        const duration = this.getBufferDuration();
+        const uptimeMinutes = (
+          (Date.now() - this._lastResetTime) /
+          60000
+        ).toFixed(1);
+
+        return {
+          chunkCount: this.chunks.length,
+          totalSizeBytes: totalSize,
+          totalSizeMB: (totalSize / 1024 / 1024).toFixed(2),
+          durationMs: duration,
+          durationSeconds: (duration / 1000).toFixed(1),
+          isRecording: this.isRecording,
+          recorderState: this.mediaRecorder?.state || "uninitialized",
+          maxDurationSeconds: this.maxDuration / 1000,
+          chunkIntervalMs: this.chunkInterval,
+          uptimeMinutes: parseFloat(uptimeMinutes),
+          nextResetIn:
+            this._resetIntervalMs - (Date.now() - this._lastResetTime),
+          codecConsistency:
+            this.chunks.length > 0
+              ? new Set(this.chunks.map((c) => c.data?.type)).size === 1
+              : true,
+        };
+      }
+
+      getStatusString() {
+        const info = this.getBufferInfo();
+        return `${info.chunkCount} chunks, ${info.totalSizeMB}MB, ${info.durationSeconds}s/${info.maxDurationSeconds}s, Uptime: ${info.uptimeMinutes}min`;
+      }
+
+      cleanup() {
+        log("[VIDEO-BUFFER] Starting cleanup");
+
+        this.stopRecording();
+
+        this.chunks.forEach((chunk) => {
+          if (chunk.data) {
+            chunk.data = null;
+          }
+        });
+        this.chunks = [];
+
+        if (this._cleanupInterval) {
+          clearInterval(this._cleanupInterval);
+          this._cleanupInterval = null;
+        }
+
+        if (this._resetInterval) {
+          clearInterval(this._resetInterval);
+          this._resetInterval = null;
+        }
+
+        this.mediaRecorder = null;
+        this._currentStream = null;
+        this._currentCallback = null;
+
+        log("[VIDEO-BUFFER] Cleanup completed");
+      }
+    }
+
+    window.SlidingVideoBuffer = SlidingVideoBuffer;
+
+
+    class ProctoringVideoManager {
+      constructor(videoElement, statusElement, config = {}) {
+        this.video = videoElement;
+        this.status = statusElement;
+
+        
+        this.apiBaseUrl =
+          config.apiBaseUrl ||
+          document.querySelector('meta[name="proctoring-api"]')?.content ||
+          "http://127.0.0.1:8001";
+
+        this.uploadTimeout = config.uploadTimeout || 30000; // 30s default
+        this.maxRetries = config.maxRetries || 2;
+        this.retryDelay = config.retryDelay || 2000;
+
+        this.buffer = new SlidingVideoBuffer(
+          config.bufferDuration || 20,
+          config.chunkInterval || 1000
+        );
+
+        this.isUploading = false;
+        this._uploadAbortController = null; // Abort controller
+
+        log("[VIDEO-MANAGER] Manager initialized with config:", {
+          apiBaseUrl: this.apiBaseUrl,
+          uploadTimeout: this.uploadTimeout,
+          maxRetries: this.maxRetries,
+        });
+      }
+
+      async initialize(mediaStream, userData = {}) {
+        this.userData = userData;
+        this.buffer.initializeRecorder(
+          mediaStream,
+          this.handleViolationUpload.bind(this)
+        );
+        this.buffer.startRecording();
+
+        if (this.status) {
+          this.status.textContent =
+            "Video buffer initialized - recording started";
+        }
+        log("[VIDEO-MANAGER] Video buffer system initialized");
+      }
+
+      
+      async handleViolationUpload(videoBlob) {
+        // Prevent concurrent uploads
+        if (this.isUploading) {
+          log("[VIDEO-MANAGER] Upload already in progress, skipping");
+          return;
+        }
+
+        this.isUploading = true;
+
+        if (this.status) {
+          this.status.textContent =
+            "Violation detected - uploading evidence...";
+        }
+
+        let lastError = null;
+
+        // Retry logic
+        for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
+          try {
+            log(`[VIDEO-MANAGER] Upload attempt ${attempt}/${this.maxRetries}`);
+            await this._uploadWithTimeout(videoBlob);
+
+            // Success!
+            log("[VIDEO-MANAGER] Upload successful");
+            if (this.status) {
+              this.status.textContent = "Evidence uploaded successfully";
+            }
+
+            this.isUploading = false;
+            this._scheduleStatusReset();
+            return; 
+          } catch (err) {
+            lastError = err;
+            error(`[VIDEO-MANAGER] Upload attempt ${attempt} failed:`, err);
+
+            if (attempt < this.maxRetries) {
+              log(`[VIDEO-MANAGER] Retrying in ${this.retryDelay}ms...`);
+              await new Promise((resolve) =>
+                setTimeout(resolve, this.retryDelay)
+              );
+            }
+          }
+        }
+
+        // All retries failed
+        error("[VIDEO-MANAGER] All upload attempts failed:", lastError);
+        if (this.status) {
+          this.status.textContent =
+            "Failed to upload evidence - continuing monitoring";
+        }
+
+        
+        // TODO:  add the IndexedDB 
+        // saveToOfflineQueue(videoBlob, this.userData);
+       
+
+        this.isUploading = false;
+        this._scheduleStatusReset();
+      }
+
+      
+      async _uploadWithTimeout(videoBlob) {
+        const formData = new FormData();
+        formData.append("file", videoBlob, `violation_${Date.now()}.webm`);
+
+        // Ensure proper data types
+        const userId = parseInt(
+          this.userData?.userId || window.dmojData?.userId || 0
+        );
+        const username = String(
+          this.userData?.username || window.dmojData?.username || ""
+        );
+        const contestName = String(
+          this.userData?.contestName || window.dmojData?.contestName || ""
+        );
+
+        formData.append("dmoj_user_id", userId);
+        formData.append("dmoj_user_name", username);
+        formData.append("dmoj_contest_name", contestName);
+        formData.append("timestamp", new Date().toISOString());
+
+        log(
+          `[VIDEO-MANAGER] Uploading - Size: ${(
+            videoBlob.size /
+            1024 /
+            1024
+          ).toFixed(2)}MB, User: ${userId}`
+        );
+
+        // Setup abort controller for timeout
+        this._uploadAbortController = new AbortController();
+        const timeoutId = setTimeout(() => {
+          this._uploadAbortController.abort();
+        }, this.uploadTimeout);
+
+        try {
+          const response = await fetch(this.apiBaseUrl + "/upload-clip", {
+            method: "POST",
+            body: formData,
+            signal: this._uploadAbortController.signal,
+            headers: {
+              "ngrok-skip-browser-warning": "true",
+            },
+          });
+
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+          }
+
+          const result = await response.json();
+          log("[VIDEO-MANAGER] Upload response:", result);
+          return result;
+        } catch (err) {
+          clearTimeout(timeoutId);
+
+          if (err.name === "AbortError") {
+            throw new Error(`Upload timeout after ${this.uploadTimeout}ms`);
+          }
+          throw err;
+        } finally {
+          this._uploadAbortController = null;
+        }
+      }
+
+      _scheduleStatusReset() {
+        setTimeout(() => {
+          if (!this.isUploading && this.status) {
+            this.status.textContent = "Monitoring active";
+          }
+        }, 3000);
+      }
+
+      triggerViolationUpload() {
+        return this.buffer.triggerViolationUpload();
+      }
+
+      getStatus() {
+        return {
+          ...this.buffer.getBufferInfo(),
+          isUploading: this.isUploading,
+          apiBaseUrl: this.apiBaseUrl,
+          uploadTimeout: this.uploadTimeout,
+          maxRetries: this.maxRetries,
+        };
+      }
+
+      
+      cancelUpload() {
+        if (this._uploadAbortController) {
+          log("[VIDEO-MANAGER] Cancelling ongoing upload");
+          this._uploadAbortController.abort();
+        }
+      }
+
+      cleanup() {
+        log("[VIDEO-MANAGER] Cleaning up video manager");
+        this.cancelUpload();
+        this.buffer.cleanup();
+      }
+    }
+
+    window.ProctoringVideoManager = ProctoringVideoManager;
+
+    // Helper to get API URL from various sources
+    window.getProctoringApiUrl = function () {
+      return (
+        document.querySelector('meta[name="proctoring-api"]')?.content ||
+        window.PROCTORING_API_URL ||
+        "http://127.0.0.1:8001"
+      );
+    };
+
+    log("[VIDEO-BUFFER] Enhanced module ready - Classes exported:");
+    log("  - window.SlidingVideoBuffer");
+    log("  - window.ProctoringVideoManager");
+    log("  - window.getProctoringApiUrl()");
+  })();
+</script>
+
+<style>
+  /* Enhanced video buffer status display */
+  .video-buffer-status {
+    margin-top: 10px;
+    padding: 8px 12px;
+    background-color: #e9ecef;
+    border-radius: 5px;
+    font-size: 12px;
+    color: #495057;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  .video-buffer-status .buffer-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  .video-buffer-status .buffer-label {
+    font-weight: 600;
+  }
+
+  .video-buffer-status .buffer-value {
+    color: #007bff;
+    font-family: "Courier New", monospace;
+  }
+
+  .video-buffer-recording {
+    color: #dc3545;
+    font-weight: bold;
+  }
+
+  .video-buffer-uploading {
+    color: #fd7e14;
+    font-weight: bold;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  .video-buffer-stopped {
+    color: #6c757d;
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  /* Codec warning indicator */
+  .codec-warning {
+    background-color: #fff3cd;
+    border-left: 3px solid #ffc107;
+    padding: 4px 8px;
+    margin-top: 4px;
+    font-size: 11px;
+  }
+</style>

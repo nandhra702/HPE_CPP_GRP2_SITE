@@ -1,0 +1,1421 @@
+{% extends "base.html" %}
+{% block title %}{{ problem.name }}{% endblock %}
+
+{% block media %}
+    {% include "comments/media-css.html" %}
+    <style>
+        /* Original problem.html styles */
+        .title-state {
+            font-size: 2em;
+            float: left;
+            width: 1.1em;
+            display: block;
+            margin-top: 0.16em;
+        }
+
+        .info-float a {
+            vertical-align: middle;
+        }
+
+        .problem-clarification {
+            border-bottom: 1px solid #ccc;
+            margin-top: 1em;
+            margin-bottom: 1em;
+        }
+
+        .clarifications-area h2 {
+            margin-bottom: 20px;
+        }
+
+        .problem-clarification .body {
+            display: inline-block;
+            padding-left: 3em;
+        }
+
+        .problem-info-entry {
+            padding-top: 0.5em;
+        }
+
+        /* LeetCode-style unified layout */
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        
+        /* Hide footer on unified page */
+        footer {
+            display: none !important;
+        }
+
+        #unified-problem-container {
+            display: flex;
+            height: calc(100vh - 60px);
+            width: 100%;
+            position: fixed;
+            top: 60px; /* Adjust based on your header height */
+            left: 0;
+            overflow: hidden;
+        }        /* Left Panel - Problem Description */
+        #problem-description-panel {
+            flex: 0 0 50%;
+            overflow-y: auto;
+            border-right: 2px solid #e0e0e0;
+            padding: 0;
+            background: #fff;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+        
+        #problem-description-panel .problem-title {
+            padding: -10px 20px 10px 20px;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 0;
+        }
+        
+        #problem-description-panel .problem-stats {
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            margin-bottom: 0;
+        }
+        
+        #problem-description-panel .problem-tabs {
+            padding: 0 20px;
+            margin-bottom: 0;
+        }
+        
+        #problem-description-panel .tab-content {
+            padding: 20px;
+        }
+
+        /* Right Panel - Code Editor + Submit */
+        #code-editor-panel {
+            flex: 0 0 50%;
+            display: flex;
+            flex-direction: column;
+            background: #f5f5f5;
+            position: relative;
+        }
+
+        /* Editor Header - Language selector only */
+        #editor-header {
+            padding: 5px 10px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        #editor-header select {
+            padding: 4px 8px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        
+        #editor-header label {
+            font-size: 12px;
+            margin-right: 6px;
+            font-weight: 500;
+        }
+
+        /* Editor Footer - Submit buttons at bottom */
+        #editor-footer {
+            padding: 8px 10px;
+            background: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        #editor-footer button {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: background 0.2s ease;
+        }
+
+        #reset-code-btn {
+            background: #6c757d;
+            color: white;
+        }
+
+        #reset-code-btn:hover {
+            background: #5a6268;
+        }
+
+        #run-code-btn {
+            background: #007bff;
+            color: white;
+        }
+
+        #run-code-btn:hover {
+            background: #0056b3;
+        }
+
+        #submit-code-btn {
+            background: #5cb85c;
+            color: white;
+        }
+
+        #submit-code-btn:hover {
+            background: #4cae4c;
+        }
+
+        /* Code Editor Area */
+        #code-editor-area {
+            flex: 1; /* Takes full space when results hidden */
+            padding: 0;
+            position: relative;
+            min-height: 200px;
+        }
+
+        #ace-editor {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+
+        /* Vertical Resize Handle (for editor/results split) */
+        #vertical-resize-handle {
+            height: 4px;
+            background: #e0e0e0;
+            cursor: row-resize;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 10;
+            transition: background 0.2s ease;
+            display: none; /* Hidden by default */
+        }
+
+        #vertical-resize-handle:hover {
+            background: #007bff;
+        }
+
+        #vertical-resize-handle:active {
+            background: #0056b3;
+        }
+
+        /* Bottom Panel - Test Results */
+        #results-panel {
+            flex: 0 0 40%;
+            background: white;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 150px;
+        }
+
+        #results-panel.hidden {
+            display: none;
+        }
+
+        #results-panel-header {
+            padding: 6px 12px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+        
+        #results-panel-header h3 {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        
+        #results-panel-header button {
+            padding: 3px 10px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        #results-panel-content {
+            padding: 15px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* Problem Title */
+        .problem-title {
+            margin-bottom: 20px;
+        }
+
+        .problem-title h2 {
+            margin: 0;
+        }
+
+        /* Problem Stats */
+        .problem-stats {
+            display: block;
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        
+        .problem-stats-line {
+            font-size: 14px;
+            color: #333;
+            line-height: 1.8;
+        }
+        
+        .problem-stats-line strong {
+            font-weight: 600;
+        }
+
+        /* Problem Content - extends .content-description styles */
+        .problem-content.content-description {
+            padding: 0;
+        }
+        
+        /* Additional tab-specific styling */
+        .tab-content .problem-content {
+            line-height: 1.5em;
+        }
+
+        /* Submission Status Styles */
+        .submission-status {
+            padding: 16px;
+            margin-bottom: 12px;
+            border-radius: 6px;
+            background: #f8f9fa;
+            border-left: 4px solid #6c757d;
+        }
+        
+        .submission-status h4 {
+            margin: 0 0 8px 0;
+            font-size: 15px;
+            font-weight: 600;
+        }
+        
+        .submission-status p {
+            margin: 0;
+            font-size: 13px;
+            color: #495057;
+        }
+
+        .status-pending {
+            background: #fff8e1;
+            border-left-color: #ffa726;
+        }
+        
+        .status-pending h4 {
+            color: #e65100;
+        }
+
+        .status-accepted,
+        .status-completed {
+            background: #e8f5e9;
+            border-left-color: #4caf50;
+        }
+        
+        .status-accepted h4,
+        .status-completed h4 {
+            color: #2e7d32;
+        }
+
+        .status-wrong,
+        .status-failed,
+        .status-error {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+        
+        .status-wrong h4,
+        .status-failed h4,
+        .status-error h4 {
+            color: #c62828;
+        }
+        
+        .status-partial {
+            background: #fff3e0;
+            border-left-color: #ff9800;
+        }
+        
+        .status-partial h4 {
+            color: #ef6c00;
+        }
+
+        /* Test Cases */
+        .test-case {
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #ffffff;
+            border-radius: 4px;
+            border-left: 4px solid #ccc;
+            font-size: 13px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .test-case strong {
+            font-weight: 600;
+            display: inline-block;
+            min-width: 80px;
+        }
+
+        .test-case.passed,
+        .test-case.AC {
+            border-left-color: #4caf50;
+            background: #f1f8f4;
+        }
+        
+        .test-case.passed strong,
+        .test-case.AC strong {
+            color: #2e7d32;
+        }
+
+        .test-case.failed,
+        .test-case.WA,
+        .test-case.TLE,
+        .test-case.MLE,
+        .test-case.RTE {
+            border-left-color: #f44336;
+            background: #fef5f5;
+        }
+        
+        .test-case.failed strong,
+        .test-case.WA strong,
+        .test-case.TLE strong,
+        .test-case.MLE strong,
+        .test-case.RTE strong {
+            color: #c62828;
+        }
+        
+        /* Test Cases Summary */
+        .test-cases-summary {
+            margin: 12px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        .test-cases-summary strong {
+            font-weight: 600;
+        }
+
+        /* Resize Handle */
+        #resize-handle {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #e0e0e0;
+            cursor: col-resize;
+            z-index: 1000;
+            transition: background 0.2s ease;
+        }
+
+        #resize-handle:hover {
+            background: #007bff;
+        }
+
+        #resize-handle:active {
+            background: #0056b3;
+        }
+
+        /* Loading Spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Tabs for description/editorial/submissions */
+        .problem-tabs {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 0;
+            margin-top: 0;
+            border-bottom: 2px solid #e0e0e0;
+            padding-top: 15px;
+        }
+
+        .problem-tab {
+            padding: 10px 0;
+            cursor: pointer;
+            color: #666;
+            font-weight: 400;
+            font-size: 15px;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s ease;
+        }
+        
+        .problem-tab:hover {
+            color: #333;
+        }
+
+        .problem-tab.active {
+            color: #0645AD;
+            border-bottom-color: #0645AD;
+            font-weight: 500;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+    
+    <script type="text/javascript" src="{{ ACE_URL }}/ace.js"></script>
+{% endblock %}
+
+{% block js_media %}
+    {% include "comments/media-js.html" %}
+{% endblock %}
+
+{% block body %}
+<script>
+    // If this page is loaded inside an iframe, notify the parent.
+    if (window.parent !== window) {
+        // Notify the parent wrapper that this page has loaded.
+        window.parent.postMessage(
+            { proctoringPage: "problem_unified" },
+            window.location.origin
+        );
+    }
+</script>
+
+<!-- CSRF Token for AJAX requests -->
+{% if request.user.is_authenticated %}
+<script>
+    // Get CSRF token from cookie
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+</script>
+{% endif %}
+
+<div id="unified-problem-container">
+    <!-- Resize Handle -->
+    <div id="resize-handle"></div>
+
+    <!-- Left Panel - Problem Description -->
+    <div id="problem-description-panel">
+        <!-- Problem Title (using original problem.html formatting) -->
+        <div class="problem-title">
+            {% if request.user.is_authenticated %}
+                {% if problem.id in completed_problem_ids %}
+                    <a href="{{ url('user_submissions', problem.code, request.user.username) }}">
+                        {% if problem.is_public or request.in_contest %}
+                            <i class="solved-problem-color title-state fa fa-check-circle"></i>
+                        {% else %}
+                            <i class="solved-problem-color title-state fa fa-lock"></i>
+                        {% endif %}
+                    </a>
+                {% elif problem.id in attempted_problems %}
+                    <a href="{{ url('user_submissions', problem.code, request.user.username) }}">
+                        {% if problem.is_public or request.in_contest %}
+                            <i class="attempted-problem-color title-state fa fa-minus-circle"></i>
+                        {% else %}
+                            <i class="attempted-problem-color title-state fa fa-lock"></i>
+                        {% endif %}
+                    </a>
+                {% endif %}
+            {% endif %}
+            <h2 style="display: inline-block; margin-left: 15px;">{{ title }}</h2>
+            {% if problem.is_organization_private %}
+                <span class="organization-tags">
+                    {% for org in problem.organizations.all() %}
+                        <span class="organization-tag">
+                            <a href="{{ org.get_absolute_url() }}">
+                                <i class="fa fa-lock"></i> {{ org.name }}
+                            </a>
+                        </span>
+                    {% endfor %}
+                </span>
+            {% endif %}
+        </div>
+
+        <!-- Problem Stats -->
+        <div class="problem-stats">
+            <div class="problem-stats-line">
+                <strong>Points:</strong> 
+                {% if contest_problem %}
+                    {{ contest_problem.points }}{% if contest_problem.partial %} {{ _('(partial)') }}{% endif %}
+                {% else %}
+                    {{ problem.points|floatformat }}{% if problem.partial %} {{ _('(partial)') }}{% endif %}
+                {% endif %}
+                &nbsp;&nbsp;&nbsp;
+                <strong>Time limit:</strong> {{ problem.time_limit }}s
+                &nbsp;&nbsp;&nbsp;
+                <strong>Memory limit:</strong> {{ problem.memory_limit|kbsimpleformat }}
+                &nbsp;&nbsp;&nbsp;
+                <strong>Users:</strong> {{ problem.user_count }}
+            </div>
+        </div>
+
+        <!-- Tabs: Description / Editorial -->
+        <div class="problem-tabs">
+            <div class="problem-tab active" data-tab="description">{{ _('Description') }}</div>
+            {% if editorial and editorial.is_accessible_by(request.user) %}
+            <div class="problem-tab" data-tab="editorial">{{ _('Editorial') }}</div>
+            {% endif %}
+        </div>
+
+        <!-- Tab Content: Description -->
+        <div id="tab-description" class="tab-content active">
+            <div class="problem-content content-description screen">
+                {% block description %}
+                    {% cache 86400 'problem_html' problem.id MATH_ENGINE LANGUAGE_CODE %}
+                        {{ description|markdown(problem.markdown_style, MATH_ENGINE)|reference|str|safe }}
+                    {% endcache %}
+
+                    {% with license=problem.license %}
+                        {% if license %}
+                            <span class="license">
+                                <a href="{{ url('license', license.key) }}">{{ license.display or license.name }}</a>
+                            </span>
+                        {% endif %}
+                    {% endwith %}
+                {% endblock %}
+            </div>
+        </div>
+
+        <!-- Tab Content: Editorial -->
+        {% if editorial and editorial.is_accessible_by(request.user) %}
+        <div id="tab-editorial" class="tab-content">
+            <div class="problem-content">
+                <!-- Editorial content will be loaded here -->
+                <p>{{ _('Loading editorial...') }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right Panel - Code Editor -->
+    <div id="code-editor-panel">
+        <!-- Editor Header - Language selector only -->
+        <div id="editor-header">
+            <div>
+                <label for="language-select" style="font-weight: 500;">Language:</label>
+                <select id="language-select" name="language">
+                    {% for lang in problem.usable_languages.all() %}
+                        <option value="{{ lang.id }}" data-ace-mode="{{ lang.ace }}"
+                                {% if lang.id == default_lang.id %}selected{% endif %}>
+                            {{ lang.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Code Editor -->
+        <div id="code-editor-area">
+            <div id="ace-editor"></div>
+        </div>
+
+        <!-- Editor Footer - Submit buttons at bottom -->
+        <div id="editor-footer">
+            <button type="button" id="reset-code-btn">
+                Reset Code
+            </button>
+            <button type="button" id="run-code-btn">
+                Run Code
+            </button>
+            <button type="submit" id="submit-code-btn">
+                Submit and Next
+            </button>
+        </div>
+
+        <!-- Vertical Resize Handle -->
+        <div id="vertical-resize-handle"></div>
+
+        <!-- Bottom Panel - Test Results -->
+        <div id="results-panel" class="hidden">
+            <div id="results-panel-header">
+                <h3>Submission Results</h3>
+                <button type="button" onclick="toggleResultsPanel()">
+                    Close
+                </button>
+            </div>
+            <div id="results-panel-content">
+                <!-- Results will be loaded here dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ACE Editor Setup
+    var editor = ace.edit("ace-editor");
+    window.editor = editor; // Store globally for resize handlers
+    editor.setTheme("ace/theme/{{ request.profile.resolved_ace_theme }}");
+    editor.session.setMode("ace/mode/{{ default_lang.ace }}");
+    editor.setOptions({
+        fontSize: "13px",
+        showPrintMargin: false,
+        highlightActiveLine: true,
+        enableBasicAutocompletion: true,
+        enableLiveAutocompletion: true
+    });
+
+    // Set initial template code
+    {% if default_lang.template %}
+    editor.setValue({{ default_lang.template|tojson }}, -1);
+    {% endif %}
+
+    // Block copy/paste operations on the page, but allow in code editor
+    (function() {
+        // Check if copy/paste blocking is disabled via debug settings
+        // To disable: Set DISABLE_COPY_PASTE_BLOCKING = True in judge/debug.py
+        var copyPasteBlockingDisabled = {{ DISABLE_COPY_PASTE_BLOCKING|lower if DISABLE_COPY_PASTE_BLOCKING is defined else 'false' }};
+        
+        if (copyPasteBlockingDisabled) {
+            console.log('Copy/paste blocking is DISABLED (debug mode)');
+            return; // Exit early - no blocking applied
+        }
+        
+        console.log('Copy/paste blocking is ENABLED');
+        
+        var editorContainer = document.getElementById('ace-editor');
+        var editorClipboardCache = null; // Store what was copied from editor
+        
+        // Monitor keyboard shortcuts for copy/cut in editor
+        document.addEventListener('keydown', function(e) {
+            var key = e.key.toLowerCase();
+            var ctrl = e.ctrlKey || e.metaKey;
+            
+            // If copy/cut happens in editor, cache the selected text
+            if (editor && editor.isFocused() && ctrl && (key === 'c' || key === 'x')) {
+                // Store the selected text in cache
+                editorClipboardCache = editor.getSelectedText();
+                console.log('Cached from editor:', editorClipboardCache.substring(0, 50) + '...');
+            }
+            
+            // If paste happens in editor, verify it matches cache
+            if (editor && editor.isFocused() && ctrl && key === 'v') {
+                // Allow paste - will be validated on paste event
+                return;
+            }
+            
+            // Block copy/paste/cut outside editor
+            if (!editor || !editor.isFocused()) {
+                if (ctrl && (key === 'c' || key === 'v' || key === 'x')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            }
+        }, true);
+        
+        // Intercept paste events to validate clipboard content
+        document.addEventListener('paste', function(e) {
+            // Block paste outside editor
+            if (!editorContainer.contains(e.target) && !(editor && editor.isFocused())) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+            
+            // We're in the editor - validate clipboard content
+            var clipboardData = e.clipboardData || window.clipboardData;
+            var pastedText = clipboardData.getData('text');
+            
+            // Check if pasted text matches what was copied from editor
+            if (editorClipboardCache === null || pastedText !== editorClipboardCache) {
+                e.preventDefault();
+                e.stopPropagation();
+                alert('Pasting from external sources is not allowed. You can only copy and paste code within the editor.');
+                return false;
+            }
+            
+            // Valid paste - allow it
+            console.log('Paste validated and allowed');
+        }, true);
+        
+        // Also monitor ACE's internal copy event
+        editor.on('copy', function(text) {
+            editorClipboardCache = text;
+            console.log('Cached from ACE copy event:', text.substring(0, 50) + '...');
+        });
+        
+        editor.on('cut', function(text) {
+            editorClipboardCache = text;
+            console.log('Cached from ACE cut event:', text.substring(0, 50) + '...');
+        });
+        
+        // Prevent copy on the entire page except in code editor
+        document.addEventListener('copy', function(e) {
+            // Allow copy in editor
+            if (editorContainer && editorContainer.contains(e.target)) {
+                return;
+            }
+            
+            if (editor && editor.isFocused()) {
+                return;
+            }
+            
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }, true);
+        
+        // Prevent cut on the entire page except in code editor
+        document.addEventListener('cut', function(e) {
+            // Allow cut in editor
+            if (editorContainer && editorContainer.contains(e.target)) {
+                return;
+            }
+            
+            if (editor && editor.isFocused()) {
+                return;
+            }
+            
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }, true);
+        
+        // Prevent right-click context menu on problem description
+        var problemPanel = document.getElementById('problem-description-panel');
+        if (problemPanel) {
+            problemPanel.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                return false;
+            });
+        }
+        
+        // Clear cache when user clicks outside editor (optional - for extra security)
+        document.addEventListener('click', function(e) {
+            if (!editorContainer.contains(e.target) && !editor.isFocused()) {
+                // Clear cache after a delay to allow paste operations
+                setTimeout(function() {
+                    if (!editor.isFocused()) {
+                        editorClipboardCache = null;
+                        console.log('Cache cleared - clicked outside editor');
+                    }
+                }, 500);
+            }
+        });
+    })();
+
+    // Language Change Handler
+    document.getElementById('language-select').addEventListener('change', function() {
+        var selectedOption = this.options[this.selectedIndex];
+        var aceMode = selectedOption.getAttribute('data-ace-mode');
+        editor.session.setMode('ace/mode/' + aceMode);
+        
+        // Load language template automatically navigate to /admin/judge/language/
+        var languageId = this.value;
+        fetch('/ajax/language_template/?id=' + languageId)
+            .then(response => response.json())
+            .then(data => {
+                if (data.template) {
+                    // Only ask for confirmation if there's existing code that's not empty
+                    var currentCode = editor.getValue().trim();
+                    if (currentCode && currentCode !== data.template.trim()) {
+                        if (confirm('Load template for ' + data.name + '? (Current code will be lost)')) {
+                            editor.setValue(data.template, -1);
+                        }
+                    } else {
+                        // No code or same template, just load it
+                        editor.setValue(data.template, -1);
+                    }
+                }
+            })
+            .catch(error => console.error('Error loading template:', error));
+    });
+
+    // Run Code Handler (updates the same submission entry)
+    document.getElementById('run-code-btn').addEventListener('click', function() {
+        var code = editor.getValue();
+        var languageId = document.getElementById('language-select').value;
+        
+        if (!code.trim()) {
+            alert('Please write some code before running!');
+            return;
+        }
+
+        // Show loading in results panel
+        document.getElementById('results-panel-content').innerHTML = 
+            '<div style="text-align: center; padding: 40px;"><div class="loading-spinner"></div><p>Running your code...</p></div>';
+        toggleResultsPanel(true);
+
+        // Run code via AJAX (updates existing submission)
+        // DO NOT update contest table for Run Code
+        var formData = new FormData();
+        formData.append('language', languageId);
+        formData.append('source', code);
+        formData.append('is_test_run', 'true');  // Mark as test run, not official submission
+
+        fetch('/problem/{{ problem.code }}/submit', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrftoken
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                if (response.status === 429) {
+                    throw new Error('You ran code too many times. Please wait a moment.');
+                }
+                throw new Error('Server returned error: ' + response.status);
+            }
+            
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                // Server returned HTML or other non-JSON content
+                return response.text().then(text => {
+                    console.error('Non-JSON response:', text);
+                    throw new Error('Server returned an invalid response. Please check if you are logged in.');
+                });
+            }
+        })
+        .then(data => {
+            if (data.submission) {
+                // Poll for test run status
+                pollSubmissionStatus(data.submission);
+            } else if (data.error) {
+                showError(data.error);
+            } else {
+                showError('Test run failed');
+            }
+        })
+        .catch(error => {
+            console.error('Run code error:', error);
+            showError('Error: ' + error.message);
+        });
+    });
+
+    // Submit Code Handler (updates the same submission entry)
+    document.getElementById('submit-code-btn').addEventListener('click', function() {
+        var code = editor.getValue();
+        var languageId = document.getElementById('language-select').value;
+        
+        if (!code.trim()) {
+            alert('Please write some code before submitting!');
+            return;
+        }
+
+        // Show loading in results panel
+        document.getElementById('results-panel-content').innerHTML = 
+            '<div style="text-align: center; padding: 40px;"><div class="loading-spinner"></div><p>Submitting your code...</p></div>';
+        toggleResultsPanel(true);
+
+        // Submit via AJAX (updates existing submission)
+        // This WILL update contest table if in a contest
+        var formData = new FormData();
+        formData.append('language', languageId);
+        formData.append('source', code);
+        formData.append('is_test_run', 'false');  // Mark as official submission
+
+        fetch('/problem/{{ problem.code }}/submit', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrftoken
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                if (response.status === 429) {
+                    throw new Error('You submitted too many submissions.');
+                }
+                throw new Error('Server returned error: ' + response.status);
+            }
+            
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                // Server returned HTML or other non-JSON content
+                return response.text().then(text => {
+                    console.error('Non-JSON response:', text);
+                    throw new Error('Server returned an invalid response. Please check if you are logged in.');
+                });
+            }
+        })
+        .then(data => {
+            if (data.submission) {
+                // Show immediate success message
+                document.getElementById('results-panel-content').innerHTML = 
+                    '<div style="text-align: center; padding: 40px;">' +
+                    '<div class="loading-spinner"></div>' +
+                    '<p style="margin-top: 20px; font-size: 16px;">✓ Submitted Successfully!</p>' +
+                    '<p style="color: #666;">Evaluating your solution...</p>' +
+                    '</div>';
+                
+                // Poll for submission status and wait for result
+                pollSubmissionStatusWithRedirect(data.submission);
+            } else if (data.error) {
+                showError(data.error);
+            } else {
+                showError('Submission failed');
+            }
+        })
+        .catch(error => {
+            console.error('Submit code error:', error);
+            showError('Error: ' + error.message);
+        });
+    });
+
+    // Reset Code Handler
+    document.getElementById('reset-code-btn').addEventListener('click', function() {
+        if (confirm('Are you sure you want to reset your code?')) {
+            var languageId = document.getElementById('language-select').value;
+            fetch('/ajax/language_template/?id=' + languageId)
+                .then(response => response.json())
+                .then(data => {
+                    editor.setValue(data.template || '', -1);
+                })
+                .catch(error => console.error('Error resetting code:', error));
+        }
+    });
+
+    // Toggle Results Panel
+    function toggleResultsPanel(show) {
+        var panel = document.getElementById('results-panel');
+        var codeArea = document.getElementById('code-editor-area');
+        var vHandle = document.getElementById('vertical-resize-handle');
+        
+        if (show === true) {
+            panel.classList.remove('hidden');
+            vHandle.style.display = 'block';
+            codeArea.style.flex = '0 0 60%';
+            panel.style.flex = '0 0 40%';
+        } else if (show === false) {
+            panel.classList.add('hidden');
+            vHandle.style.display = 'none';
+            codeArea.style.flex = '1';
+            panel.style.flex = '0 0 0%';
+        } else {
+            panel.classList.toggle('hidden');
+            if (panel.classList.contains('hidden')) {
+                vHandle.style.display = 'none';
+                codeArea.style.flex = '1';
+                panel.style.flex = '0 0 0%';
+            } else {
+                vHandle.style.display = 'block';
+                codeArea.style.flex = '0 0 60%';
+                panel.style.flex = '0 0 40%';
+            }
+        }
+        
+        // Resize ACE editor to fit new dimensions
+        if (window.editor) {
+            setTimeout(function() {
+                editor.resize();
+            }, 100);
+        }
+    }
+
+    // Poll Submission Status
+    function pollSubmissionStatus(submissionId) {
+        var pollInterval = setInterval(function() {
+            fetch('/ajax/submission_status/?id=' + submissionId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        clearInterval(pollInterval);
+                        showError(data.error);
+                        return;
+                    }
+                    
+                    updateSubmissionResults(data);
+                    
+                    if (data.is_graded) {
+                        clearInterval(pollInterval);
+                    }
+                })
+                .catch(error => {
+                    clearInterval(pollInterval);
+                    showError('Failed to fetch results: ' + error.message);
+                });
+        }, 1000); // Poll every second
+    }
+
+    // Poll Submission Status with Smart Redirect (for Submit and Next button)
+    function pollSubmissionStatusWithRedirect(submissionId) {
+        var pollInterval = setInterval(function() {
+            fetch('/ajax/submission_status/?id=' + submissionId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        clearInterval(pollInterval);
+                        showError(data.error);
+                        return;
+                    }
+                    
+                    updateSubmissionResults(data);
+                    
+                    if (data.is_graded) {
+                        clearInterval(pollInterval);
+                        
+                        // Check if submission was successful
+                        var isSuccess = false;
+                        
+                        // Check test cases
+                        if (data.test_cases && data.test_cases.length > 0) {
+                            var allPassed = data.test_cases.every(function(tc) {
+                                return tc.status === 'AC';
+                            });
+                            if (allPassed) {
+                                isSuccess = true;
+                            }
+                        }
+                        
+                        // Also check status directly
+                        if (data.status === 'AC') {
+                            isSuccess = true;
+                        }
+                        
+                        // Check points
+                        if (data.points !== undefined && data.total_points !== undefined) {
+                            if (data.points === data.total_points && data.total_points > 0) {
+                                isSuccess = true;
+                            }
+                        }
+                        
+                        // Handle redirect based on success
+                        if (isSuccess) {
+                            // Success - Show results and redirect message immediately
+                            document.getElementById('results-panel-content').innerHTML = 
+                                '<div style="text-align: center; padding: 30px;">' +
+                                '<div style="font-size: 48px; color: #4caf50; margin-bottom: 15px;">✓</div>' +
+                                '<h3 style="color: #2e7d32; margin: 0 0 10px 0;">Correct Answer!</h3>' +
+                                '<p style="color: #666; margin-bottom: 20px;">All test cases passed</p>' +
+                                '<div class="loading-spinner"></div>' +
+                                '<p style="margin-top: 15px; color: #2e7d32; font-weight: 500;">Redirecting to problem list...</p>' +
+                                '</div>';
+                            
+                            // Redirect after 2 seconds
+                            setTimeout(function() {
+                                window.location.href = '{{ url("problem_list") }}';
+                            }, 2000);
+                        } else {
+                            // Failed - Ask user if they want to continue
+                            setTimeout(function() {
+                                var goNext = confirm(
+                                    '❌ Your solution was not accepted.\n\n' +
+                                    'Do you want to go to the next problem anyway?'
+                                );
+                                
+                                if (goNext) {
+                                    window.location.href = '{{ url("problem_list") }}';
+                                }
+                                // If user clicks Cancel, they stay on the page to fix their code
+                            }, 500);
+                        }
+                    }
+                })
+                .catch(error => {
+                    clearInterval(pollInterval);
+                    showError('Failed to fetch results: ' + error.message);
+                });
+        }, 1000); // Poll every second
+    }
+
+    // Update Submission Results Display
+    function updateSubmissionResults(data) {
+        // Determine status class based on result
+        var statusClass = 'status-pending';
+        var isSuccess = false;
+        var displayStatus = data.status_display || data.status || 'Processing';
+        
+        if (data.is_graded) {
+            // First, check test cases to determine actual success
+            if (data.test_cases && data.test_cases.length > 0) {
+                var allPassed = data.test_cases.every(function(tc) {
+                    return tc.status === 'AC';
+                });
+                
+                var somePassed = data.test_cases.some(function(tc) {
+                    return tc.status === 'AC';
+                });
+                
+                if (allPassed) {
+                    isSuccess = true;
+                    displayStatus = 'Accepted';
+                } else if (somePassed) {
+                    statusClass = 'status-partial';
+                    displayStatus = 'Partial';
+                } else {
+                    isSuccess = false;
+                    // Check what kind of error
+                    var firstError = data.test_cases[0].status;
+                    if (firstError === 'WA') {
+                        displayStatus = 'Wrong Answer';
+                    } else if (firstError === 'TLE') {
+                        displayStatus = 'Time Limit Exceeded';
+                    } else if (firstError === 'MLE') {
+                        displayStatus = 'Memory Limit Exceeded';
+                    } else if (firstError === 'RTE') {
+                        displayStatus = 'Runtime Error';
+                    } else {
+                        displayStatus = firstError || 'Wrong Answer';
+                    }
+                }
+            } else {
+                // No test case details, rely on status code
+                if (data.status === 'AC') {
+                    isSuccess = true;
+                    displayStatus = 'Accepted';
+                }
+            }
+            
+            // Check for partial success based on points
+            if (data.points !== undefined && data.total_points !== undefined) {
+                if (data.points === data.total_points && data.total_points > 0) {
+                    isSuccess = true;
+                    displayStatus = 'Accepted';
+                } else if (data.points > 0) {
+                    statusClass = 'status-partial';
+                    displayStatus = 'Partial (' + data.points + '/' + data.total_points + ')';
+                } else {
+                    isSuccess = false;
+                }
+            }
+            
+            // Set final status class
+            if (isSuccess) {
+                statusClass = 'status-completed';
+            } else if (statusClass !== 'status-partial') {
+                statusClass = 'status-wrong';
+            }
+        }
+        
+        var html = '<div class="submission-status ' + statusClass + '">';
+        
+        html += '<h4>' + displayStatus + '</h4>';
+        html += '<p>Time: ' + (data.time || '---') + ' | Memory: ' + (data.memory || '---') + '</p>';
+        
+        if (data.test_cases && data.test_cases.length > 0) {
+            html += '<div class="test-cases-summary"><strong>Test Cases:</strong></div>';
+            data.test_cases.forEach(function(tc, index) {
+                var testStatus = tc.status || 'Unknown';
+                var testClass = (testStatus === 'AC') ? 'AC passed' : testStatus + ' failed';
+                
+                html += '<div class="test-case ' + testClass + '">';
+                html += '<strong>Test ' + (index + 1) + ':</strong> ' + testStatus;
+                if (tc.time) html += ' | Time: ' + tc.time;
+                if (tc.memory) html += ' | Memory: ' + tc.memory;
+                html += '</div>';
+            });
+        }
+        
+        html += '</div>';
+        
+        document.getElementById('results-panel-content').innerHTML = html;
+    }
+
+    // Show Error Message
+    function showError(message) {
+        document.getElementById('results-panel-content').innerHTML = 
+            '<div class="submission-status status-wrong"><h4>Error</h4><p>' + message + '</p></div>';
+    }
+
+    // Tab Switching
+    document.querySelectorAll('.problem-tab').forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            // Remove active class from all tabs
+            document.querySelectorAll('.problem-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            // Add active class to clicked tab
+            this.classList.add('active');
+            var tabName = this.getAttribute('data-tab');
+            document.getElementById('tab-' + tabName).classList.add('active');
+            
+            // Load content if needed
+            if (tabName === 'editorial') {
+                loadTabContent(tabName);
+            }
+        });
+    });
+
+    // Load Tab Content via AJAX
+    function loadTabContent(tabName) {
+        var contentDiv = document.getElementById('tab-' + tabName).querySelector('.problem-content');
+        if (contentDiv.innerHTML.includes('Loading')) {
+            var url = '/problem/{{ problem.code }}/' + tabName + '/ajax';
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (tabName === 'editorial') {
+                        contentDiv.innerHTML = data.content || '<p>No editorial available.</p>';
+                    }
+                })
+                .catch(error => {
+                    contentDiv.innerHTML = '<p>Failed to load content: ' + error.message + '</p>';
+                });
+        }
+    }
+
+    // Resizable Panels
+    (function() {
+        // Horizontal resize (left/right panels)
+        var handle = document.getElementById('resize-handle');
+        var leftPanel = document.getElementById('problem-description-panel');
+        var rightPanel = document.getElementById('code-editor-panel');
+        var container = document.getElementById('unified-problem-container');
+        var isResizing = false;
+
+        handle.addEventListener('mousedown', function(e) {
+            isResizing = true;
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!isResizing) return;
+            
+            var containerRect = container.getBoundingClientRect();
+            var percentage = ((e.clientX - containerRect.left) / containerRect.width) * 100;
+            
+            if (percentage >= 30 && percentage <= 70) {
+                leftPanel.style.flex = '0 0 ' + percentage + '%';
+                rightPanel.style.flex = '0 0 ' + (100 - percentage) + '%';
+                handle.style.left = percentage + '%';
+                
+                // Trigger ACE editor resize
+                if (window.editor) {
+                    editor.resize();
+                }
+            }
+        });
+
+        document.addEventListener('mouseup', function() {
+            if (isResizing) {
+                isResizing = false;
+                document.body.style.cursor = 'default';
+                document.body.style.userSelect = 'auto';
+            }
+        });
+
+        // Vertical resize (code editor/results split)
+        var vHandle = document.getElementById('vertical-resize-handle');
+        var codeArea = document.getElementById('code-editor-area');
+        var resultsPanel = document.getElementById('results-panel');
+        var isVResizing = false;
+
+        vHandle.addEventListener('mousedown', function(e) {
+            // Show results panel if hidden when user tries to resize
+            if (resultsPanel.classList.contains('hidden')) {
+                resultsPanel.classList.remove('hidden');
+                vHandle.style.display = 'block';
+            }
+            isVResizing = true;
+            document.body.style.cursor = 'row-resize';
+            document.body.style.userSelect = 'none';
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!isVResizing) return;
+            
+            var rightPanelRect = rightPanel.getBoundingClientRect();
+            var headerHeight = document.getElementById('editor-header').offsetHeight;
+            var handleHeight = 4; // Height of vertical resize handle
+            var availableHeight = rightPanelRect.height - headerHeight - handleHeight;
+            
+            // Calculate position relative to the start of code area
+            var relativeY = e.clientY - rightPanelRect.top - headerHeight;
+            var percentage = (relativeY / availableHeight) * 100;
+            
+            // Constrain between 20% and 80% for better usability
+            if (percentage >= 20 && percentage <= 80) {
+                var editorPercent = percentage;
+                var resultsPercent = 100 - percentage;
+                
+                codeArea.style.flex = '0 0 ' + editorPercent + '%';
+                resultsPanel.style.flex = '0 0 ' + resultsPercent + '%';
+                
+                // Trigger ACE editor resize
+                if (window.editor) {
+                    setTimeout(function() {
+                        editor.resize();
+                    }, 0);
+                }
+            }
+        });
+
+        document.addEventListener('mouseup', function() {
+            if (isVResizing) {
+                isVResizing = false;
+                document.body.style.cursor = 'default';
+                document.body.style.userSelect = 'auto';
+                
+                // Final resize of ACE editor
+                if (window.editor) {
+                    setTimeout(function() {
+                        editor.resize();
+                    }, 0);
+                }
+            }
+        });
+
+        // Prevent text selection during resize
+        handle.addEventListener('selectstart', function(e) {
+            e.preventDefault();
+        });
+        
+        vHandle.addEventListener('selectstart', function(e) {
+            e.preventDefault();
+        });
+    })();
+</script>
+{% endblock %}
+
+{% block bodyend %}
+    {% if REQUIRE_JAX %}
+        {% include "mathjax-load.html" %}
+    {% endif %}
+{% endblock %}

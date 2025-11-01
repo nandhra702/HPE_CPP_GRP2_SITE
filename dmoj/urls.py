@@ -114,9 +114,16 @@ urlpatterns = [
     path('problems/', xframe_options_exempt(problem.ProblemList.as_view()), name='problem_list'),
     path('problems/random/', xframe_options_exempt(problem.RandomProblem.as_view()), name='problem_random'),
 
+    # AJAX endpoints for unified problem page
+    path('ajax/language_template/', problem.LanguageTemplateAjax.as_view(), name='language_template_ajax'),
+    path('ajax/submission_status/', problem.SubmissionStatusAjax.as_view(), name='submission_status_ajax'),
+
     path('problem/<str:problem>', include([
         path('', xframe_options_exempt(problem.ProblemDetail.as_view()), name='problem_detail'),
+        path('/unified', xframe_options_exempt(problem.ProblemUnified.as_view()), name='problem_unified'),
         path('/editorial', problem.ProblemSolution.as_view(), name='problem_editorial'),
+        path('/editorial/ajax', problem.ProblemEditorialAjax.as_view(), name='problem_editorial_ajax'),
+        path('/submissions/ajax', problem.ProblemSubmissionsAjax.as_view(), name='problem_submissions_ajax'),
         path('/pdf', problem.ProblemPdfView.as_view(), name='problem_pdf'),
         path('/pdf/<slug:language>', problem.ProblemPdfView.as_view(), name='problem_pdf'),
         path('/clone', problem.ProblemClone.as_view(), name='problem_clone'),

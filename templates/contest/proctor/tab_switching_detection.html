@@ -1,0 +1,524 @@
+<!-- Tab Switching Detection Module -->
+
+<script>
+
+(function() {
+    'use strict';
+
+    console.log("[TAB-SWITCH] Module loaded");
+
+    // Tab switching state variables
+    window.TabSwitchDetector = {
+        // Counters
+        tabSwitchCount: 0,
+        totalTimeOutside: 0,
+        
+        // Timing trackers
+        lastBlurTime: 0,
+        lastFocusTime: Date.now(),
+        outsideStartTime: 0,
+        lastUserActivity: Date.now(),
+        
+        // State flags
+        isWindowFocused: true,
+        switchCooldownActive: false,
+        hasCountedSinceBlur: false,
+        isIframeFocused: false,
+        iframeBlurTime: 0,
+        mainWindowHasFocus: true,
+        recentIframeNavigation: false,
+        userActiveInPage: true,
+        
+        // Timer
+        timeOutsideInterval: null,
+        
+        // Configuration
+        config: {
+            cooldownMs: 100,
+            activityWindowMs: 300,
+            iframeNavigationWindowMs: 1000,
+            minBlurDurationMs: 500,
+            updateIntervalMs: 100,
+            backendUpdateInterval: 50 // ticks before sending update (50 * 100ms = 5s)
+        },
+
+        // Callbacks
+        callbacks: {
+            onTabSwitch: null,
+            onTimeUpdate: null,
+            onBackendUpdate: null
+        },
+
+        
+        initialize: function(callbacks) {
+            console.log("[TAB-SWITCH] Initializing detector");
+            
+            // Store callbacks
+            if (callbacks) {
+                this.callbacks = { ...this.callbacks, ...callbacks };
+            }
+            
+            // Setup event listeners
+            this.setupEventListeners();
+            
+            // Initialize display
+            this.updateTabSwitchDisplay();
+            this.setTimeOutsideDisplay(0);
+            
+            console.log("[TAB-SWITCH] Detector initialized successfully");
+        },
+
+        
+        setupEventListeners: function() {
+            // Keyboard-based tab switch detection (Alt+Tab, Cmd+Tab)
+            document.addEventListener('keydown', this.handleKeyboardTabSwitch.bind(this));
+            
+            // Window focus/blur events
+            window.addEventListener('blur', this.handleWindowBlur.bind(this));
+            window.addEventListener('focus', this.handleWindowFocus.bind(this));
+            
+            // Document visibility changes
+            document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
+            
+            console.log("[TAB-SWITCH] Event listeners attached");
+        },
+
+        
+        setupIframeMonitoring: function(iframeElement) {
+            if (!iframeElement) {
+                console.warn("[TAB-SWITCH] No iframe element provided for monitoring");
+                return;
+            }
+            
+            console.log("[TAB-SWITCH] Setting up iframe monitoring");
+            
+            // Monitor iframe interactions to detect user activity
+            iframeElement.addEventListener('mousedown', () => {
+                console.log("[TAB-SWITCH] User clicking in iframe");
+                this.isIframeFocused = true;
+                this.trackUserActivity();
+                this.stopOutsideTimer();
+            });
+            
+            iframeElement.addEventListener('mousemove', () => {
+                this.trackUserActivity();
+                if (!this.isIframeFocused) {
+                    this.isIframeFocused = true;
+                    this.stopOutsideTimer();
+                }
+            });
+            
+            iframeElement.addEventListener('mouseenter', () => {
+                console.log("[TAB-SWITCH] Mouse entered iframe area");
+                this.trackUserActivity();
+                if (!this.isIframeFocused) {
+                    this.isIframeFocused = true;
+                    this.stopOutsideTimer();
+                }
+            });
+            
+            // Monitor iframe load events to detect navigation
+            iframeElement.addEventListener('load', () => {
+                console.log("[TAB-SWITCH] Iframe navigation detected");
+                this.recentIframeNavigation = true;
+                
+                // Clear the flag after a delay
+                setTimeout(() => {
+                    this.recentIframeNavigation = false;
+                    console.log("[TAB-SWITCH] Iframe navigation flag cleared");
+                }, this.config.iframeNavigationWindowMs);
+            });
+        },
+
+        
+        trackUserActivity: function() {
+            this.lastUserActivity = Date.now();
+            this.userActiveInPage = true;
+        },
+
+        
+        isGenuineTabSwitch: function() {
+            // If there was recent iframe navigation, don't count as tab switch
+            if (this.recentIframeNavigation) {
+                console.log("[TAB-SWITCH] Ignoring - recent iframe navigation");
+                return false;
+            }
+            
+            // If user was very recently active, be more lenient
+            const timeSinceActivity = Date.now() - this.lastUserActivity;
+            if (timeSinceActivity < this.config.activityWindowMs) {
+                console.log("[TAB-SWITCH] Ignoring - very recent user activity");
+                return false;
+            }
+            
+            // If document is hidden, it's likely a genuine tab switch
+            if (document.hidden) {
+                console.log("[TAB-SWITCH] Genuine tab switch - document is hidden");
+                return true;
+            }
+            
+            // If both main window and document lost focus
+            if (!this.mainWindowHasFocus && !document.hasFocus()) {
+                console.log("[TAB-SWITCH] Genuine tab switch - window and document lost focus");
+                return true;
+            }
+            
+            return false;
+        },
+
+        
+        incrementTabSwitchCount: function(reason) {
+            const now = Date.now();
+            const timeSinceLastSwitch = now - this.lastFocusTime;
+            
+            if (this.switchCooldownActive || timeSinceLastSwitch < this.config.cooldownMs) {
+                console.log("[TAB-SWITCH] Ignored - cooldown:", reason);
+                return;
+            }
+
+            if (!this.isGenuineTabSwitch()) {
+                console.log("[TAB-SWITCH] Ignored - not genuine:", reason);
+                return;
+            }
+
+            this.tabSwitchCount++;
+            this.switchCooldownActive = true;
+            console.log("[TAB-SWITCH] Detected (" + reason + ") - count:", this.tabSwitchCount);
+            
+            this.updateTabSwitchDisplay();
+
+            // Trigger callback
+            if (this.callbacks.onTabSwitch) {
+                this.callbacks.onTabSwitch(this.tabSwitchCount, this.totalTimeOutside);
+            }
+
+            // Reset cooldown
+            setTimeout(() => { 
+                this.switchCooldownActive = false; 
+            }, this.config.cooldownMs);
+        },
+
+        
+        startOutsideTimer: function() {
+            if (this.timeOutsideInterval || this.outsideStartTime > 0) return;
+            
+            if (this.recentIframeNavigation) {
+                console.log("[TAB-SWITCH] Not starting timer - recent iframe navigation");
+                return;
+            }
+
+            if (document.hidden || !document.hasFocus()) {
+                this.outsideStartTime = Date.now();
+                console.log("[TAB-SWITCH] Outside timer started at:", this.outsideStartTime);
+
+                this.setTimeOutsideDisplay(this.totalTimeOutside);
+                
+                let tickCount = 0;
+
+                this.timeOutsideInterval = setInterval(() => {
+                    const currentSessionTime = Math.floor((Date.now() - this.outsideStartTime) / 1000);
+                    const displayTime = this.totalTimeOutside + currentSessionTime;
+                    this.setTimeOutsideDisplay(displayTime);
+                    
+                    // Periodic backend update
+                    tickCount++;
+                    if (tickCount >= this.config.backendUpdateInterval) {
+                        if (this.callbacks.onBackendUpdate) {
+                            this.callbacks.onBackendUpdate(this.tabSwitchCount, displayTime);
+                        }
+                        tickCount = 0;
+                    }
+                }, this.config.updateIntervalMs);
+            }
+        },
+
+        
+        stopOutsideTimer: function() {
+            if (this.timeOutsideInterval) {
+                clearInterval(this.timeOutsideInterval);
+                this.timeOutsideInterval = null;
+            }
+
+            if (this.outsideStartTime > 0) {
+                const elapsedMs = Date.now() - this.outsideStartTime;
+                const elapsedSecs = Math.floor(elapsedMs / 1000);
+
+                this.totalTimeOutside += elapsedSecs;
+
+                console.log("[TAB-SWITCH] Timer stopped - elapsed:", elapsedSecs, "total:", this.totalTimeOutside);
+                this.setTimeOutsideDisplay(this.totalTimeOutside);
+
+                // Trigger callback
+                if (this.callbacks.onTimeUpdate) {
+                    this.callbacks.onTimeUpdate(this.tabSwitchCount, this.totalTimeOutside);
+                }
+
+                this.outsideStartTime = 0;
+            }
+        },
+
+        
+        handleKeyboardTabSwitch: function(event) {
+            if ((event.altKey && event.key === 'Tab') || (event.metaKey && event.key === 'Tab')) {
+                console.log("[TAB-SWITCH] Keyboard tab switch detected");
+                if (!this.hasCountedSinceBlur && !this.recentIframeNavigation) {
+                    this.incrementTabSwitchCount('Keyboard: Alt+Tab or Cmd+Tab');
+                    this.hasCountedSinceBlur = true;
+                    this.startOutsideTimer();
+                }
+            }
+        },
+
+        
+        handleWindowBlur: function() {
+            const blurTimestamp = Date.now();
+            this.lastBlurTime = blurTimestamp;
+            this.mainWindowHasFocus = false;
+            this.isWindowFocused = false;
+            console.log("[TAB-SWITCH] Window blurred at:", blurTimestamp);
+
+            setTimeout(() => {
+                if (!this.recentIframeNavigation && !this.timeOutsideInterval && this.outsideStartTime === 0) {
+                    if (!document.hasFocus() || document.hidden) {
+                        this.outsideStartTime = blurTimestamp;
+                        console.log("[TAB-SWITCH] Timer started at:", this.outsideStartTime);
+
+                        this.timeOutsideInterval = setInterval(() => {
+                            const currentSessionTime = Math.floor((Date.now() - this.outsideStartTime) / 1000);
+                            const displayTime = this.totalTimeOutside + currentSessionTime;
+                            this.setTimeOutsideDisplay(displayTime);
+                        }, this.config.updateIntervalMs);
+
+                        this.setTimeOutsideDisplay(this.totalTimeOutside);
+                    }
+                }
+
+                if (!this.hasCountedSinceBlur && !this.recentIframeNavigation) {
+                    if (!document.hasFocus() || document.hidden) {
+                        this.incrementTabSwitchCount('Window blur - genuine tab switch');
+                        this.hasCountedSinceBlur = true;
+                    }
+                }
+            }, this.config.cooldownMs);
+        },
+
+        
+        handleWindowFocus: function() {
+            const focusTimestamp = Date.now();
+            const blurDuration = this.lastBlurTime > 0 ? focusTimestamp - this.lastBlurTime : 0;
+            this.lastFocusTime = focusTimestamp;
+            this.mainWindowHasFocus = true;
+
+            console.log("[TAB-SWITCH] Window focused at:", focusTimestamp, "blur:", blurDuration + "ms");
+
+            if (this.timeOutsideInterval) {
+                clearInterval(this.timeOutsideInterval);
+                this.timeOutsideInterval = null;
+            }
+
+            if (this.outsideStartTime > 0) {
+                const elapsedMs = focusTimestamp - this.outsideStartTime;
+                const elapsedSecs = Math.floor(elapsedMs / 1000);
+
+                this.totalTimeOutside += elapsedSecs;
+
+                console.log("[TAB-SWITCH] Timer stopped - elapsed:", elapsedSecs, "total:", this.totalTimeOutside);
+                this.setTimeOutsideDisplay(this.totalTimeOutside);
+
+                this.outsideStartTime = 0;
+            }
+
+            if (!this.hasCountedSinceBlur && !this.isWindowFocused && blurDuration > this.config.minBlurDurationMs) {
+                if (!this.recentIframeNavigation && (this.iframeBlurTime === 0 || Math.abs(this.lastBlurTime - this.iframeBlurTime) > this.config.cooldownMs)) {
+                    this.incrementTabSwitchCount('Focus regained after ' + blurDuration + 'ms absence');
+                    this.hasCountedSinceBlur = true;
+                }
+            }
+
+            this.isWindowFocused = true;
+            this.hasCountedSinceBlur = false;
+        },
+
+        
+        handleVisibilityChange: function() {
+            const changeTimestamp = Date.now();
+
+            if (document.hidden) {
+                this.lastBlurTime = changeTimestamp;
+                this.mainWindowHasFocus = false;
+                this.isWindowFocused = false;
+                console.log("[TAB-SWITCH] Document hidden at:", changeTimestamp);
+
+                if (!this.recentIframeNavigation && !this.timeOutsideInterval && this.outsideStartTime === 0) {
+                    this.outsideStartTime = changeTimestamp;
+                    console.log("[TAB-SWITCH] Timer started at:", this.outsideStartTime);
+
+                    this.timeOutsideInterval = setInterval(() => {
+                        const currentSessionTime = Math.floor((Date.now() - this.outsideStartTime) / 1000);
+                        const displayTime = this.totalTimeOutside + currentSessionTime;
+                        this.setTimeOutsideDisplay(displayTime);
+                    }, this.config.updateIntervalMs);
+
+                    this.setTimeOutsideDisplay(this.totalTimeOutside);
+                }
+
+                if (!this.hasCountedSinceBlur && !this.recentIframeNavigation) {
+                    this.incrementTabSwitchCount('Visibility hidden - genuine tab switch');
+                    this.hasCountedSinceBlur = true;
+                }
+            } else {
+                const blurDuration = this.lastBlurTime > 0 ? changeTimestamp - this.lastBlurTime : 0;
+                this.lastFocusTime = changeTimestamp;
+                this.mainWindowHasFocus = true;
+                console.log("[TAB-SWITCH] Document visible at:", changeTimestamp, "blur:", blurDuration + "ms");
+
+                if (this.timeOutsideInterval) {
+                    clearInterval(this.timeOutsideInterval);
+                    this.timeOutsideInterval = null;
+                }
+
+                if (this.outsideStartTime > 0) {
+                    const elapsedMs = changeTimestamp - this.outsideStartTime;
+                    const elapsedSecs = Math.floor(elapsedMs / 1000);
+
+                    this.totalTimeOutside += elapsedSecs;
+
+                    console.log("[TAB-SWITCH] Timer stopped - elapsed:", elapsedSecs, "total:", this.totalTimeOutside);
+                    this.setTimeOutsideDisplay(this.totalTimeOutside);
+
+                    this.outsideStartTime = 0;
+                }
+
+                if (!this.hasCountedSinceBlur && blurDuration > this.config.minBlurDurationMs) {
+                    if (!this.recentIframeNavigation && (this.iframeBlurTime === 0 || Math.abs(this.lastBlurTime - this.iframeBlurTime) > this.config.cooldownMs)) {
+                        this.incrementTabSwitchCount('Visibility visible after ' + blurDuration + 'ms absence');
+                        this.hasCountedSinceBlur = true;
+                    }
+                }
+
+                this.isWindowFocused = true;
+                this.hasCountedSinceBlur = false;
+            }
+        },
+
+        
+        updateTabSwitchDisplay: function() {
+            const el = document.getElementById('tab-count');
+            if (el) {
+                el.textContent = this.tabSwitchCount;
+            }
+        },
+
+        
+        setTimeOutsideDisplay: function(seconds) {
+            const el = document.getElementById('time-outside');
+            if (el) {
+                el.textContent = seconds + 's';
+            }
+        },
+
+        
+        getStats: function() {
+            return {
+                tabSwitchCount: this.tabSwitchCount,
+                totalTimeOutside: this.totalTimeOutside,
+                isWindowFocused: this.isWindowFocused,
+                isIframeFocused: this.isIframeFocused,
+                currentSessionTime: this.outsideStartTime > 0 
+                    ? Math.floor((Date.now() - this.outsideStartTime) / 1000) 
+                    : 0
+            };
+        },
+
+        
+        reset: function() {
+            console.log("[TAB-SWITCH] Resetting all counters");
+            
+            // Stop timer if running
+            if (this.timeOutsideInterval) {
+                clearInterval(this.timeOutsideInterval);
+                this.timeOutsideInterval = null;
+            }
+            
+            // Reset counters
+            this.tabSwitchCount = 0;
+            this.totalTimeOutside = 0;
+            this.outsideStartTime = 0;
+            
+            // Reset flags
+            this.hasCountedSinceBlur = false;
+            this.switchCooldownActive = false;
+            this.recentIframeNavigation = false;
+            
+            // Update displays
+            this.updateTabSwitchDisplay();
+            this.setTimeOutsideDisplay(0);
+        },
+
+        
+        sendFinalUpdate: function() {
+            console.log("[TAB-SWITCH] Sending final update");
+            
+            // Stop any running timer
+            this.stopOutsideTimer();
+            
+            // Trigger final callback
+            if (this.callbacks.onBackendUpdate) {
+                this.callbacks.onBackendUpdate(this.tabSwitchCount, this.totalTimeOutside);
+            }
+        },
+
+        
+        cleanup: function() {
+            console.log("[TAB-SWITCH] Cleaning up detector");
+            
+            // Send final update
+            this.sendFinalUpdate();
+            
+            // Remove event listeners
+            document.removeEventListener('keydown', this.handleKeyboardTabSwitch);
+            window.removeEventListener('blur', this.handleWindowBlur);
+            window.removeEventListener('focus', this.handleWindowFocus);
+            document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+            
+            // Clear timer
+            if (this.timeOutsideInterval) {
+                clearInterval(this.timeOutsideInterval);
+                this.timeOutsideInterval = null;
+            }
+            
+            console.log("[TAB-SWITCH] Detector cleaned up");
+        }
+    };
+
+    console.log("[TAB-SWITCH] Module ready - use window.TabSwitchDetector to access");
+})();
+</script>
+
+<style>
+/* Tab switch counter display styles */
+#tab-switch-counter {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #e9ecef;
+    border-radius: 5px;
+    text-align: center;
+    border: 1px solid #ced4da;
+}
+
+#tab-switch-counter .counter-label {
+    font-weight: bold;
+    color: #495057;
+}
+
+#tab-switch-counter .counter-value {
+    font-size: 1.1em;
+    color: #dc3545;
+}
+
+#tab-switch-counter .monitoring-label {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 2px;
+}
+</style>
