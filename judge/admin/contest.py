@@ -127,6 +127,7 @@ class ContestForm(ModelForm):
             'view_contest_scoreboard': AdminHeavySelect2MultipleWidget(data_view='profile_select2'),
             'view_contest_submissions': AdminHeavySelect2MultipleWidget(data_view='profile_select2'),
             'description': AdminMartorWidget(attrs={'data-markdownfy-url': reverse_lazy('contest_preview')}),
+            'mcq_problems': AdminHeavySelect2MultipleWidget(data_view='mcq_problem_select2'),
         }
 
 

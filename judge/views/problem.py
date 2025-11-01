@@ -38,6 +38,9 @@ from judge.utils.problems import contest_attempted_ids, contest_completed_ids, h
 from judge.utils.strings import safe_float_or_none, safe_int_or_none
 from judge.utils.tickets import own_ticket_filter
 from judge.utils.views import QueryStringSortMixin, SingleObjectFormView, TitleMixin, add_file_response, generic_message
+from judge.models.problem import Problem
+from judge.models.mcq_problem import MCQProblem
+
 
 recjk = re.compile(r'[\u2E80-\u2E99\u2E9B-\u2EF3\u2F00-\u2FD5\u3005\u3007\u3021-\u3029\u3038-\u303A\u303B\u3400-\u4DB5'
                    r'\u4E00-\u9FC3\uF900-\uFA2D\uFA30-\uFA6A\uFA70-\uFAD9\U00020000-\U0002A6D6\U0002F800-\U0002FA1D]')
@@ -482,10 +485,26 @@ class ProblemList(QueryStringSortMixin, TitleMixin, SolvedProblemMixin, ListView
         return queryset.distinct()
 
     def get_queryset(self):
-        if self.in_contest:
-            return self.get_contest_queryset()
+        qs = super().get_queryset()
+        return qs.filter(problem_type__in=['code', 'mcq'])
+
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['problems'] = self.get_queryset()
+        return context
+
+    def paginate_queryset(self, queryset, page_size):
+        if isinstance(queryset, list):
+            paginator = Paginator(queryset, page_size)
+            page_number = self.request.GET.get('page') or 1
+            page_obj = paginator.get_page(page_number)
+            return (paginator, page_obj, page_obj.object_list, paginator.num_pages > 1)
         else:
-            return self.get_normal_queryset()
+            return super().paginate_queryset(queryset, page_size)
+
+
+
 
     def get_context_data(self, **kwargs):
         context = super(ProblemList, self).get_context_data(**kwargs)
@@ -507,6 +526,10 @@ class ProblemList(QueryStringSortMixin, TitleMixin, SolvedProblemMixin, ListView
         if not self.in_contest:
             context.update(self.get_sort_context())
             context['hot_problems'] = hot_problems(timedelta(days=1), settings.DMOJ_PROBLEM_HOT_PROBLEM_COUNT)
+            self.point_start = None
+            self.point_end = None
+            self.point_values = []
+            self.prepoint_queryset = self.get_queryset()
             context['point_start'], context['point_end'], context['point_values'] = self.get_noui_slider_points()
         else:
             context['hot_problems'] = None
@@ -516,7 +539,13 @@ class ProblemList(QueryStringSortMixin, TitleMixin, SolvedProblemMixin, ListView
                 self.contest.SCOREBOARD_AFTER_PARTICIPATION,
                 self.contest.SCOREBOARD_HIDDEN,
             )
+
+        # ✅ ADD THIS BLOCK
+        context['mcq_problems'] = MCQProblem.objects.all()
+        # ✅ END ADDITION
+
         return context
+
 
     def get_noui_slider_points(self):
         points = sorted(self.prepoint_queryset.values_list('points', flat=True).distinct())
@@ -553,7 +582,6 @@ class ProblemList(QueryStringSortMixin, TitleMixin, SolvedProblemMixin, ListView
         self.category = None
         self.selected_types = []
 
-        # This actually copies into the instance dictionary...
         self.all_sorts = set(self.all_sorts)
         if not self.show_types:
             self.all_sorts.discard('type')
@@ -565,8 +593,9 @@ class ProblemList(QueryStringSortMixin, TitleMixin, SolvedProblemMixin, ListView
             except ValueError:
                 pass
 
-        self.point_start = safe_float_or_none(request.GET.get('point_start'))
-        self.point_end = safe_float_or_none(request.GET.get('point_end'))
+
+
+
 
     def get(self, request, *args, **kwargs):
         self.setup_problem_list(request)
@@ -585,6 +614,11 @@ class ProblemList(QueryStringSortMixin, TitleMixin, SolvedProblemMixin, ListView
             else:
                 request.session.pop(key, None)
         return HttpResponseRedirect(request.get_full_path())
+
+
+class MCQProblemList(ProblemList):
+    def get_queryset(self):
+        return Problem.objects.filter(problem_type='mcq')
 
 
 class LanguageTemplateAjax(View):
@@ -748,6 +782,7 @@ class ProblemSubmit(LoginRequiredMixin, ProblemMixin, TitleMixin, SingleObjectFo
         context['submissions_left'] = self.remaining_submission_count
         context['ACE_URL'] = settings.ACE_URL
         context['default_lang'] = self.default_language
+        context['problem_kind'] = self.problem_kind
         return context
 
     def post(self, request, *args, **kwargs):

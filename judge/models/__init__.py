@@ -16,6 +16,7 @@ from judge.models.submission import SUBMISSION_RESULT, Submission, SubmissionSou
 from judge.models.ticket import Ticket, TicketMessage
 from judge.models.emailing import EmailTemplate, BulkEmailCampaign, EmailRecipient, EmailLog
 from .similarity import SimilarityScore
+from judge.models.mcq_problem import MCQProblem, MCQOption
 
 revisions.register(Profile, exclude=['points', 'last_access', 'ip', 'rating'])
 revisions.register(Problem, follow=['language_limits'])

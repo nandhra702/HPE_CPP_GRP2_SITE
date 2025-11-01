@@ -110,7 +110,7 @@ def download_problem_submissions(request, contest_key):
         return HttpResponseForbidden("You are not allowed to access this resource.")
 
     problems = contest.problems.all()
-    base_dir = "/home/lalith/submissions"  # or any path you want
+    base_dir = "/home/trishal/submissions"  # or any path you want
     os.makedirs(base_dir, exist_ok=True)
     tmp_dir = os.path.join(base_dir, f"contest_{contest_key}_{timestamp}")
     os.makedirs(tmp_dir, exist_ok=True)

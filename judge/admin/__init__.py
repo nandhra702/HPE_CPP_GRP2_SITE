@@ -18,6 +18,7 @@ from judge.models import BlogPost, Class, Comment, CommentLock, Contest, Contest
     ContestTag, Judge, Language, License, MiscConfig, NavigationBar, Organization, \
     OrganizationRequest, Problem, ProblemGroup, ProblemPointsVote, ProblemType, Profile, Submission, Ticket, \
     EmailTemplate, BulkEmailCampaign, EmailRecipient, EmailLog
+from judge.admin.mcq_problem import MCQProblemAdmin
 
 admin.site.register(BlogPost, BlogPostAdmin)
 admin.site.register(Comment, CommentAdmin)

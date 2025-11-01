@@ -113,6 +113,16 @@ class Problem(models.Model):
         (SubmissionSourceAccess.SOLVED, _('Visible if problem solved')),
         (SubmissionSourceAccess.ONLY_OWN, _('Only own submissions')),
     )
+    PROBLEM_TYPES = (
+        ('code', 'Coding Problem'),
+        ('mcq', 'MCQ Problem'),
+    )
+
+    problem_type = models.CharField(
+        max_length=10,
+        choices=PROBLEM_TYPES,
+        default='code',
+    )
 
     code = models.CharField(max_length=20, verbose_name=_('problem code'), unique=True,
                             validators=[RegexValidator('^[a-z0-9]+$', _('Problem code must be ^[a-z0-9]+$'))],
@@ -164,9 +174,9 @@ class Problem(models.Model):
                                 help_text=_('The license under which this problem is published.'))
     og_image = models.CharField(verbose_name=_('OpenGraph image'), max_length=150, blank=True)
     summary = models.TextField(blank=True, verbose_name=_('problem summary'),
-                               help_text=_('Plain-text, shown in meta description tag, e.g. for social media.'))
+                           help_text=_('Plain-text, shown in meta description tag, e.g. for social media.'))
     user_count = models.IntegerField(verbose_name=_('number of users'), default=0,
-                                     help_text=_('The number of users who solved the problem.'))
+                                    help_text=_('The number of users who solved the problem.'))
     ac_rate = models.FloatField(verbose_name=_('solve rate'), default=0)
     is_full_markup = models.BooleanField(verbose_name=_('allow full markdown access'), default=False)
     submission_source_visibility_mode = models.CharField(verbose_name=_('submission source visibility'), max_length=1,
@@ -196,6 +206,10 @@ class Problem(models.Model):
     def is_editor(self, profile):
         return (self.authors.filter(id=profile.id) | self.curators.filter(id=profile.id)).exists()
 
+    @property
+    def is_mcq(self):
+        return False
+        
     def is_editable_by(self, user):
         if not user.is_authenticated:
             return False
@@ -505,7 +519,6 @@ class Problem(models.Model):
         )
         verbose_name = _('problem')
         verbose_name_plural = _('problems')
-
 
 class ProblemTranslation(models.Model):
     problem = models.ForeignKey(Problem, verbose_name=_('problem'), related_name='translations', on_delete=CASCADE)

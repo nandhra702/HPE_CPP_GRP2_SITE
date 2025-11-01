@@ -16,6 +16,8 @@ from judge.models.problem import Problem
 from judge.models.profile import Class, Organization, Profile
 from judge.models.submission import Submission
 from judge.ratings import rate_contest
+from judge.models.mcq_problem import MCQProblem
+
 
 __all__ = ['Contest', 'ContestTag', 'ContestParticipation', 'ContestProblem', 'ContestSubmission', 'Rating']
 
@@ -88,6 +90,7 @@ class Contest(models.Model):
                                         blank=True, related_name='spectated_contests')
     description = models.TextField(verbose_name=_('description'), blank=True)
     problems = models.ManyToManyField(Problem, verbose_name=_('problems'), through='ContestProblem')
+    mcq_problems = models.ManyToManyField(MCQProblem,verbose_name=_('MCQ Problems'),blank=True,related_name='contests',help_text=_('Multiple-choice questions included in this contest.'))
     start_time = models.DateTimeField(verbose_name=_('start time'), db_index=True)
     end_time = models.DateTimeField(verbose_name=_('end time'), db_index=True)
     time_limit = models.DurationField(verbose_name=_('time limit'), blank=True, null=True)

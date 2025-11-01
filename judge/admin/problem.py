@@ -138,7 +138,13 @@ class ProblemAdmin(NoBatchDeleteMixin, VersionAdmin):
     list_display = ['code', 'name', 'show_authors', 'points', 'is_public', 'show_public']
     ordering = ['code']
     search_fields = ('code', 'name', 'authors__user__username', 'curators__user__username')
-    inlines = [LanguageLimitInline, ProblemClarificationInline, ProblemSolutionInline, ProblemTranslationInline]
+    inlines = [
+        LanguageLimitInline,
+        ProblemClarificationInline,
+        ProblemSolutionInline,
+        ProblemTranslationInline,
+    ]
+
     list_max_show_all = 1000
     actions_on_top = True
     actions_on_bottom = True
