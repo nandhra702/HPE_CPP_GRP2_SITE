@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block title %}Similarity Table{% endblock %}
+
+{% block content_title %}
+    Similarity Table
+{% endblock %}
+
+{% block body %}
+    {% if rows and headers %}
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped table-hover">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>User</th>
+                        {% for header in headers %}
+                            <th>{{ header }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                        <tr>
+                            {% for col in row %}
+                                <td>{{ col }}</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-warning" role="alert">
+            Similarity file not found. Please download the submissions first.
+        </div>
+    {% endif %}
+{% endblock %}

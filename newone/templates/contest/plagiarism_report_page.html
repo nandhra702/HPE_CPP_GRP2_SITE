@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block title %}Plagiarism Reports{% endblock %}
+
+{% block content_title %}
+Plagiarism Reports
+{% endblock %}
+
+{% block body %}
+{% if reports %}
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Problem</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for report in reports %}
+        <tr>
+            <td>{{ report.problem_name }}</td>
+            <td style="text-align: center; vertical-align: middle;">
+                <form method="POST" action="{{ report.url }}">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-sm btn-primary">Generate Report</button>
+                </form>
+
+            </td>
+
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No problems available for report generation.</p>
+{% endif %}
+{% endblock %}

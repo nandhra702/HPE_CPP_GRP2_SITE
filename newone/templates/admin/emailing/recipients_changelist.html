@@ -1,0 +1,35 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block content %}
+    <div class="module" style="margin-bottom: 20px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #28a745;">
+        <h2 style="margin-top: 0;">📊 Email Recipients Status Tracking</h2>
+        <p><strong>Purpose:</strong> This section shows the individual delivery status of each email recipient from all campaigns.</p>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 15px 0;">
+            <div style="background: #d4edda; padding: 10px; border-radius: 4px; text-align: center;">
+                <strong>✅ Sent</strong><br>
+                <small>Successfully delivered</small>
+            </div>
+            <div style="background: #f8d7da; padding: 10px; border-radius: 4px; text-align: center;">
+                <strong>❌ Failed</strong><br>
+                <small>Delivery failed</small>
+            </div>
+            <div style="background: #fff3cd; padding: 10px; border-radius: 4px; text-align: center;">
+                <strong>⏳ Pending</strong><br>
+                <small>Waiting to be sent</small>
+            </div>
+            <div style="background: #ffeaa7; padding: 10px; border-radius: 4px; text-align: center;">
+                <strong>⚠️ Invalid</strong><br>
+                <small>Invalid email format</small>
+            </div>
+        </div>
+        
+        {% if cl.result_count == 0 %}
+        <div style="background-color: #e2e3e5; border: 1px solid #d6d8db; padding: 10px; border-radius: 4px; margin-top: 10px;">
+            <strong>💡 Info:</strong> No email recipients yet. Recipients are automatically created when you send bulk email campaigns.
+        </div>
+        {% endif %}
+    </div>
+    {{ block.super }}
+{% endblock %}

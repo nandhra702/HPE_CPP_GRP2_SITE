@@ -1,0 +1,26 @@
+{% extends "user/base-users.html" %}
+
+{% block title_ruler %}{% endblock %}
+
+{% block title_row %}
+    {% set tab = 'list' %}
+    {% include "user/user-list-tabs.html" %}
+{% endblock %}
+
+{% block js_media %}
+    {{ super() }}
+    <script>
+        // If this page is loaded inside an iframe, notify the parent.
+        if (window.parent !== window) {
+            // Notify the parent wrapper that this page has loaded.
+            window.parent.postMessage(
+                { proctoringPage: "user_list" },
+                window.location.origin
+            );
+        }
+    </script>
+{% endblock %}
+
+{% block users_table %}
+    {% include "user/users-table.html" %}
+{% endblock %}

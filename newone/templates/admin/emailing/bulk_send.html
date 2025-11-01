@@ -1,0 +1,328 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block title %}{{ title|capfirst }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script type="text/javascript" src="{% url 'admin:jsi18n' %}"></script>
+{{ media }}
+<style>
+    .bulk-email-form {
+        max-width: 800px;
+    }
+    .form-row {
+        margin-bottom: 15px;
+    }
+    .form-row label {
+        display: inline-block;
+        width: 150px;
+        font-weight: bold;
+        vertical-align: top;
+        margin-right: 10px;
+    }
+    .form-row .helptext {
+        display: block;
+        margin-top: 5px;
+        font-size: 11px;
+        color: #666;
+        margin-left: 160px;
+    }
+    .template-selection {
+        margin-bottom: 20px;
+    }
+    .custom-email-fields {
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin-top: 10px;
+        background-color: #f9f9f9;
+    }
+    .template-preview {
+        display: none;
+        border: 1px solid #79aec8;
+        padding: 15px;
+        margin-top: 10px;
+        background-color: #e8f4fd;
+    }
+    .template-preview h4 {
+        margin-top: 0;
+        color: #0c4b7a;
+    }
+    .file-upload-section {
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin: 20px 0;
+        background-color: #f5f5f5;
+    }
+    .submit-section {
+        margin-top: 30px;
+        padding: 20px;
+        background-color: #e8f4fd;
+        border: 1px solid #79aec8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="bulk-email-form">
+    <p>Use this interface to send emails to multiple recipients by uploading a CSV or Excel file containing email addresses.</p>
+    
+    <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        
+        {% if form.non_field_errors %}
+            <div class="errornote">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+        
+        <!-- Campaign Information -->
+        <fieldset class="module aligned">
+            <h2>Campaign Information</h2>
+            <div class="form-row">
+                {{ form.campaign_name.label_tag }}
+                {{ form.campaign_name }}
+                {% if form.campaign_name.help_text %}
+                    <div class="helptext">{{ form.campaign_name.help_text }}</div>
+                {% endif %}
+                {% if form.campaign_name.errors %}
+                    <div class="errorlist">{{ form.campaign_name.errors }}</div>
+                {% endif %}
+            </div>
+        </fieldset>
+        
+        <!-- Template Selection -->
+        <fieldset class="module aligned template-selection">
+            <h2>Email Content</h2>
+            <div class="form-row">
+                {{ form.template.label_tag }}
+                {{ form.template }}
+                {% if form.template.help_text %}
+                    <div class="helptext">{{ form.template.help_text }}</div>
+                {% endif %}
+                {% if form.template.errors %}
+                    <div class="errorlist">{{ form.template.errors }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- Template Editing Option -->
+            <div class="form-row">
+                {{ form.enable_template_editing }}
+                {{ form.enable_template_editing.label_tag }}
+                {% if form.enable_template_editing.help_text %}
+                    <div class="helptext">{{ form.enable_template_editing.help_text }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- Custom Email Fields (shown when custom is selected) -->
+            <div class="custom-email-fields" id="custom-email-fields">
+                <h3>Custom Email Content</h3>
+                <div class="form-row">
+                    {{ form.subject.label_tag }}
+                    {{ form.subject }}
+                    {% if form.subject.help_text %}
+                        <div class="helptext">{{ form.subject.help_text }}</div>
+                    {% endif %}
+                    {% if form.subject.errors %}
+                        <div class="errorlist">{{ form.subject.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="form-row">
+                    {{ form.body.label_tag }}
+                    {{ form.body }}
+                    {% if form.body.help_text %}
+                        <div class="helptext">{{ form.body.help_text }}</div>
+                    {% endif %}
+                    {% if form.body.errors %}
+                        <div class="errorlist">{{ form.body.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="form-row">
+                    {{ form.is_html }}
+                    {{ form.is_html.label_tag }}
+                    {% if form.is_html.help_text %}
+                        <div class="helptext">{{ form.is_html.help_text }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Template Preview Fields (shown when existing template is selected) -->
+            <div class="template-preview" id="template-preview">
+                <h4>Template Content (Editable)</h4>
+                <p><em>You can edit the template content below. Changes will only apply to this campaign.</em></p>
+                <div class="form-row">
+                    {{ form.subject.label_tag }}
+                    {{ form.subject }}
+                    {% if form.subject.help_text %}
+                        <div class="helptext">{{ form.subject.help_text }}</div>
+                    {% endif %}
+                    {% if form.subject.errors %}
+                        <div class="errorlist">{{ form.subject.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="form-row">
+                    {{ form.body.label_tag }}
+                    {{ form.body }}
+                    {% if form.body.help_text %}
+                        <div class="helptext">{{ form.body.help_text }}</div>
+                    {% endif %}
+                    {% if form.body.errors %}
+                        <div class="errorlist">{{ form.body.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="form-row">
+                    {{ form.is_html }}
+                    {{ form.is_html.label_tag }}
+                    {% if form.is_html.help_text %}
+                        <div class="helptext">{{ form.is_html.help_text }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </fieldset>
+        
+        <!-- File Upload Section -->
+        <fieldset class="module aligned file-upload-section">
+            <h2>Recipients File</h2>
+            <div class="form-row">
+                {{ form.email_file.label_tag }}
+                {{ form.email_file }}
+                {% if form.email_file.help_text %}
+                    <div class="helptext">{{ form.email_file.help_text }}</div>
+                {% endif %}
+                {% if form.email_file.errors %}
+                    <div class="errorlist">{{ form.email_file.errors }}</div>
+                {% endif %}
+            </div>
+            <div class="form-row">
+                {{ form.email_column.label_tag }}
+                {{ form.email_column }}
+                {% if form.email_column.help_text %}
+                    <div class="helptext">{{ form.email_column.help_text }}</div>
+                {% endif %}
+                {% if form.email_column.errors %}
+                    <div class="errorlist">{{ form.email_column.errors }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="helptext">
+                <strong>File Format Requirements:</strong>
+                <ul>
+                    <li>Supported formats: CSV (.csv) and Excel (.xlsx, .xls)</li>
+                    <li>File must contain a column with email addresses</li>
+                    <li>First row should contain column headers</li>
+                    <li>Additional columns can be included for personalization (stored as extra data)</li>
+                </ul>
+            </div>
+        </fieldset>
+        
+        <!-- Submit Section -->
+        <div class="submit-section">
+            <h3>Ready to Send?</h3>
+            <p><strong>Important:</strong> Once you click "Send Bulk Emails", the campaign will be created and emails will be sent asynchronously in the background. You can monitor the progress in the campaigns list.</p>
+            <input type="submit" value="Send Bulk Emails" class="default" />
+            <a href="{% url 'admin:judge_bulkemailcampaign_changelist' %}" class="button">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const templateSelect = document.getElementById('id_template');
+    const customFields = document.getElementById('custom-email-fields');
+    const templatePreview = document.getElementById('template-preview');
+    const subjectField = document.getElementById('id_subject');
+    const bodyField = document.getElementById('id_body');
+    const isHtmlField = document.getElementById('id_is_html');
+    const enableEditingCheckbox = document.getElementById('id_enable_template_editing');
+    
+    function toggleEmailFields() {
+        const selectedValue = templateSelect.value;
+        const editingEnabled = enableEditingCheckbox.checked;
+        
+        if (selectedValue === 'custom') {
+            customFields.style.display = 'block';
+            templatePreview.style.display = 'none';
+            // Clear fields for custom email
+            subjectField.value = '';
+            bodyField.value = '';
+            isHtmlField.checked = true;
+        } else if (selectedValue && selectedValue !== 'custom') {
+            if (editingEnabled) {
+                customFields.style.display = 'none';
+                templatePreview.style.display = 'block';
+                // Load template data for editing
+                loadTemplateData(selectedValue);
+            } else {
+                // Hide both editing interfaces when template editing is disabled
+                customFields.style.display = 'none';
+                templatePreview.style.display = 'none';
+                // Clear fields so they don't interfere with template
+                subjectField.value = '';
+                bodyField.value = '';
+                isHtmlField.checked = true;
+            }
+        } else {
+            customFields.style.display = 'none';
+            templatePreview.style.display = 'none';
+            // Clear fields
+            subjectField.value = '';
+            bodyField.value = '';
+            isHtmlField.checked = true;
+        }
+    }
+    
+    function loadTemplateData(templateId) {
+        // Show loading indicator
+        subjectField.value = 'Loading...';
+        bodyField.value = 'Loading template content...';
+        
+        // Get CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        // Fetch template data via AJAX
+        fetch(`/admin/judge/bulkemailcampaign/get-template/${templateId}/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin'
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    subjectField.value = data.subject;
+                    bodyField.value = data.body;
+                    isHtmlField.checked = data.is_html;
+                } else {
+                    alert('Error loading template: ' + (data.error || 'Unknown error'));
+                    subjectField.value = '';
+                    bodyField.value = '';
+                    isHtmlField.checked = true;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading template:', error);
+                alert('Error loading template data. Please try again.');
+                subjectField.value = '';
+                bodyField.value = '';
+                isHtmlField.checked = true;
+            });
+    }
+    
+    // Initial toggle
+    toggleEmailFields();
+    
+    // Toggle on changes
+    templateSelect.addEventListener('change', toggleEmailFields);
+    enableEditingCheckbox.addEventListener('change', toggleEmailFields);
+});
+</script>
+{% endblock %}

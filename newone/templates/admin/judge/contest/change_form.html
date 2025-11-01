@@ -1,0 +1,285 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block extrahead %}{{ block.super }}
+    <script>
+        django.jQuery(function ($) {
+            $('.rerate-link').appendTo('div#bottombar').show();
+            $('.rejudge-link').click(function (event) {
+                if (confirm('{{ _('Are you sure you want to rejudge ALL the submissions?') }}')) {
+                    return true;
+                }
+                event.stopImmediatePropagation();
+                return false;
+            });
+            
+            // Add Generate Accounts button functionality
+            var $csvField = $('#id_emails_csv').closest('.form-row');
+            if ($csvField.length) {
+                var $buttonRow = $('<div class="form-row field-generate_accounts"></div>');
+                var $buttonWrapper = $('<div class="generate-accounts-wrapper"></div>');
+                var $button = $('<button type="button" id="generate-accounts-btn" class="button generate-accounts-btn">' + 
+                               '{% trans "Generate Accounts from Uploaded File" %}</button>');
+                var $statusDiv = $('<div id="generation-status" style="margin-top: 10px; padding: 10px; display: none; border-radius: 4px;"></div>');
+                
+                $buttonWrapper.append($button);
+                $buttonWrapper.append($statusDiv);
+                $buttonRow.append($buttonWrapper);
+                $csvField.after($buttonRow);
+                
+                // Handle button click
+                $button.on('click', function(e) {
+                    e.preventDefault();
+                    
+                    var fileInput = document.getElementById('id_emails_csv');
+                    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+                        alert('{% trans "Please select a CSV or Excel file first." %}');
+                        return;
+                    }
+                    
+                    var file = fileInput.files[0];
+                    var formData = new FormData();
+                    formData.append('emails_csv', file);
+                    formData.append('csrfmiddlewaretoken', $('input[name="csrfmiddlewaretoken"]').val());
+                    
+                    // Get contest ID if editing existing contest
+                    var contestId = '{{ original.id|default:"" }}';
+                    var url = contestId ? 
+                        '/admin/judge/contest/' + contestId + '/generate-accounts/' :
+                        '/admin/judge/contest/generate-accounts/';
+                    
+                    // Disable button and show loading
+                    $button.prop('disabled', true).text('{% trans "Processing..." %}');
+                    $statusDiv.hide().removeClass('success error');
+                    
+                    $.ajax({
+                        url: url,
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: function(response) {
+                            $button.prop('disabled', false).text('{% trans "Generate Accounts from Uploaded File" %}');
+                            $statusDiv.addClass('success')
+                                     .html('<strong>✓ Success:</strong> ' + response.message)
+                                     .show();
+                            
+                            if (response.details) {
+                                $statusDiv.append('<br><small>' + response.details + '</small>');
+                            }
+                            
+                            // Clear the file input after successful generation
+                            fileInput.value = '';
+                        },
+                        error: function(xhr) {
+                            $button.prop('disabled', false).text('{% trans "Generate Accounts from Uploaded File" %}');
+                            var errorMsg = xhr.responseJSON && xhr.responseJSON.error ? 
+                                          xhr.responseJSON.error : 
+                                          '{% trans "An error occurred while processing the file." %}';
+                            $statusDiv.addClass('error')
+                                     .html('<strong>✗ Error:</strong> ' + errorMsg)
+                                     .show();
+                        }
+                    });
+                });
+            }
+            
+            // Add Private Contestants CSV button functionality
+            var $privateContestantsCsvField = $('#id_private_contestants_csv').closest('.form-row');
+            if ($privateContestantsCsvField.length) {
+                var $buttonRow = $('<div class="form-row field-add_private_contestants"></div>');
+                var $buttonWrapper = $('<div class="add-private-contestants-wrapper"></div>');
+                var $button = $('<button type="button" id="add-private-contestants-btn" class="button add-private-contestants-btn">' + 
+                               '{% trans "Add Private Contestants from CSV" %}</button>');
+                var $statusDiv = $('<div id="private-contestants-status" style="margin-top: 10px; padding: 10px; display: none; border-radius: 4px;"></div>');
+                
+                $buttonWrapper.append($button);
+                $buttonWrapper.append($statusDiv);
+                $buttonRow.append($buttonWrapper);
+                $privateContestantsCsvField.after($buttonRow);
+                
+                // Handle button click
+                $button.on('click', function(e) {
+                    e.preventDefault();
+                    
+                    var fileInput = document.getElementById('id_private_contestants_csv');
+                    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+                        alert('{% trans "Please select a CSV or Excel file first." %}');
+                        return;
+                    }
+                    
+                    var contestId = '{{ original.id|default:"" }}';
+                    
+                    var file = fileInput.files[0];
+                    var formData = new FormData();
+                    formData.append('private_contestants_csv', file);
+                    formData.append('csrfmiddlewaretoken', $('input[name="csrfmiddlewaretoken"]').val());
+                    
+                    // Use different URL based on whether contest is saved or not
+                    var url = contestId ? 
+                        '/admin/judge/contest/' + contestId + '/add-private-contestants/' :
+                        '/admin/judge/contest/add-private-contestants/';
+                    
+                    // Disable button and show loading
+                    $button.prop('disabled', true).text('{% trans "Processing..." %}');
+                    $statusDiv.hide().removeClass('success error');
+                    
+                    $.ajax({
+                        url: url,
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: function(response) {
+                            $button.prop('disabled', false).text('{% trans "Add Private Contestants from CSV" %}');
+                            $statusDiv.addClass('success')
+                                     .html('<strong>✓ Success:</strong> ' + response.message)
+                                     .show();
+                            
+                            if (response.not_found_emails) {
+                                $statusDiv.append('<br><small>Not found: ' + response.not_found_emails.join(', ') + '</small>');
+                            } else if (response.details) {
+                                $statusDiv.append('<br><small>' + response.details + '</small>');
+                            }
+                            
+                            // Clear the file input after successful processing
+                            fileInput.value = '';
+                            
+                            // Only reload if contest is saved, otherwise profiles are added to the field
+                            if (contestId && response.added > 0) {
+                                setTimeout(function() {
+                                    location.reload();
+                                }, 2000);
+                            } else if (response.profile_data) {
+                                // Add profile data to the select2 field for unsaved contests
+                                var $privateContestantsField = $('#id_private_contestants');
+                                var currentValues = $privateContestantsField.val() || [];
+                                
+                                response.profile_data.forEach(function(profile) {
+                                    var profileIdStr = String(profile.id);
+                                    
+                                    // Check if already in the field
+                                    if (currentValues.indexOf(profileIdStr) === -1) {
+                                        // Add option to select element
+                                        var newOption = new Option(profile.text, profileIdStr, true, true);
+                                        $privateContestantsField.append(newOption);
+                                        currentValues.push(profileIdStr);
+                                    }
+                                });
+                                
+                                // Trigger change event to update select2 display
+                                $privateContestantsField.val(currentValues).trigger('change');
+                            }
+                        },
+                        error: function(xhr) {
+                            $button.prop('disabled', false).text('{% trans "Add Private Contestants from CSV" %}');
+                            var errorMsg = xhr.responseJSON && xhr.responseJSON.error ? 
+                                          xhr.responseJSON.error : 
+                                          '{% trans "An error occurred while processing the file." %}';
+                            $statusDiv.addClass('error')
+                                     .html('<strong>✗ Error:</strong> ' + errorMsg)
+                                     .show();
+                        }
+                    });
+                });
+            }
+        });
+    </script>
+    
+    <style>
+        .generate-accounts-wrapper {
+            margin-left: 10px;  /* Aligns with Django admin field inputs */
+            padding: 5px 0;
+        }
+        .generate-accounts-btn {
+            background-color: #417690 !important;
+            color: white !important;
+            padding: 5px 24px !important;
+            border: none !important;
+            border-radius: 4px !important;
+            cursor: pointer !important;
+            font-size: 14px !important;
+            font-weight: 500 !important;
+            white-space: nowrap !important;
+            display: inline-block !important;
+            text-align: center !important;
+            line-height: 1.5 !important;
+            min-width: 280px !important;
+            vertical-align: middle !important;
+        }
+        .generate-accounts-btn:hover {
+            background-color: #2e5266 !important;
+        }
+        .generate-accounts-btn:disabled {
+            background-color: #6c757d !important;
+            cursor: not-allowed !important;
+            opacity: 0.65 !important;
+        }
+        #generation-status {
+            margin-left: 0;
+        }
+        #generation-status.success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        #generation-status.error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        /* Private Contestants CSV Button Styles */
+        .add-private-contestants-wrapper {
+            margin-left: 10px;
+            padding: 5px 0;
+        }
+        .add-private-contestants-btn {
+            background-color: #417690 !important;
+            color: white !important;
+            padding: 5px 24px !important;
+            border: none !important;
+            border-radius: 4px !important;
+            cursor: pointer !important;
+            font-size: 14px !important;
+            font-weight: 500 !important;
+            white-space: nowrap !important;
+            display: inline-block !important;
+            text-align: center !important;
+            line-height: 1.5 !important;
+            min-width: 250px !important;
+            vertical-align: middle !important;
+        }
+        .add-private-contestants-btn:hover {
+            background-color: #2e5266 !important;
+        }
+        .add-private-contestants-btn:disabled {
+            background-color: #6c757d !important;
+            cursor: not-allowed !important;
+            opacity: 0.65 !important;
+        }
+        #private-contestants-status {
+            margin-left: 0;
+        }
+        #private-contestants-status.success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        #private-contestants-status.error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+{% endblock extrahead %}
+
+{% block after_field_sets %}{{ block.super }}
+    {% if original and original.is_rated and original.ended and perms.judge.contest_rating %}
+        <a style="display: none" title="{% trans "Rate" %}" href="{% url 'admin:judge_contest_rate' original.pk %}"
+           class="button rerate-link action-link">
+            <i class="fa fa-lg fa-signal"></i>
+            <span class="text">{% trans "Rate" %}</span>
+        </a>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Generating Plagiarism Report...{% endblock %}
+
+{% block body %}
+<h3>Plagiarism Report is being generated...</h3>
+
+<p>You should be prompted to download a zip file. If not, <a href="{{ zip_url }}">click here</a> to download manually.
+</p>
+
+{% if dolos_ports %}
+
+<h4>Dolos Reports (click to open):</h4>
+<p style="color:red;">DEBUG vars:</p>
+<ul>
+    <li>contest_key = {{ contest_key }}</li>
+    <li>zip_url = {{ zip_url }}</li>
+    <li>title = {{ title }}</li>
+</ul>
+
+{% endif %}
+
+<a href="/contest/{{ contest_key }}/plagiarism_reports/">Go back</a>
+
+
+
+
+<script>
+    window.onload = function() {
+        // Open Dolos reports in new tabs automatically
+        {% for port in dolos_ports %}
+            window.open("http://localhost:{{ port }}", "_blank");
+        {% endfor %}
+    };
+</script>
+{% endblock %}
