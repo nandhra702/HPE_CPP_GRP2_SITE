@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title_row %}
+<div class="content-title">
+    {{ title }}
+</div>
+{% endblock %}
+
+{% block body %}
+    <script>
+        // If this page is loaded inside an iframe, notify the parent.
+        if (window.parent !== window) {
+            // Notify the parent wrapper that this page has loaded.
+            window.parent.postMessage(
+                { proctoringPage: "problem_submit" },
+                window.location.origin
+            );
+        }
+    </script>
+    <br>
+    
+    {% if request.in_contest and submission_limit %}
+        {% if submissions_left > 0 %}
+            <div class="alert alert-warning alert-dismissable">
+                <a class="close">x</a>
+                {% trans left=submissions_left -%}
+                    You have {{ left }} submission left
+                    {%- pluralize -%}
+                    You have {{ left }} submissions left
+                {%- endtrans %}
+            </div>
+        {% else %}
+            <div class="alert alert-warning alert-dismissable">
+                <a class="close">x</a>
+                {{ _('You have 0 submissions left') }}
+            </div>
+        {% endif %}
+    {% endif %}
+
+    <div class="content-description">
+        <h3>{{ _('Multiple Choice Questions') }}</h3>
+        <p>{{ _('Select the correct answer(s) for each question below.') }}</p>
+    </div>
+
+    <form id="mcq_submit" action="" method="post" class="form-area">
+        {% csrf_token %}
+        {{ form.non_field_errors() }}
+        
+        <div class="mcq-questions">
+            {% for field in form %}
+                <div class="mcq-question" style="margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
+                    <div class="question-text" style="margin-bottom: 15px; font-weight: bold; font-size: 1.1em;">
+                        {{ field.label }}
+                    </div>
+                    {% if field.help_text %}
+                        <div class="question-help" style="margin-bottom: 10px; color: #666; font-size: 0.9em;">
+                            {{ field.help_text }}
+                        </div>
+                    {% endif %}
+                    {% if field.errors %}
+                        <div class="field-errors" style="color: red; margin-bottom: 10px;">
+                            {{ field.errors }}
+                        </div>
+                    {% endif %}
+                    <div class="question-options" style="margin-left: 20px;">
+                        {{ field }}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <hr>
+
+        <div class="submit-bar">
+            <input type="submit" value="{{ _('Submit Answers') }}" class="button"
+                   {% if request.in_contest and submission_limit and not submissions_left %}disabled{% endif %}>
+            <a href="{{ url('problem_detail', problem.code) }}" class="button">{{ _('Back to Problem') }}</a>
+        </div>
+    </form>
+
+    <style>
+        .mcq-question input[type="radio"],
+        .mcq-question input[type="checkbox"] {
+            margin-right: 10px;
+        }
+        
+        .mcq-question label {
+            display: block;
+            padding: 8px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .mcq-question label:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .submit-bar {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .submit-bar .button {
+            margin: 0 10px;
+            padding: 10px 20px;
+            font-size: 1.1em;
+        }
+    </style>
+{% endblock %}

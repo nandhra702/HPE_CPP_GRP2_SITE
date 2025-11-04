@@ -310,3 +310,59 @@ class ProblemPointsVoteForm(ModelForm):
     class Meta:
         model = ProblemPointsVote
         fields = ['points', 'note']
+
+
+class MCQSubmitForm(forms.Form):
+    """
+    Form for submitting MCQ answers.
+    Dynamically generates fields based on the MCQ questions for a problem.
+    """
+    def __init__(self, *args, problem=None, **kwargs):
+        super(MCQSubmitForm, self).__init__(*args, **kwargs)
+        
+        if problem and problem.is_mcq:
+            # Get all MCQ questions for this problem
+            from judge.models import MCQQuestion
+            questions = MCQQuestion.objects.filter(problem=problem).prefetch_related('options').order_by('order')
+            
+            for question in questions:
+                field_name = f'question_{question.id}'
+                choices = [(option.id, option.option_text) for option in question.options.all().order_by('order')]
+                
+                if question.allow_multiple:
+                    # Multiple choice (checkbox)
+                    self.fields[field_name] = forms.MultipleChoiceField(
+                        choices=choices,
+                        widget=forms.CheckboxSelectMultiple,
+                        label=f'Q{question.order}: {question.question_text}',
+                        required=False,
+                        help_text=f'Worth {question.points} points. Select all that apply.'
+                    )
+                else:
+                    # Single choice (radio button)
+                    self.fields[field_name] = forms.ChoiceField(
+                        choices=choices,
+                        widget=forms.RadioSelect,
+                        label=f'Q{question.order}: {question.question_text}',
+                        required=False,
+                        help_text=f'Worth {question.points} points.'
+                    )
+    
+    def get_answers_dict(self):
+        """
+        Convert form data to a dictionary mapping question IDs to selected option IDs.
+        """
+        answers = {}
+        for field_name, value in self.cleaned_data.items():
+            if field_name.startswith('question_'):
+                question_id = field_name.replace('question_', '')
+                if isinstance(value, list):
+                    # Multiple choice - convert to list of ints
+                    answers[question_id] = [int(v) for v in value] if value else []
+                elif value:
+                    # Single choice - wrap in list
+                    answers[question_id] = [int(value)]
+                else:
+                    # No answer provided
+                    answers[question_id] = []
+        return answers

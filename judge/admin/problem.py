@@ -12,7 +12,7 @@ from django.utils.translation import gettext, gettext_lazy as _, ngettext
 from reversion.admin import VersionAdmin
 
 from judge.models import LanguageLimit, Problem, ProblemClarification, ProblemPointsVote, ProblemTranslation, Profile, \
-    Solution
+    Solution, MCQQuestion, MCQOption
 from judge.utils.views import NoBatchDeleteMixin
 from judge.widgets import AdminHeavySelect2MultipleWidget, AdminMartorWidget, AdminSelect2MultipleWidget, \
     AdminSelect2Widget, CheckboxSelectMultipleWithSelectAll
@@ -118,11 +118,26 @@ class ProblemTranslationInline(admin.StackedInline):
     has_add_permission = has_change_permission = has_delete_permission = has_permission_full_markup
 
 
+class MCQOptionInline(admin.TabularInline):
+    model = MCQOption
+    fields = ('order', 'option_text', 'is_correct')
+    extra = 2
+    ordering = ('order',)
+
+
+class MCQQuestionInline(admin.StackedInline):
+    model = MCQQuestion
+    fields = ('order', 'question_text', 'points', 'allow_multiple', 'explanation')
+    extra = 0
+    ordering = ('order',)
+    show_change_link = True
+
+
 class ProblemAdmin(NoBatchDeleteMixin, VersionAdmin):
     fieldsets = (
         (None, {
             'fields': (
-                'code', 'name', 'is_public', 'is_manually_managed', 'date', 'authors', 'curators', 'testers',
+                'code', 'name', 'is_public', 'is_manually_managed', 'is_mcq', 'date', 'authors', 'curators', 'testers',
                 'organizations', 'submission_source_visibility_mode', 'is_full_markup',
                 'description', 'license',
             ),
@@ -138,7 +153,7 @@ class ProblemAdmin(NoBatchDeleteMixin, VersionAdmin):
     list_display = ['code', 'name', 'show_authors', 'points', 'is_public', 'show_public']
     ordering = ['code']
     search_fields = ('code', 'name', 'authors__user__username', 'curators__user__username')
-    inlines = [LanguageLimitInline, ProblemClarificationInline, ProblemSolutionInline, ProblemTranslationInline]
+    inlines = [LanguageLimitInline, ProblemClarificationInline, ProblemSolutionInline, ProblemTranslationInline, MCQQuestionInline]
     list_max_show_all = 1000
     actions_on_top = True
     actions_on_bottom = True
@@ -283,3 +298,31 @@ class ProblemPointsVoteAdmin(admin.ModelAdmin):
     def linked_problem(self, obj):
         link = reverse('problem_detail', args=[obj.problem.code])
         return format_html('<a href="{0}">{1}</a>', link, obj.problem.name)
+
+
+class MCQQuestionAdmin(admin.ModelAdmin):
+    list_display = ('problem', 'order', 'question_preview', 'points', 'allow_multiple', 'option_count')
+    list_filter = ('problem__code', 'allow_multiple')
+    search_fields = ('problem__code', 'problem__name', 'question_text')
+    inlines = [MCQOptionInline]
+    fields = ('problem', 'order', 'question_text', 'points', 'allow_multiple', 'explanation')
+    ordering = ('problem', 'order')
+    
+    @admin.display(description=_('Question'))
+    def question_preview(self, obj):
+        return obj.question_text[:100] + ('...' if len(obj.question_text) > 100 else '')
+    
+    @admin.display(description=_('Options'))
+    def option_count(self, obj):
+        return obj.options.count()
+    
+    def get_queryset(self, request):
+        return MCQQuestion.objects.filter(problem__in=Problem.get_editable_problems(request.user)).select_related('problem')
+    
+    def has_change_permission(self, request, obj=None):
+        if obj is None:
+            return request.user.has_perm('judge.edit_own_problem')
+        return obj.problem.is_editable_by(request.user)
+    
+    def has_add_permission(self, request):
+        return request.user.has_perm('judge.edit_own_problem')

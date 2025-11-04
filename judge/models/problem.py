@@ -155,6 +155,8 @@ class Problem(models.Model):
     is_public = models.BooleanField(verbose_name=_('publicly visible'), db_index=True, default=False)
     is_manually_managed = models.BooleanField(verbose_name=_('manually managed'), db_index=True, default=False,
                                               help_text=_('Whether judges should be allowed to manage data or not.'))
+    is_mcq = models.BooleanField(verbose_name=_('is MCQ problem'), default=False,
+                                 help_text=_('Whether this is a multiple choice question problem'))
     date = models.DateTimeField(verbose_name=_('date of publishing'), null=True, blank=True, db_index=True,
                                 help_text=_(
                                     "Doesn't have the magic ability to auto-publish due to backward compatibility."))

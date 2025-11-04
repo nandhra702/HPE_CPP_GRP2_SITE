@@ -119,6 +119,7 @@ urlpatterns = [
         path('/pdf/<slug:language>', problem.ProblemPdfView.as_view(), name='problem_pdf'),
         path('/clone', problem.ProblemClone.as_view(), name='problem_clone'),
         path('/submit', xframe_options_exempt(problem.ProblemSubmit.as_view()), name='problem_submit'),
+        path('/submit/mcq', xframe_options_exempt(problem.MCQSubmit.as_view()), name='problem_mcq_submit'),
         path('/resubmit/<int:submission>', xframe_options_exempt(problem.ProblemSubmit.as_view()), name='problem_submit'),
 
         path('/rank/', paged_list_view(ranked_submission.RankedSubmissions, 'ranked_submissions')),

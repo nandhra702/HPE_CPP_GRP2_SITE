@@ -27,7 +27,7 @@ from django.views.generic.detail import SingleObjectMixin
 from reversion import revisions
 
 from judge.comments import CommentedDetailView
-from judge.forms import ProblemCloneForm, ProblemPointsVoteForm, ProblemSubmitForm
+from judge.forms import ProblemCloneForm, ProblemPointsVoteForm, ProblemSubmitForm, MCQSubmitForm
 from judge.models import ContestSubmission, Judge, Language, Problem, ProblemGroup, ProblemPointsVote, \
     ProblemTranslation, ProblemType, RuntimeVersion, Solution, Submission, SubmissionSource
 from judge.utils.diggpaginator import DiggPaginator
@@ -808,3 +808,156 @@ class ProblemClone(ProblemMixin, PermissionRequiredMixin, TitleMixin, SingleObje
             revisions.set_comment(_('Cloned problem from %s') % old_code)
 
         return HttpResponseRedirect(reverse('admin:judge_problem_change', args=(problem.id,)))
+
+
+class MCQSubmit(LoginRequiredMixin, ProblemMixin, TitleMixin, SingleObjectFormView):
+    """
+    View for submitting answers to MCQ problems.
+    """
+    template_name = 'problem/mcq_submit.html'
+    
+    @cached_property
+    def contest_problem(self):
+        if self.request.profile.current_contest is None:
+            return None
+        return get_contest_problem(self.object, self.request.profile)
+    
+    @cached_property
+    def remaining_submission_count(self):
+        max_subs = self.contest_problem and self.contest_problem.max_submissions
+        if max_subs is None:
+            return None
+        return max(
+            0,
+            max_subs - get_contest_submission_count(
+                self.object, self.request.profile, self.request.profile.current_contest.virtual,
+            ),
+        )
+    
+    def get_form_class(self):
+        from judge.forms import MCQSubmitForm
+        return MCQSubmitForm
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['problem'] = self.object
+        return kwargs
+    
+    def get_content_title(self):
+        return mark_safe(
+            escape(_('Submit to %s')) % format_html(
+                '<a href="{0}">{1}</a>',
+                reverse('problem_detail', args=[self.object.code]),
+                self.object.translated_name(self.request.LANGUAGE_CODE),
+            ),
+        )
+    
+    def get_title(self):
+        return _('Submit to %s') % self.object.translated_name(self.request.LANGUAGE_CODE)
+    
+    def get_success_url(self):
+        return reverse('submission_status', args=(self.new_submission.id,))
+    
+    def form_valid(self, form):
+        # Check if this is actually an MCQ problem
+        if not self.object.is_mcq:
+            return HttpResponseForbidden('This is not an MCQ problem')
+        
+        # Check submission limits
+        if (
+            not self.request.user.has_perm('judge.spam_submission') and
+            Submission.objects.filter(user=self.request.profile, rejudged_date__isnull=True)
+                              .exclude(status__in=['D', 'IE', 'CE', 'AB']).count() >= settings.DMOJ_SUBMISSION_LIMIT
+        ):
+            return HttpResponse(format_html('<h1>{0}</h1>', _('You submitted too many submissions.')), status=429)
+        
+        # Check if user is banned from this problem
+        if not self.request.user.is_superuser and self.object.banned_users.filter(id=self.request.profile.id).exists():
+            return generic_message(self.request, _('Banned from submitting'),
+                                   _('You have been declared persona non grata for this problem. '
+                                     'You are permanently barred from submitting to this problem.'))
+        
+        # Check contest submission limit
+        if self.remaining_submission_count == 0:
+            return generic_message(self.request, _('Too many submissions'),
+                                   _('You have exceeded the submission limit for this problem.'))
+        
+        with transaction.atomic():
+            from judge.models import Language, MCQSubmission
+            
+            # Get a dummy language (MCQ doesn't need a real language)
+            # You might want to create a special "MCQ" language in the database
+            mcq_language = Language.objects.first()  # Or create a specific MCQ language
+            
+            # Create the submission
+            self.new_submission = Submission(
+                user=self.request.profile,
+                problem=self.object,
+                language=mcq_language,
+            )
+            
+            contest_problem = self.contest_problem
+            if contest_problem is not None:
+                self.new_submission.contest_object = self.request.profile.current_contest.contest
+                if self.request.profile.current_contest.live:
+                    self.new_submission.locked_after = self.new_submission.contest_object.locked_after
+            
+            self.new_submission.save()
+            
+            # Create ContestSubmission if in contest
+            if contest_problem is not None:
+                ContestSubmission(
+                    submission=self.new_submission,
+                    problem=contest_problem,
+                    participation=self.request.profile.current_contest,
+                ).save()
+            
+            # Create MCQ submission with answers
+            answers_dict = form.get_answers_dict()
+            mcq_sub = MCQSubmission(
+                submission=self.new_submission,
+                answers=answers_dict
+            )
+            mcq_sub.save()
+            
+            # Grade the MCQ submission
+            total_earned, total_possible, details = mcq_sub.calculate_score()
+            
+            # Update submission with results
+            self.new_submission.status = 'D'  # Completed
+            if total_earned == total_possible:
+                self.new_submission.result = 'AC'  # Accepted
+            elif total_earned > 0:
+                self.new_submission.result = 'AC'  # Partial (we'll use AC for partial too)
+            else:
+                self.new_submission.result = 'WA'  # Wrong Answer
+            
+            self.new_submission.case_points = total_earned
+            self.new_submission.case_total = total_possible
+            self.new_submission.points = total_earned if total_earned == total_possible else (
+                total_earned if self.object.partial else 0
+            )
+            self.new_submission.time = 0.0
+            self.new_submission.memory = 0.0
+            self.new_submission.judged_date = timezone.now()
+            self.new_submission.save()
+            
+            # Update contest if applicable
+            if hasattr(self.new_submission, 'contest'):
+                self.new_submission.update_contest()
+        
+        return super().form_valid(form)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['submission_limit'] = self.contest_problem and self.contest_problem.max_submissions
+        context['submissions_left'] = self.remaining_submission_count
+        context['problem'] = self.object
+        return context
+    
+    def dispatch(self, request, *args, **kwargs):
+        # Check if problem is MCQ
+        response = super().dispatch(request, *args, **kwargs)
+        if hasattr(self, 'object') and not self.object.is_mcq:
+            raise Http404('This problem is not an MCQ problem')
+        return response
