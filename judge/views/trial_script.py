@@ -11,6 +11,7 @@ from judge.models import Contest, ContestSubmission, SubmissionSource, Similarit
 import datetime
 import glob
 from django.shortcuts import render
+from django.db.models import Max, Q
 
 timestamp = datetime.datetime.now().strftime('%Y_%m_%d___%H_%M_%S')
 report_csv_paths = []
@@ -110,7 +111,7 @@ def download_problem_submissions(request, contest_key):
         return HttpResponseForbidden("You are not allowed to access this resource.")
 
     problems = contest.problems.all()
-    base_dir = "/home/vikkesh/submissions"  # or any path you want
+    base_dir = "/home/sukhraj/submissions"  # or any path you want
     os.makedirs(base_dir, exist_ok=True)
     tmp_dir = os.path.join(base_dir, f"contest_{contest_key}_{timestamp}")
     os.makedirs(tmp_dir, exist_ok=True)
@@ -122,17 +123,38 @@ def download_problem_submissions(request, contest_key):
         for problem in problems:
             problem_code = problem.code
 
-            submissions = ContestSubmission.objects.select_related(
-                'submission', 'submission__language', 'submission__user',
-                'problem__problem', 'problem__contest'
-            ).filter(
-                problem__problem=problem,
-                problem__contest=contest,
-                submission__result='AC'
-            )
+            submissions = (ContestSubmission.objects.filter(problem__problem=problem, problem__contest=contest)
+                    .select_related("submission", "submission__user", "submission__language"))
+
+            best_submissions = {}
+            # Store best submission for each user
+
+
+            for cs in submissions:
+                user = cs.submission.user
+
+                # Initialize if first submission
+                if user not in best_submissions:
+                    best_submissions[user] = cs
+                    continue
+
+                current = best_submissions[user]
+
+                # Case 1: Latest AC beats previous anything
+                if cs.submission.result == "AC":
+                    if current.submission.result != "AC" or cs.submission.id > current.submission.id:
+                        best_submissions[user] = cs
+                else:
+                    # Case 2: No AC yet → keep the latest submission
+                    if current.submission.result != "AC" and cs.submission.id > current.submission.id:
+                        best_submissions[user] = cs
+
+# Finally use only selected submissions
+            unique_submissions = list(best_submissions.values())
+
 
             lang_buckets = {}
-            for contest_sub in submissions:
+            for contest_sub in unique_submissions:
                 submission = contest_sub.submission
                 user = submission.user
                 lang = submission.language.name
