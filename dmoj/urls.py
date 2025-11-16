@@ -11,8 +11,7 @@ from django.views.decorators.clickjacking import xframe_options_exempt
 from django.views.generic import RedirectView
 
 #ADDITIONS
-from judge.views.trial_script import download_problem_submissions
-from judge.views.trial_script import show_similarity_table
+from judge.views.trial_script import export_contest_data
 
 #ADDITIONS END
 
@@ -379,8 +378,7 @@ urlpatterns = [
     ])),
 
     ##changed
-    path('contest/<str:contest_key>/trial_script/',download_problem_submissions,name='download_problem_submissions'),
-    path('contest/<str:contest_key>/similarity_table/', show_similarity_table, name='show_similarity_table'),
+    path("contest/<str:contest_key>/export/", export_contest_data, name="export_contest_data"),
 
 
 ]

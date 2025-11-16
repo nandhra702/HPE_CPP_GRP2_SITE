@@ -1,0 +1,7 @@
+<h2>{{ problem.title }}</h2>
+<p>{{ problem.description|safe }}</p>
+<form method="post" action="{% url 'submit_mcq_response' problem.code %}">
+    {% csrf_token %}
+    <!-- render MCQ options here -->
+    <button type="submit">Submit</button>
+</form>

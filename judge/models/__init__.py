@@ -16,6 +16,8 @@ from judge.models.submission import SUBMISSION_RESULT, Submission, SubmissionSou
 from judge.models.ticket import Ticket, TicketMessage
 from judge.models.emailing import EmailTemplate, BulkEmailCampaign, EmailRecipient, EmailLog
 from .similarity import SimilarityScore
+from . latest_submissions import LatestSubmission
+from .postgres_models import LatestSubmissionPG
 
 revisions.register(Profile, exclude=['points', 'last_access', 'ip', 'rating'])
 revisions.register(Problem, follow=['language_limits'])

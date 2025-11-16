@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}Export Successful{% endblock %}
+
+{% block content_title %}
+Export Successful
+{% endblock %}
+
+{% block body %}
+<div class="card" style="padding: 20px;">
+    <h4>Export Completed</h4>
+
+    <p>
+        Successfully exported
+        <strong>{{ count }}</strong>
+        latest submissions for contest
+        <strong>{{ contest.key }}</strong>.
+    </p>
+
+    <a href="{{ url('contest_view', contest.key) }}" class="btn btn-primary">
+        Back to Contest
+    </a>
+</div>
+{% endblock %}
