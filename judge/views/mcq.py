@@ -273,11 +273,6 @@ class MCQList(QueryStringSortMixin, TitleMixin, SolvedMCQMixin, ListView):
             
             context['search_query'] = self.search_query
             
-            # Get types list for each MCQ (only in normal mode)
-            if not isinstance(context['mcqs'], list):
-                for mcq in context['mcqs']:
-                    mcq.types_list = list(mcq.types.values_list('full_name', flat=True))
-            
             # Add sorting context
             context.update(self.get_sort_context())
         

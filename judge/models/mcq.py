@@ -5,9 +5,12 @@ from django.db import models
 from django.db.models import CASCADE, SET_NULL, Max
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
+from django.utils.functional import cached_property
 
 from judge.models.profile import Organization, Profile
 from judge.models.problem import ProblemGroup, ProblemType, License, disallowed_characters_validator
+from operator import attrgetter
+from judge.user_translations import gettext as user_gettext
 
 __all__ = ['MCQQuestion', 'MCQOption', 'MCQSubmission']
 
@@ -148,6 +151,10 @@ class MCQQuestion(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    @cached_property
+    def types_list(self):
+        return list(map(user_gettext, map(attrgetter('full_name'), self.types.all())))
 
     def __str__(self):
         return f"{self.code} - {self.name}"
