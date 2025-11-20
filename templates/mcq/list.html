@@ -17,10 +17,12 @@
                 var $form = $('form#filter-form');
                 var $search = $('#search');
                 var $category = $('#category');
+                var $format = $('#format');
 
                 function prep_form() {
                     $search.prop('disabled', !$search.val());
                     $category.prop('disabled', !$category.val());
+                    $format.prop('disabled', !$format.val());
                 }
 
                 function clean_submit() {
@@ -30,6 +32,11 @@
 
                 $category.select2({
                     theme: '{{ DMOJ_SELECT2_THEME }}'
+                }).css({'visibility': 'visible'}).change(clean_submit);
+                
+                $format.select2({
+                    theme: '{{ DMOJ_SELECT2_THEME }}',
+                    minimumResultsForSearch: -1
                 }).css({'visibility': 'visible'}).change(clean_submit);
                 
                 $('#types').select2({
@@ -45,7 +52,7 @@
 
                 $('#go').click(clean_submit);
 
-                $('input#hide_solved, input#show_types').click(function () {
+                $('input#hide_solved').click(function () {
                     prep_form();
                     ($('<form>').attr('action', window.location.pathname + '?' + $form.serialize())
                         .append($('<input>').attr('type', 'hidden').attr('name', 'csrfmiddlewaretoken')
@@ -91,24 +98,26 @@
                                     {% endfor %}
                                 </select>
                             </div>
-                            {% if show_types %}
-                                <div class="filter-form-group">
-                                    <label for="types"><i class="fa fa-tag"></i> {{ _('Types') }}</label>
-                                    <select id="types" name="type" multiple style="visibility:hidden">
-                                        {% for type in mcq_types %}
-                                            <option value="{{ type.id }}"{% if type.id in selected_types %} selected{% endif %}>{{ type.full_name }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                            {% endif %}
+                            <div class="filter-form-group">
+                                <label for="format"><i class="fa fa-list-ul"></i> {{ _('Format') }}</label>
+                                <select id="format" name="format" style="visibility:hidden">
+                                    <option value="">{{ _('All') }}</option>
+                                    <option value="SINGLE"{% if format == 'SINGLE' %} selected{% endif %}>{{ _('Single Choice') }}</option>
+                                    <option value="MULTIPLE"{% if format == 'MULTIPLE' %} selected{% endif %}>{{ _('Multiple Choice') }}</option>
+                                </select>
+                            </div>
+                            <div class="filter-form-group">
+                                <label for="types"><i class="fa fa-tag"></i> {{ _('Types') }}</label>
+                                <select id="types" name="type" multiple style="visibility:hidden">
+                                    {% for type in mcq_types %}
+                                        <option value="{{ type.id }}"{% if type.id in selected_types %} selected{% endif %}>{{ type.full_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
                             <div class="filter-form-group">
                                 <div class="checkbox-group">
                                     <input id="hide_solved" type="checkbox" name="hide_solved" value="1"{% if hide_solved %} checked{% endif %}>
                                     <label for="hide_solved">{{ _('Hide solved') }}</label>
-                                </div>
-                                <div class="checkbox-group">
-                                    <input id="show_types" type="checkbox" name="show_types" value="1"{% if show_types %} checked{% endif %}>
-                                    <label for="show_types">{{ _('Show types') }}</label>
                                 </div>
                             </div>
                         </form>
@@ -131,16 +140,13 @@
                     <th class="problem">
                         <a href="{{ sort_links.name }}">{{ _('Question') }}{{ sort_order.name }}</a>
                     </th>
-                    <th class="type">{{ _('Type') }}</th>
-                    <th class="difficulty">{{ _('Difficulty') }}</th>
+                    <th class="type">{{ _('Format') }}</th>
                     <th class="category">
                         <a href="{{ sort_links.group }}">{{ _('Category') }}{{ sort_order.group }}</a>
                     </th>
-                    {% if show_types %}
-                        <th class="types">
-                            <a href="{{ sort_links.type }}">{{ _('Tags') }}{{ sort_order.type }}</a>
-                        </th>
-                    {% endif %}
+                    <th class="types">
+                        <a href="{{ sort_links.type }}">{{ _('Tags') }}{{ sort_order.type }}</a>
+                    </th>
                     <th class="points">
                         {% if in_contest %}
                             {{ _('Points') }}
@@ -184,17 +190,6 @@
                                 <span class="badge badge-info">{{ _('Single Choice') }}</span>
                             {% elif mcq.question_type == 'MULTIPLE' %}
                                 <span class="badge badge-warning">{{ _('Multiple Choice') }}</span>
-                            {% else %}
-                                <span class="badge badge-success">{{ _('True/False') }}</span>
-                            {% endif %}
-                        </td>
-                        <td class="difficulty">
-                            {% if mcq.difficulty == 'E' %}
-                                <span class="badge badge-success">{{ _('Easy') }}</span>
-                            {% elif mcq.difficulty == 'M' %}
-                                <span class="badge badge-warning">{{ _('Medium') }}</span>
-                            {% else %}
-                                <span class="badge badge-danger">{{ _('Hard') }}</span>
                             {% endif %}
                         </td>
                         <td class="category">
@@ -204,15 +199,13 @@
                                 {{ _('Uncategorized') }}
                             {% endif %}
                         </td>
-                        {% if show_types %}
-                            <td class="types">
-                                {% if not in_contest %}
-                                    {% for type in mcq.types_list %}
-                                        <span class="type-tag">{{ type }}</span>{% if not loop.last %}, {% endif %}
-                                    {% endfor %}
-                                {% endif %}
-                            </td>
-                        {% endif %}
+                        <td class="types">
+                            {% if not in_contest %}
+                                {% for type in mcq.types_list %}
+                                    <span class="type-tag">{{ type }}</span>{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        </td>
                         <td class="points">
                             {% if in_contest %}
                                 {{ mcq.contest_points|floatformat }}

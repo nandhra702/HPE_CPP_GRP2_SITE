@@ -93,3 +93,66 @@ INFO 2025-11-09 15:31:08,569 judge_handler firstjudge: Grading has ended on: 21
 INFO 2025-11-09 15:31:08,570 judge_list Judge available after grading 21: firstjudge
 INFO 2025-11-09 15:33:26,341 judge_list Minimum tier changed from 1 to None
 INFO 2025-11-09 15:33:26,366 judge_handler Judge disconnected from: ('172.23.64.1', 57234) with name firstjudge
+INFO 2025-11-20 15:00:26,252 judge_handler Judge connected from: ('172.23.64.1', 64510)
+INFO 2025-11-20 15:00:26,434 judge_handler Judge authenticated: ('172.23.64.1', 64510) (firstjudge)
+INFO 2025-11-20 15:00:26,434 judge_list Minimum tier changed from None to 1
+INFO 2025-11-20 15:02:18,666 daemon Exiting due to SIGINT
+INFO 2025-11-20 15:02:34,024 judge_handler Judge connected from: ('172.23.64.1', 61560)
+INFO 2025-11-20 15:02:34,033 judge_handler Judge authenticated: ('172.23.64.1', 61560) (firstjudge)
+INFO 2025-11-20 15:02:34,033 judge_list Minimum tier changed from None to 1
+INFO 2025-11-20 15:09:42,426 daemon Exiting due to SIGINT
+INFO 2025-11-20 15:09:59,011 judge_handler Judge connected from: ('172.23.64.1', 59527)
+INFO 2025-11-20 15:09:59,020 judge_handler Judge authenticated: ('172.23.64.1', 59527) (firstjudge)
+INFO 2025-11-20 15:09:59,020 judge_list Minimum tier changed from None to 1
+INFO 2025-11-20 15:19:12,152 daemon Exiting due to SIGINT
+INFO 2025-11-20 15:19:31,767 judge_handler Judge connected from: ('172.23.64.1', 62846)
+INFO 2025-11-20 15:19:31,781 judge_handler Judge authenticated: ('172.23.64.1', 62846) (firstjudge)
+INFO 2025-11-20 15:19:31,782 judge_list Minimum tier changed from None to 1
+INFO 2025-11-20 15:22:16,798 judge_list Minimum tier changed from 1 to None
+INFO 2025-11-20 15:22:16,814 judge_handler Judge disconnected from: ('172.23.64.1', 62846) with name firstjudge
+INFO 2025-11-20 15:22:38,736 judge_handler Judge connected from: ('172.23.64.1', 55074)
+INFO 2025-11-20 15:22:38,746 judge_handler Judge authenticated: ('172.23.64.1', 55074) (firstjudge)
+INFO 2025-11-20 15:22:38,746 judge_list Minimum tier changed from None to 1
+INFO 2025-11-20 15:22:58,713 daemon Exiting due to SIGINT
+INFO 2025-11-20 15:23:13,342 judge_handler Judge connected from: ('172.23.64.1', 55079)
+INFO 2025-11-20 15:23:13,351 judge_handler Judge authenticated: ('172.23.64.1', 55079) (firstjudge)
+INFO 2025-11-20 15:23:13,351 judge_list Minimum tier changed from None to 1
+INFO 2025-11-20 15:31:31,495 judge_handler firstjudge: Updated problem list
+INFO 2025-11-20 15:31:31,566 judge_handler firstjudge: Updated problem list
+INFO 2025-11-20 15:31:31,572 judge_handler firstjudge: Updated problem list
+INFO 2025-11-20 15:31:31,576 judge_handler firstjudge: Updated problem list
+INFO 2025-11-20 15:31:31,594 judge_handler firstjudge: Updated problem list
+INFO 2025-11-20 15:33:33,274 daemon Exiting due to SIGINT
+INFO 2025-11-20 15:33:49,746 judge_handler Judge connected from: ('172.23.64.1', 53418)
+INFO 2025-11-20 15:33:49,796 judge_handler Judge authenticated: ('172.23.64.1', 53418) (firstjudge)
+INFO 2025-11-20 15:33:49,796 judge_list Minimum tier changed from None to 1
+INFO 2025-11-20 15:34:38,271 judge_list Minimum tier changed from 1 to None
+INFO 2025-11-20 15:34:38,287 judge_handler Judge disconnected from: ('172.23.64.1', 53418) with name firstjudge
+INFO 2025-11-20 15:45:14,907 daemon Exiting due to SIGINT
+INFO 2025-11-20 15:47:48,155 judge_handler Judge connected from: ('172.23.64.1', 62828)
+INFO 2025-11-20 15:47:48,204 judge_handler Judge authenticated: ('172.23.64.1', 62828) (firstjudge)
+INFO 2025-11-20 15:47:48,205 judge_list Minimum tier changed from None to 1
+INFO 2025-11-20 15:57:46,588 daemon Exiting due to SIGINT
+INFO 2025-11-20 15:58:00,728 judge_handler Judge connected from: ('172.23.64.1', 58385)
+INFO 2025-11-20 15:58:00,747 judge_handler Judge authenticated: ('172.23.64.1', 58385) (firstjudge)
+INFO 2025-11-20 15:58:00,747 judge_list Minimum tier changed from None to 1
+INFO 2025-11-20 16:13:16,862 daemon Exiting due to SIGINT
+INFO 2025-11-20 16:13:34,364 judge_handler Judge connected from: ('172.23.64.1', 57179)
+INFO 2025-11-20 16:13:34,370 judge_handler Judge authenticated: ('172.23.64.1', 57179) (firstjudge)
+INFO 2025-11-20 16:13:34,371 judge_list Minimum tier changed from None to 1
+INFO 2025-11-20 16:15:45,541 judge_list Minimum tier changed from 1 to None
+INFO 2025-11-20 16:15:45,555 judge_handler Judge disconnected from: ('172.23.64.1', 57179) with name firstjudge
+INFO 2025-11-20 16:16:08,473 judge_handler Judge connected from: ('172.23.64.1', 51285)
+INFO 2025-11-20 16:16:08,487 judge_handler Judge authenticated: ('172.23.64.1', 51285) (firstjudge)
+INFO 2025-11-20 16:16:08,487 judge_list Minimum tier changed from None to 1
+INFO 2025-11-20 16:18:18,130 daemon Exiting due to SIGINT
+INFO 2025-11-20 16:18:32,842 judge_handler Judge connected from: ('172.23.64.1', 62940)
+INFO 2025-11-20 16:18:32,863 judge_handler Judge authenticated: ('172.23.64.1', 62940) (firstjudge)
+INFO 2025-11-20 16:18:32,864 judge_list Minimum tier changed from None to 1
+INFO 2025-11-20 16:19:53,925 judge_list Minimum tier changed from 1 to None
+INFO 2025-11-20 16:19:53,954 judge_handler Judge disconnected from: ('172.23.64.1', 62940) with name firstjudge
+INFO 2025-11-20 16:20:46,620 judge_handler Judge connected from: ('172.23.64.1', 51948)
+INFO 2025-11-20 16:20:46,641 judge_handler Judge authenticated: ('172.23.64.1', 51948) (firstjudge)
+INFO 2025-11-20 16:20:46,642 judge_list Minimum tier changed from None to 1
+INFO 2025-11-20 16:21:18,732 judge_list Minimum tier changed from 1 to None
+INFO 2025-11-20 16:21:18,745 judge_handler Judge disconnected from: ('172.23.64.1', 51948) with name firstjudge

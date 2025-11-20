@@ -16,16 +16,9 @@ class MCQQuestion(models.Model):
     """
     Model for Multiple Choice Questions
     """
-    DIFFICULTY_CHOICES = (
-        ('E', _('Easy')),
-        ('M', _('Medium')),
-        ('H', _('Hard')),
-    )
-
     QUESTION_TYPE_CHOICES = (
         ('SINGLE', _('Single Choice')),
         ('MULTIPLE', _('Multiple Choice')),
-        ('TRUE_FALSE', _('True/False')),
     )
 
     code = models.CharField(
@@ -49,17 +42,10 @@ class MCQQuestion(models.Model):
     )
     question_type = models.CharField(
         max_length=10,
-        verbose_name=_('question type'),
+        verbose_name=_('format'),
         choices=QUESTION_TYPE_CHOICES,
         default='SINGLE',
-        help_text=_('Type of MCQ question')
-    )
-    difficulty = models.CharField(
-        max_length=1,
-        verbose_name=_('difficulty'),
-        choices=DIFFICULTY_CHOICES,
-        default='M',
-        help_text=_('Difficulty level of the question')
+        help_text=_('Format of MCQ question')
     )
     points = models.FloatField(
         verbose_name=_('points'),
@@ -248,11 +234,7 @@ class MCQOption(models.Model):
         unique_together = [['question', 'order']]
 
     def clean(self):
-        # Validate that TRUE_FALSE questions only have 2 options
-        if self.question.question_type == 'TRUE_FALSE':
-            existing_options = MCQOption.objects.filter(question=self.question).exclude(pk=self.pk).count()
-            if existing_options >= 2:
-                raise ValidationError(_('True/False questions can only have 2 options'))
+        pass
 
 
 class MCQSubmission(models.Model):
@@ -330,7 +312,7 @@ class MCQSubmission(models.Model):
         correct_options = set(self.question.options.filter(is_correct=True))
         selected = set(self.selected_options.all())
         
-        if self.question.question_type == 'SINGLE' or self.question.question_type == 'TRUE_FALSE':
+        if self.question.question_type == 'SINGLE':
             # For single choice, must select exactly the correct option
             if selected == correct_options and len(selected) == 1:
                 self.is_correct = True

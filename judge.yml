@@ -1,22 +1,12 @@
-id: judge_test  
-key: Ci9+rYdd92y9rRa9uWKCDImDLTeGT+UnbMYHanYqz9D7v55ieXOc1QHQraQDOqaT41d24T1Gx3Zi2+cfxS38+nnl8lvOvv+lGzwW
-problem_storage_globs:
-  - /home/lalith/HPE/site/problems/*  
+id: firstjudge
+key: "PV8xe+ADPphD7O7my7ApH3D2/6uIRAVjJXzzfVTSD0e9kDCUxbqw5bpXj9p6DsE56XW6qvx1FIfuZYPeU8RjdQWp4poA/Phg4kBW"
+bridged_judge: true
+isolated: false
 
-runtime:
-    as_x64: /usr/bin/x86_64-linux-gnu-as
-    as_x86: /usr/bin/as
-    awk: /usr/bin/mawk
-    cat: /usr/bin/cat
-    g++: /usr/bin/g++
-    g++11: /usr/bin/g++
-    g++14: /usr/bin/g++
-    g++17: /usr/bin/g++
-    g++20: /usr/bin/g++
-    gcc: /usr/bin/gcc
-    gcc11: /usr/bin/gcc
-    ld_x64: /usr/bin/x86_64-linux-gnu-ld
-    ld_x86: /usr/bin/ld
-    perl: /usr/bin/perl
-    python3: /home/lalith/HPE/dmojsite/bin/python3
-    sed: /usr/bin/sed
+runtimes:
+  - type: autoconf
+
+problem_storage_globs:
+  - /problems/**/
+
+logging_level: DEBUG

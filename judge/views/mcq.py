@@ -204,14 +204,16 @@ class MCQList(QueryStringSortMixin, TitleMixin, SolvedMCQMixin, ListView):
             completed = self.get_completed_mcqs()
             queryset = queryset.exclude(id__in=completed)
         
-        if self.show_types:
-            queryset = queryset.prefetch_related('types')
+        queryset = queryset.prefetch_related('types')
         
         if self.category is not None:
             queryset = queryset.filter(group__id=self.category)
         
         if self.selected_types:
             queryset = queryset.filter(types__in=self.selected_types)
+            
+        if self.format:
+            queryset = queryset.filter(question_type=self.format)
         
         if self.search_query:
             queryset = queryset.filter(
@@ -261,13 +263,13 @@ class MCQList(QueryStringSortMixin, TitleMixin, SolvedMCQMixin, ListView):
         else:
             context['in_contest'] = False
             context['hide_solved'] = int(self.hide_solved)
-            context['show_types'] = int(self.show_types)
+            context['show_types'] = 1
             context['category'] = self.category
             context['categories'] = ProblemGroup.objects.all()
+            context['format'] = self.format
             
-            if self.show_types:
-                context['selected_types'] = self.selected_types
-                context['mcq_types'] = ProblemType.objects.all()
+            context['selected_types'] = self.selected_types
+            context['mcq_types'] = ProblemType.objects.all()
             
             context['search_query'] = self.search_query
             
@@ -287,7 +289,7 @@ class MCQList(QueryStringSortMixin, TitleMixin, SolvedMCQMixin, ListView):
     def setup(self, request, *args, **kwargs):
         super(MCQList, self).setup(request, *args, **kwargs)
         self.hide_solved = request.GET.get('hide_solved') == '1'
-        self.show_types = request.GET.get('show_types') == '1'
+        self.show_types = True
         self.category = request.GET.get('category')
         if self.category:
             try:
@@ -302,6 +304,9 @@ class MCQList(QueryStringSortMixin, TitleMixin, SolvedMCQMixin, ListView):
             except (ValueError, TypeError):
                 pass
         self.search_query = ''
+        self.format = request.GET.get('format')
+        if self.format not in ['SINGLE', 'MULTIPLE']:
+            self.format = None
 
 
 class MCQDetail(MCQMixin, SolvedMCQMixin, TitleMixin, DetailView):

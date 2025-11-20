@@ -452,8 +452,7 @@ class ProblemList(QueryStringSortMixin, TitleMixin, SolvedProblemMixin, ListView
             queryset = queryset.exclude(id__in=Submission.objects
                                         .filter(user=self.profile, result='AC', case_points__gte=F('case_total'))
                                         .values_list('problem_id', flat=True))
-        if self.show_types:
-            queryset = queryset.prefetch_related('types')
+        queryset = queryset.prefetch_related('types')
         queryset = queryset.annotate(has_public_editorial=Case(
             When(solution__is_public=True, solution__publish_on__lte=timezone.now(), then=True),
             default=False,
@@ -490,14 +489,13 @@ class ProblemList(QueryStringSortMixin, TitleMixin, SolvedProblemMixin, ListView
     def get_context_data(self, **kwargs):
         context = super(ProblemList, self).get_context_data(**kwargs)
         context['hide_solved'] = 0 if self.in_contest else int(self.hide_solved)
-        context['show_types'] = 0 if self.in_contest else int(self.show_types)
+        context['show_types'] = 1
         context['has_public_editorial'] = 0 if self.in_contest else int(self.has_public_editorial)
         context['full_text'] = 0 if self.in_contest else int(self.full_text)
         context['category'] = self.category
         context['categories'] = ProblemGroup.objects.all()
-        if self.show_types:
-            context['selected_types'] = self.selected_types
-            context['problem_types'] = ProblemType.objects.all()
+        context['selected_types'] = self.selected_types
+        context['problem_types'] = ProblemType.objects.all()
         context['has_fts'] = settings.ENABLE_FTS
         context['search_query'] = self.search_query
         context['completed_problem_ids'] = self.get_completed_problems()
@@ -545,7 +543,7 @@ class ProblemList(QueryStringSortMixin, TitleMixin, SolvedProblemMixin, ListView
 
     def setup_problem_list(self, request):
         self.hide_solved = self.GET_with_session(request, 'hide_solved')
-        self.show_types = self.GET_with_session(request, 'show_types')
+        self.show_types = True
         self.full_text = self.GET_with_session(request, 'full_text')
         self.has_public_editorial = self.GET_with_session(request, 'has_public_editorial')
 
@@ -555,8 +553,6 @@ class ProblemList(QueryStringSortMixin, TitleMixin, SolvedProblemMixin, ListView
 
         # This actually copies into the instance dictionary...
         self.all_sorts = set(self.all_sorts)
-        if not self.show_types:
-            self.all_sorts.discard('type')
 
         self.category = safe_int_or_none(request.GET.get('category'))
         if 'type' in request.GET:

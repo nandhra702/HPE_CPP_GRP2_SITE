@@ -60,12 +60,6 @@ class MCQOptionInline(admin.TabularInline):
     def get_formset(self, request, obj=None, **kwargs):
         formset_class = super().get_formset(request, obj, **kwargs)
         
-        # Customize based on question type
-        if obj and obj.question_type == 'TRUE_FALSE':
-            formset_class.max_num = 2
-            formset_class.extra = 2
-            formset_class.min_num = 2
-        
         # Add custom validation to the formset
         original_clean = formset_class.clean
         
@@ -84,15 +78,15 @@ class MCQOptionInline(admin.TabularInline):
                         correct_count += 1
             
             # Validate based on question type
-            if obj.question_type == 'SINGLE' or obj.question_type == 'TRUE_FALSE':
+            if obj.question_type == 'SINGLE':
                 if correct_count > 1:
                     raise ValidationError(
-                        _('Single choice and True/False questions can only have ONE correct answer. You have marked %(count)d options as correct.'),
+                        _('Single choice questions can only have ONE correct answer. You have marked %(count)d options as correct.'),
                         params={'count': correct_count}
                     )
                 elif correct_count == 0:
                     raise ValidationError(
-                        _('Single choice and True/False questions must have exactly one correct answer.')
+                        _('Single choice questions must have exactly one correct answer.')
                     )
             elif obj.question_type == 'MULTIPLE':
                 if correct_count < 1:
@@ -121,7 +115,7 @@ class MCQQuestionAdmin(NoBatchDeleteMixin, VersionAdmin):
     fieldsets = (
         (None, {
             'fields': (
-                'code', 'name', 'question_type', 'difficulty', 'is_public', 'date',
+                'code', 'name', 'question_type', 'is_public', 'date',
                 'authors', 'curators', 'organizations', 'description',
             ),
         }),
@@ -131,14 +125,14 @@ class MCQQuestionAdmin(NoBatchDeleteMixin, VersionAdmin):
         (_('Taxonomy'), {'fields': ('types', 'group')}),
         (_('History'), {'fields': ('change_message',)}),
     )
-    list_display = ['code', 'name', 'question_type', 'difficulty', 'show_authors', 'points', 'is_public']
+    list_display = ['code', 'name', 'question_type', 'show_authors', 'points', 'is_public']
     ordering = ['code']
     search_fields = ('code', 'name', 'authors__user__username', 'curators__user__username')
     inlines = [MCQOptionInline]
     list_max_show_all = 1000
     actions_on_top = True
     actions_on_bottom = True
-    list_filter = ('is_public', 'question_type', 'difficulty', MCQCreatorListFilter)
+    list_filter = ('is_public', 'question_type', MCQCreatorListFilter)
     form = MCQQuestionForm
     date_hierarchy = 'date'
 
@@ -253,7 +247,7 @@ class MCQQuestionAdmin(NoBatchDeleteMixin, VersionAdmin):
 
 class MCQSubmissionAdmin(admin.ModelAdmin):
     list_display = ('user_display', 'question_display', 'is_correct', 'points_earned', 'time_taken', 'submitted_at')
-    list_filter = ('is_correct', 'submitted_at', 'question__difficulty')
+    list_filter = ('is_correct', 'submitted_at')
     search_fields = ('user__user__username', 'question__code', 'question__name')
     readonly_fields = ('question', 'user', 'selected_options', 'is_correct', 'points_earned', 'time_taken', 'submitted_at')
     filter_horizontal = ('selected_options',)

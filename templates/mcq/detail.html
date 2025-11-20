@@ -348,23 +348,11 @@
                     <strong>{{ _('Code:') }}</strong> {{ mcq.code }}
                 </div>
                 <div class="mcq-meta-item">
-                    <strong>{{ _('Type:') }}</strong>
+                    <strong>{{ _('Format:') }}</strong>
                     {% if mcq.question_type == 'SINGLE' %}
                         <span class="badge badge-info">{{ _('Single Choice') }}</span>
                     {% elif mcq.question_type == 'MULTIPLE' %}
                         <span class="badge badge-warning">{{ _('Multiple Choice') }}</span>
-                    {% else %}
-                        <span class="badge badge-success">{{ _('True/False') }}</span>
-                    {% endif %}
-                </div>
-                <div class="mcq-meta-item">
-                    <strong>{{ _('Difficulty:') }}</strong>
-                    {% if mcq.difficulty == 'E' %}
-                        <span class="badge badge-success">{{ _('Easy') }}</span>
-                    {% elif mcq.difficulty == 'M' %}
-                        <span class="badge badge-warning">{{ _('Medium') }}</span>
-                    {% else %}
-                        <span class="badge badge-danger">{{ _('Hard') }}</span>
                     {% endif %}
                 </div>
                 <div class="mcq-meta-item">
@@ -377,6 +365,14 @@
                     {% else %}
                         {{ _('Uncategorized') }}
                     {% endif %}
+                </div>
+                <div class="mcq-meta-item">
+                    <strong>{{ _('Types:') }}</strong>
+                    {% for type in mcq.types.all() %}
+                        <span class="badge badge-info">{{ type.full_name }}</span>
+                    {% else %}
+                        {{ _('None') }}
+                    {% endfor %}
                 </div>
             </div>
         </div>
@@ -411,7 +407,7 @@
                                 {% if option.id in selected_option_ids and not option.is_correct %}incorrect{% endif %}
                                 {% if option.id not in selected_option_ids and not option.is_correct %}not-selected{% endif %}
                             ">
-                                {% if mcq.question_type == 'SINGLE' or mcq.question_type == 'TRUE_FALSE' %}
+                                {% if mcq.question_type == 'SINGLE' %}
                                     <input type="radio" name="option" value="{{ option.id }}" id="option_{{ option.id }}"
                                         {% if option.id in selected_option_ids %}checked{% endif %} disabled>
                                 {% else %}
@@ -443,7 +439,7 @@
                     <div class="mcq-options">
                         {% for option in options %}
                             <div class="mcq-option">
-                                {% if mcq.question_type == 'SINGLE' or mcq.question_type == 'TRUE_FALSE' %}
+                                {% if mcq.question_type == 'SINGLE' %}
                                     <input type="radio" name="option" value="{{ option.id }}" id="option_{{ option.id }}"
                                         {% if option.id in selected_option_ids %}checked{% endif %}>
                                 {% else %}
@@ -482,7 +478,7 @@
                 <form id="mcq-form">
                     <div class="mcq-options">
                         <p><strong>
-                            {% if mcq.question_type == 'SINGLE' or mcq.question_type == 'TRUE_FALSE' %}
+                            {% if mcq.question_type == 'SINGLE' %}
                                 {{ _('Select ONE correct answer:') }}
                             {% else %}
                                 {{ _('Select ALL correct answers:') }}
@@ -491,7 +487,7 @@
                         
                         {% for option in options %}
                             <div class="mcq-option">
-                                {% if mcq.question_type == 'SINGLE' or mcq.question_type == 'TRUE_FALSE' %}
+                                {% if mcq.question_type == 'SINGLE' %}
                                     <input type="radio" name="option" value="{{ option.id }}" id="option_{{ option.id }}">
                                 {% else %}
                                     <input type="checkbox" name="options" value="{{ option.id }}" id="option_{{ option.id }}">
