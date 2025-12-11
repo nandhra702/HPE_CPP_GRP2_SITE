@@ -50,6 +50,68 @@ __all__ = ['ContestList', 'ContestDetail', 'ContestRanking', 'ContestJoin', 'Con
            'base_contest_ranking_list', 'ContestProctoredJoin']
 
 
+def _handle_contest_randomization(participation):
+    """Handle randomization of problems and MCQs for a participation."""
+    import random
+    contest = participation.contest
+    print(f"[RANDOMIZATION DEBUG] Contest: {contest.key}, randomize={contest.randomize}, config={contest.randomization_config}")
+    
+    if not contest.randomize or not contest.randomization_config:
+        print(f"[RANDOMIZATION DEBUG] Skipping - randomize={contest.randomize}, has_config={bool(contest.randomization_config)}")
+        return
+
+    # Check if already randomized
+    if participation.format_data and ('selected_problems' in participation.format_data or 'selected_mcqs' in participation.format_data):
+        print(f"[RANDOMIZATION DEBUG] Already randomized, skipping")
+        return
+
+    config = contest.randomization_config
+    
+    reg_enabled = config.get('regular_enabled', False)
+    mcq_enabled = config.get('mcq_enabled', False)
+    print(f"[RANDOMIZATION DEBUG] reg_enabled={reg_enabled}, mcq_enabled={mcq_enabled}")
+    
+    # Regular Problems
+    selected_problems = None
+    if reg_enabled:
+        selected_problems = []
+        problems_by_group = defaultdict(list)
+        for cp in contest.contest_problems.select_related('problem', 'problem__group').all():
+            group = cp.problem.group.full_name if cp.problem.group else 'Uncategorized'
+            problems_by_group[group].append(cp.problem_id)
+            
+        for group, ids in problems_by_group.items():
+            count = config.get('config', {}).get(group, len(ids))
+            selected_problems.extend(random.sample(ids, min(len(ids), count)))
+    
+    # MCQ Problems
+    selected_mcqs = None
+    if mcq_enabled:
+        selected_mcqs = []
+        mcqs_by_group = defaultdict(list)
+        for cm in contest.contest_mcqs.select_related('mcq_question', 'mcq_question__group').all():
+            group = cm.mcq_question.group.full_name if cm.mcq_question.group else 'Uncategorized'
+            mcqs_by_group[group].append(cm.mcq_question_id)
+            
+        for group, ids in mcqs_by_group.items():
+            key = f"MCQ:{group}"
+            count = config.get('config', {}).get(key, len(ids))
+            selected_mcqs.extend(random.sample(ids, min(len(ids), count)))
+        
+    if not participation.format_data:
+        participation.format_data = {}
+        
+    if selected_problems is not None:
+        participation.format_data['selected_problems'] = selected_problems
+        print(f"[RANDOMIZATION DEBUG] Selected problems: {selected_problems}")
+    if selected_mcqs is not None:
+        participation.format_data['selected_mcqs'] = selected_mcqs
+        print(f"[RANDOMIZATION DEBUG] Selected MCQs: {selected_mcqs}")
+        
+    participation.save(update_fields=['format_data'])
+    print(f"[RANDOMIZATION DEBUG] Saved participation format_data: {participation.format_data}")
+
+
 def _find_contest(request, key, private_check=True):
     try:
         contest = Contest.objects.get(key=key)
@@ -289,6 +351,15 @@ class ContestDetail(ContestMixin, TitleMixin, CommentedDetailView):
                 output_field=BooleanField(),
             )) \
             .add_i18n_name(self.request.LANGUAGE_CODE)
+
+        # Filter randomized problems
+        if self.request.user.is_authenticated:
+            profile = self.request.profile
+            participation = self.object.users.filter(user=profile, virtual=ContestParticipation.LIVE).first()
+            if participation and participation.format_data and 'selected_problems' in participation.format_data:
+                selected_ids = participation.format_data['selected_problems']
+                context['contest_problems'] = context['contest_problems'].filter(id__in=selected_ids)
+
         context['metadata'] = {
             'has_public_editorials': any(
                 problem.is_public and problem.has_public_editorial for problem in context['contest_problems']
@@ -492,6 +563,7 @@ class ContestJoin(LoginRequiredMixin, ContestMixin, SingleObjectMixin, View):
                         defaults={'real_start': timezone.now()},
                     )[0]
 
+        _handle_contest_randomization(participation)
         profile.current_contest = participation
         profile.save()
         contest._updating_stats_only = True
@@ -646,6 +718,7 @@ class ContestProctoredJoin(LoginRequiredMixin, ContestMixin, SingleObjectMixin, 
                         defaults={'real_start': timezone.now()},
                     )[0]
 
+        _handle_contest_randomization(participation)
         profile.current_contest = participation
         profile.save()
         contest._updating_stats_only = True

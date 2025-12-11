@@ -1,0 +1,749 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .dashboard-container { padding: 20px; }
+    .tabs { display: flex; border-bottom: 1px solid #ccc; margin-bottom: 20px; }
+    .tab { padding: 10px 20px; cursor: pointer; border: 1px solid transparent; border-bottom: none; }
+    .tab.active { background: #fff; border-color: #ccc; border-bottom-color: #fff; font-weight: bold; }
+    
+    .controls { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .columns-container { display: flex; gap: 20px; }
+    .column { flex: 1; border: 1px solid #eee; padding: 10px; background: #f9f9f9; min-height: 400px; }
+    .column h3 { text-align: center; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
+    
+    .problem-list { list-style: none; padding: 0; max-height: 600px; overflow-y: auto; }
+    .problem-item { padding: 5px; border-bottom: 1px solid #eee; display: flex; align-items: center; }
+    .problem-item:hover { background: #eee; }
+    .problem-item label { margin-left: 5px; cursor: pointer; width: 100%; }
+    
+    .pagination { margin-top: 10px; text-align: center; }
+    .pagination button { margin: 0 5px; }
+    
+    .mcq-list-container { border: 1px solid #eee; padding: 10px; }
+    
+    .sticky-footer { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #ccc; padding: 15px; text-align: right; box-shadow: 0 -2px 5px rgba(0,0,0,0.1); }
+
+    /* New Styles for Selected View */
+    .selected-view { display: none; }
+    .selected-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .selected-table th, .selected-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    .selected-table th { background-color: #f8f9fa; font-weight: 600; }
+    .selected-table input[type="number"] { width: 70px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
+    .selected-table input[type="text"] { width: 120px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
+    
+    /* Modern Button Styles */
+    button {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background-color 0.2s, transform 0.1s;
+    }
+    button:active { transform: scale(0.98); }
+    
+    /* Primary Buttons (Controls) */
+    .controls button, .sticky-footer button {
+        background-color: #2980B9;
+        color: white;
+        font-weight: 500;
+    }
+    .controls button:hover, .sticky-footer button:hover {
+        background-color: #1c6ea4;
+    }
+    
+    /* Danger Buttons (Remove) */
+    button.danger {
+        background-color: #dc3545;
+        color: white;
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+    button.danger:hover {
+        background-color: #c82333;
+    }
+    
+    /* Pagination Buttons */
+    .pagination button {
+        background-color: #f8f9fa;
+        color: #333;
+        border: 1px solid #ddd;
+    }
+    .pagination button:hover:not(:disabled) {
+        background-color: #e2e6ea;
+    }
+    .pagination button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    /* Inputs */
+    input[type="text"], select {
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <h1>{% trans "Contest Problems Dashboard" %}</h1>
+    
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('regular')">{% trans "Regular Problems" %}</div>
+        <div class="tab" onclick="switchTab('mcq')">{% trans "MCQ Problems" %}</div>
+    </div>
+    
+    <!-- Regular Problems Section -->
+    <div id="regular-section">
+        <div class="controls">
+            <button type="button" id="reg-toggle-view" onclick="toggleView('regular')">{% trans "Show Selected" %}</button>
+            <div id="reg-browse-controls" style="display: inline-flex; gap: 10px; align-items: center;">
+                <input type="text" id="reg-search" placeholder="Search problems..." onkeyup="debounceSearch('regular')">
+                <select id="reg-type-filter" onchange="reloadRegular()">
+                    <option value="">{% trans "All Types" %}</option>
+                </select>
+                
+                <div style="border-left: 1px solid #ccc; padding-left: 10px; display: flex; gap: 5px; align-items: center;">
+                    <span>{% trans "Random Allocation:" %}</span>
+                    <input type="number" id="random-count" value="5" min="1" style="width: 60px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <select id="random-col">
+                        <option value="Easy">{% trans "Easy" %}</option>
+                        <option value="Medium">{% trans "Medium" %}</option>
+                        <option value="Hard">{% trans "Hard" %}</option>
+                    </select>
+                    <button type="button" onclick="allocateRandom()">{% trans "Add Random" %}</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Browse View -->
+        <div id="regular-browse-view" class="columns-container">
+            <!-- Easy Column -->
+            <div class="column" id="col-Easy">
+                <h3>{% trans "Easy" %} <input type="checkbox" onchange="toggleSelectAll('Easy', this.checked)"></h3>
+                <ul class="problem-list" id="list-Easy"></ul>
+                <div class="pagination" id="pag-Easy"></div>
+            </div>
+            
+            <!-- Medium Column -->
+            <div class="column" id="col-Medium">
+                <h3>{% trans "Medium" %} <input type="checkbox" onchange="toggleSelectAll('Medium', this.checked)"></h3>
+                <ul class="problem-list" id="list-Medium"></ul>
+                <div class="pagination" id="pag-Medium"></div>
+            </div>
+            
+            <!-- Hard Column -->
+            <div class="column" id="col-Hard">
+                <h3>{% trans "Hard" %} <input type="checkbox" onchange="toggleSelectAll('Hard', this.checked)"></h3>
+                <ul class="problem-list" id="list-Hard"></ul>
+                <div class="pagination" id="pag-Hard"></div>
+            </div>
+        </div>
+
+        <!-- Selected View -->
+        <div id="regular-selected-view" class="selected-view">
+            <table class="selected-table">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Name</th>
+                        <th>Points</th>
+                        <th>Partial</th>
+                        <th>Pretested</th>
+                        <th>Max Subs</th>
+                        <th>Output Prefix</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="regular-selected-list"></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- MCQ Section -->
+    <div id="mcq-section" style="display: none;">
+        <div class="controls">
+            <button type="button" id="mcq-toggle-view" onclick="toggleView('mcq')">{% trans "Show Selected" %}</button>
+            <div id="mcq-browse-controls" style="display: inline-flex; gap: 10px; align-items: center;">
+                <input type="text" id="mcq-search" placeholder="Search MCQs..." onkeyup="debounceSearch('mcq')">
+                <select id="mcq-cat-filter" onchange="reloadMCQ()">
+                    <option value="">{% trans "All Categories" %}</option>
+                </select>
+                <select id="mcq-type-filter" onchange="reloadMCQ()">
+                    <option value="">{% trans "All Types" %}</option>
+                </select>
+                <select id="mcq-format-filter" onchange="reloadMCQ()">
+                    <option value="">{% trans "All Formats" %}</option>
+                    <option value="SINGLE">{% trans "Single Choice" %}</option>
+                    <option value="MULTIPLE">{% trans "Multiple Choice" %}</option>
+                </select>
+                <label><input type="checkbox" onchange="toggleSelectAllMCQ(this.checked)"> {% trans "Select All Loaded" %}</label>
+            </div>
+        </div>
+        
+        <!-- Browse View -->
+        <div id="mcq-browse-view" class="mcq-list-container">
+            <ul class="problem-list" id="list-mcq"></ul>
+            <div class="pagination" id="pag-mcq"></div>
+        </div>
+
+        <!-- Selected View -->
+        <div id="mcq-selected-view" class="selected-view">
+            <table class="selected-table">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Name</th>
+                        <th>Points</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="mcq-selected-list"></tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div style="height: 60px;"></div> <!-- Spacer -->
+    <div class="sticky-footer">
+        <span id="selection-summary">0 problems, 0 MCQs selected</span>
+        <button type="button" class="button" onclick="openRandomModal()" style="margin-right: 10px;">{% trans "Randomization Config" %}</button>
+        <button type="button" class="button" onclick="saveAndClose()">{% trans "Save Changes" %}</button>
+    </div>
+
+    <!-- Randomization Modal -->
+    <div id="random-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 20px; border-radius: 5px; width: 500px; max-height: 80%; overflow-y: auto;">
+            <h2>{% trans "Randomization Configuration" %}</h2>
+            <p>{% trans "Configure how many problems to randomly assign to each user from the selected pool." %}</p>
+            
+            <div style="margin-bottom: 15px;">
+                <label><input type="checkbox" id="enable-randomization-reg" onchange="toggleRandomConfig()"> {% trans "Enable Randomization for Regular Problems" %}</label>
+            </div>
+            <div id="random-config-reg" style="display: none;">
+                <h3>{% trans "Regular Problems" %}</h3>
+                <div id="random-regular-list"></div>
+            </div>
+
+            <div style="margin-bottom: 15px; margin-top: 20px;">
+                <label><input type="checkbox" id="enable-randomization-mcq" onchange="toggleRandomConfig()"> {% trans "Enable Randomization for MCQ Problems" %}</label>
+            </div>
+            <div id="random-config-mcq" style="display: none;">
+                <h3>{% trans "MCQ Problems" %}</h3>
+                <div id="random-mcq-list"></div>
+            </div>
+            
+            <div style="text-align: right; margin-top: 20px;">
+                <button type="button" onclick="closeRandomModal()">{% trans "Close" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // State
+    const state = {
+        regular: {
+            Easy: { page: 1, items: [], total: 0 },
+            Medium: { page: 1, items: [], total: 0 },
+            Hard: { page: 1, items: [], total: 0 },
+            view: 'browse' // 'browse' or 'selected'
+        },
+        mcq: { 
+            page: 1, items: [], total: 0,
+            view: 'browse'
+        },
+        selectedProblems: new Map(), // ID -> Object
+        selectedMCQs: new Map(),      // ID -> Object
+        randomization: { enabled: false, config: {} }
+    };
+    
+    // Init
+    document.addEventListener('DOMContentLoaded', () => {
+        loadMetadata();
+        reloadRegular();
+        reloadMCQ();
+        
+        // Load initial selection from parent if available
+        if (window.opener && window.opener.getContestSelections) {
+            const selections = window.opener.getContestSelections();
+            console.log('Loaded selections from parent:', selections);
+            selections.problems.forEach(p => {
+                console.log('Loading problem:', p.id, 'group:', p.group);
+                state.selectedProblems.set(parseInt(p.id), p);
+            });
+            selections.mcqs.forEach(m => {
+                console.log('Loading MCQ:', m.id, 'group:', m.group);
+                state.selectedMCQs.set(parseInt(m.id), m);
+            });
+            if (selections.randomization) {
+                state.randomization = selections.randomization;
+            }
+            updateSummary();
+        }
+    });
+    
+    function switchTab(tab) {
+        document.getElementById('regular-section').style.display = tab === 'regular' ? 'block' : 'none';
+        document.getElementById('mcq-section').style.display = tab === 'mcq' ? 'block' : 'none';
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+    }
+
+    function toggleView(type) {
+        const isRegular = type === 'regular';
+        const currentView = isRegular ? state.regular.view : state.mcq.view;
+        const newView = currentView === 'browse' ? 'selected' : 'browse';
+        
+        if (isRegular) state.regular.view = newView;
+        else state.mcq.view = newView;
+
+        const browseView = document.getElementById(`${type}-browse-view`);
+        const selectedView = document.getElementById(`${type}-selected-view`);
+        
+        // IDs for controls use 'reg-' prefix for regular, but 'mcq-' for mcq
+        const prefix = type === 'regular' ? 'reg' : 'mcq';
+        const browseControls = document.getElementById(`${prefix}-browse-controls`);
+        const toggleBtn = document.getElementById(`${prefix}-toggle-view`);
+
+        if (newView === 'selected') {
+            browseView.style.display = 'none';
+            browseControls.style.display = 'none';
+            selectedView.style.display = 'block';
+            toggleBtn.innerText = '{% trans "Show Browse" %}';
+            renderSelected(type);
+        } else {
+            browseView.style.display = isRegular ? 'flex' : 'block';
+            browseControls.style.display = 'inline-flex';
+            selectedView.style.display = 'none';
+            toggleBtn.innerText = '{% trans "Show Selected" %}';
+            // Re-render browse to update checkboxes
+            if (isRegular) reloadRegular(); else reloadMCQ(); 
+        }
+    }
+
+    function renderSelected(type) {
+        const list = document.getElementById(`${type}-selected-list`);
+        list.innerHTML = '';
+        const map = type === 'regular' ? state.selectedProblems : state.selectedMCQs;
+
+        map.forEach((item, id) => {
+            const tr = document.createElement('tr');
+            if (type === 'regular') {
+                tr.innerHTML = `
+                    <td>${item.code}</td>
+                    <td>${item.name}</td>
+                    <td><input type="number" value="${item.points}" onchange="updateItem('regular', ${id}, 'points', this.value)"></td>
+                    <td><input type="checkbox" ${item.partial ? 'checked' : ''} onchange="updateItem('regular', ${id}, 'partial', this.checked)"></td>
+                    <td><input type="checkbox" ${item.is_pretested ? 'checked' : ''} onchange="updateItem('regular', ${id}, 'is_pretested', this.checked)"></td>
+                    <td><input type="number" value="${item.max_submissions || ''}" placeholder="None" onchange="updateItem('regular', ${id}, 'max_submissions', this.value)"></td>
+                    <td><input type="number" value="${item.output_prefix_override || 0}" onchange="updateItem('regular', ${id}, 'output_prefix_override', this.value)"></td>
+                    <td><button type="button" class="danger" onclick="removeItem('regular', ${id})">Remove</button></td>
+                `;
+            } else {
+                tr.innerHTML = `
+                    <td>${item.code}</td>
+                    <td>${item.name}</td>
+                    <td><input type="number" value="${item.points}" onchange="updateItem('mcq', ${id}, 'points', this.value)"></td>
+                    <td><button type="button" class="danger" onclick="removeItem('mcq', ${id})">Remove</button></td>
+                `;
+            }
+            list.appendChild(tr);
+        });
+    }
+
+    function updateItem(type, id, field, value) {
+        const map = type === 'regular' ? state.selectedProblems : state.selectedMCQs;
+        const item = map.get(id);
+        if (item) {
+            if (field === 'points' || field === 'output_prefix_override') value = parseFloat(value);
+            if (field === 'max_submissions') value = value ? parseInt(value) : null;
+            if (field === 'partial' || field === 'is_pretested') value = value; // boolean passed directly
+            item[field] = value;
+            map.set(id, item);
+        }
+    }
+
+    function removeItem(type, id) {
+        const map = type === 'regular' ? state.selectedProblems : state.selectedMCQs;
+        map.delete(id);
+        renderSelected(type);
+        updateSummary();
+    }
+    
+    async function loadMetadata() {
+        const res = await fetch('{% url "contest_dashboard_metadata" %}');
+        const data = await res.json();
+        
+        const regSelect = document.getElementById('reg-type-filter');
+        const mcqTypeSelect = document.getElementById('mcq-type-filter');
+        const mcqCatSelect = document.getElementById('mcq-cat-filter');
+        
+        data.types.forEach(t => {
+            regSelect.add(new Option(t.full_name, t.id));
+            mcqTypeSelect.add(new Option(t.full_name, t.id));
+        });
+        
+        data.groups.forEach(g => {
+            mcqCatSelect.add(new Option(g.full_name, g.name)); // Use name for filtering
+        });
+    }
+    
+    // Regular Problems Logic
+    function reloadRegular() {
+        if (state.regular.view === 'selected') return;
+        loadColumn('Easy');
+        loadColumn('Medium');
+        loadColumn('Hard');
+    }
+    
+    async function loadColumn(category) {
+        const page = state.regular[category].page;
+        const search = document.getElementById('reg-search').value;
+        const type = document.getElementById('reg-type-filter').value;
+        
+        const url = `{% url "contest_dashboard_api" %}?category=${category}&page=${page}&search=${search}&type=${type}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        state.regular[category].items = data.items;
+        state.regular[category].total = data.total;
+        renderColumn(category, data);
+    }
+    
+    function renderColumn(category, data) {
+        const list = document.getElementById(`list-${category}`);
+        list.innerHTML = '';
+        
+        data.items.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'problem-item';
+            const checked = state.selectedProblems.has(item.id) ? 'checked' : '';
+            li.innerHTML = `
+                <input type="checkbox" id="p-${item.id}" value="${item.id}" ${checked} onchange="toggleProblem(${item.id}, this.checked, '${category}')">
+                <label for="p-${item.id}">[${item.code}] ${item.name} (${item.points}p)</label>
+            `;
+            list.appendChild(li);
+        });
+        
+        // Pagination
+        const pag = document.getElementById(`pag-${category}`);
+        pag.innerHTML = `
+            <button onclick="changePage('${category}', -1)" ${data.current_page === 1 ? 'disabled' : ''}>&lt;</button>
+            <span>${data.current_page} / ${data.num_pages}</span>
+            <button onclick="changePage('${category}', 1)" ${data.current_page === data.num_pages ? 'disabled' : ''}>&gt;</button>
+        `;
+    }
+    
+    function changePage(category, delta) {
+        state.regular[category].page += delta;
+        loadColumn(category);
+    }
+    
+    function toggleProblem(id, checked, category) {
+        id = parseInt(id);
+        if (checked) {
+            // Find item data from current loaded items
+            let item = null;
+            
+            // Try finding in the specific category first
+            if (category && state.regular[category]) {
+                item = state.regular[category].items.find(i => i.id == id);
+            }
+            
+            // Fallback: search all categories if not found (e.g. if category not passed correctly)
+            if (!item) {
+                ['Easy', 'Medium', 'Hard'].forEach(cat => {
+                    if (!item && state.regular[cat]) {
+                        const found = state.regular[cat].items.find(i => i.id == id);
+                        if (found) item = found;
+                    }
+                });
+            }
+            
+            if (item) {
+                // Add with defaults
+                state.selectedProblems.set(id, {
+                    id: item.id,
+                    code: item.code,
+                    name: item.name,
+                    points: item.points,
+                    group: item.group || category, // Fallback to column category if group is missing
+                    partial: true,
+                    is_pretested: false,
+                    max_submissions: null,
+                    output_prefix_override: 0
+                });
+            } else {
+                console.error(`Problem ${id} not found in loaded items`);
+            }
+        } else {
+            state.selectedProblems.delete(id);
+        }
+        updateSummary();
+    }
+    
+    function toggleSelectAll(category, checked) {
+        state.regular[category].items.forEach(item => {
+            const cb = document.getElementById(`p-${item.id}`);
+            if (cb) {
+                cb.checked = checked;
+                toggleProblem(item.id, checked);
+            }
+        });
+    }
+    
+    function allocateRandom() {
+        const count = parseInt(document.getElementById('random-count').value);
+        const category = document.getElementById('random-col').value;
+        const items = state.regular[category].items;
+        
+        if (items.length === 0) return;
+        
+        const unselected = items.filter(i => !state.selectedProblems.has(i.id));
+        const toSelect = [];
+        
+        for (let i = 0; i < count && unselected.length > 0; i++) {
+            const idx = Math.floor(Math.random() * unselected.length);
+            toSelect.push(unselected[idx]);
+            unselected.splice(idx, 1);
+        }
+        
+        toSelect.forEach(item => {
+            // Add to state manually to ensure object creation
+            state.selectedProblems.set(item.id, {
+                id: item.id,
+                code: item.code,
+                name: item.name,
+                points: item.points,
+                group: item.group || category, // Use API group or fallback to column category
+                partial: true,
+                is_pretested: false,
+                max_submissions: null,
+                output_prefix_override: 0
+            });
+            
+            const cb = document.getElementById(`p-${item.id}`);
+            if (cb) cb.checked = true;
+        });
+        updateSummary();
+    }
+    
+    // MCQ Logic
+    async function reloadMCQ() {
+        if (state.mcq.view === 'selected') return;
+        const page = state.mcq.page;
+        const search = document.getElementById('mcq-search').value;
+        const cat = document.getElementById('mcq-cat-filter').value;
+        const type = document.getElementById('mcq-type-filter').value;
+        const format = document.getElementById('mcq-format-filter').value;
+        
+        const url = `{% url "contest_dashboard_api" %}?is_mcq=true&page=${page}&search=${search}&category=${cat}&type=${type}&format=${format}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        state.mcq.items = data.items;
+        renderMCQ(data);
+    }
+    
+    function renderMCQ(data) {
+        const list = document.getElementById('list-mcq');
+        list.innerHTML = '';
+        
+        data.items.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'problem-item';
+            const checked = state.selectedMCQs.has(item.id) ? 'checked' : '';
+            li.innerHTML = `
+                <input type="checkbox" id="m-${item.id}" value="${item.id}" ${checked} onchange="toggleMCQ(${item.id}, this.checked)">
+                <label for="m-${item.id}">[${item.code}] ${item.name} (${item.type})</label>
+            `;
+            list.appendChild(li);
+        });
+        
+        const pag = document.getElementById('pag-mcq');
+        pag.innerHTML = `
+            <button onclick="changeMCQPage(-1)" ${data.current_page === 1 ? 'disabled' : ''}>&lt;</button>
+            <span>${data.current_page} / ${data.num_pages}</span>
+            <button onclick="changeMCQPage(1)" ${data.current_page === data.num_pages ? 'disabled' : ''}>&gt;</button>
+        `;
+    }
+    
+    function changeMCQPage(delta) {
+        state.mcq.page += delta;
+        reloadMCQ();
+    }
+    
+    function toggleMCQ(id, checked) {
+        id = parseInt(id);
+        if (checked) {
+            const item = state.mcq.items.find(i => i.id == id);
+            if (item) {
+                state.selectedMCQs.set(id, {
+                    id: item.id,
+                    code: item.code,
+                    name: item.name,
+                    points: item.points,
+                    group: item.group
+                });
+            }
+        } else {
+            state.selectedMCQs.delete(id);
+        }
+        updateSummary();
+    }
+    
+    function toggleSelectAllMCQ(checked) {
+        state.mcq.items.forEach(item => {
+            const cb = document.getElementById(`m-${item.id}`);
+            if (cb) {
+                cb.checked = checked;
+                toggleMCQ(item.id, checked);
+            }
+        });
+    }
+    
+    // Utils
+    let searchTimeout;
+    function debounceSearch(type) {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            if (type === 'regular') {
+                state.regular.Easy.page = 1;
+                state.regular.Medium.page = 1;
+                state.regular.Hard.page = 1;
+                reloadRegular();
+            } else {
+                state.mcq.page = 1;
+                reloadMCQ();
+            }
+        }, 300);
+    }
+    
+    function updateSummary() {
+        document.getElementById('selection-summary').innerText = 
+            `${state.selectedProblems.size} problems, ${state.selectedMCQs.size} MCQs selected`;
+    }
+    
+    function saveAndClose() {
+        if (window.opener && window.opener.updateContestSelections) {
+            saveRandomConfigState();
+            window.opener.updateContestSelections(
+                Array.from(state.selectedProblems.values()),
+                Array.from(state.selectedMCQs.values()),
+                state.randomization
+            );
+            window.close();
+        } else {
+            alert('Parent window not found or compatible. Cannot save.');
+        }
+    }
+
+    // Randomization Logic
+    function openRandomModal() {
+        document.getElementById('random-modal').style.display = 'flex';
+        // Backward compatibility: if 'enabled' is true, enable both unless specific flags exist
+        if (state.randomization.enabled !== undefined && state.randomization.regular_enabled === undefined) {
+            state.randomization.regular_enabled = state.randomization.enabled;
+            state.randomization.mcq_enabled = state.randomization.enabled;
+        }
+        
+        document.getElementById('enable-randomization-reg').checked = state.randomization.regular_enabled || false;
+        document.getElementById('enable-randomization-mcq').checked = state.randomization.mcq_enabled || false;
+        toggleRandomConfig();
+        renderRandomConfig();
+    }
+
+    function closeRandomModal() {
+        saveRandomConfigState();
+        document.getElementById('random-modal').style.display = 'none';
+    }
+
+    function toggleRandomConfig() {
+        const regEnabled = document.getElementById('enable-randomization-reg').checked;
+        const mcqEnabled = document.getElementById('enable-randomization-mcq').checked;
+        document.getElementById('random-config-reg').style.display = regEnabled ? 'block' : 'none';
+        document.getElementById('random-config-mcq').style.display = mcqEnabled ? 'block' : 'none';
+    }
+
+    function renderRandomConfig() {
+        // Group Regular Problems
+        const regGroups = {};
+        state.selectedProblems.forEach(p => {
+            // Ensure we have a valid group name (use 'Uncategorized' for empty/null/undefined)
+            const g = (p.group && p.group.trim()) ? p.group : 'Uncategorized';
+            if (!regGroups[g]) regGroups[g] = 0;
+            regGroups[g]++;
+        });
+
+        const regList = document.getElementById('random-regular-list');
+        regList.innerHTML = '';
+        if (Object.keys(regGroups).length === 0) {
+            regList.innerHTML = '<p>No regular problems selected.</p>';
+        } else {
+            for (const [group, count] of Object.entries(regGroups)) {
+                const currentVal = (state.randomization.config && state.randomization.config[group] !== undefined) ? state.randomization.config[group] : count;
+                regList.innerHTML += `
+                    <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                        <label>${group} (Total: ${count})</label>
+                        <div>
+                            <input type="number" class="random-input" data-group="${group}" data-max="${count}" value="${currentVal}" min="0" max="${count}" style="width: 60px;">
+                            <span> to select</span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Group MCQs
+        const mcqGroups = {};
+        state.selectedMCQs.forEach(m => {
+            // Ensure we have a valid group name (use 'Uncategorized' for empty/null/undefined)
+            const g = (m.group && m.group.trim()) ? m.group : 'Uncategorized';
+            if (!mcqGroups[g]) mcqGroups[g] = 0;
+            mcqGroups[g]++;
+        });
+
+        const mcqList = document.getElementById('random-mcq-list');
+        mcqList.innerHTML = '';
+        if (Object.keys(mcqGroups).length === 0) {
+            mcqList.innerHTML = '<p>No MCQs selected.</p>';
+        } else {
+            for (const [group, count] of Object.entries(mcqGroups)) {
+                const key = `MCQ:${group}`;
+                const currentVal = (state.randomization.config && state.randomization.config[key] !== undefined) ? state.randomization.config[key] : count;
+                mcqList.innerHTML += `
+                    <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                        <label>${group} (Total: ${count})</label>
+                        <div>
+                            <input type="number" class="random-input" data-group="${key}" data-max="${count}" value="${currentVal}" min="0" max="${count}" style="width: 60px;">
+                            <span> to select</span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+    }
+
+    function saveRandomConfigState() {
+        state.randomization.regular_enabled = document.getElementById('enable-randomization-reg').checked;
+        state.randomization.mcq_enabled = document.getElementById('enable-randomization-mcq').checked;
+        // Set legacy enabled flag for compatibility
+        state.randomization.enabled = state.randomization.regular_enabled || state.randomization.mcq_enabled;
+        
+        if (!state.randomization.config) state.randomization.config = {};
+        
+        document.querySelectorAll('.random-input').forEach(input => {
+            const group = input.dataset.group;
+            const val = parseInt(input.value);
+            if (!isNaN(val)) {
+                state.randomization.config[group] = val;
+            }
+        });
+    }
+</script>
+{% endblock %}

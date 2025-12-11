@@ -174,6 +174,10 @@ class Contest(models.Model):
                               help_text=_('A JSON object to serve as the configuration for the chosen contest format '
                                           'module. Leave empty to use None. Exact format depends on the contest format '
                                           'selected.'))
+    randomize = models.BooleanField(verbose_name=_('randomize problems'), default=False,
+                                    help_text=_('Randomly assign problems to users from the selected pool.'))
+    randomization_config = JSONField(verbose_name=_('randomization configuration'), default=dict, blank=True,
+                                     help_text=_('Configuration for random problem selection.'))
     problem_label_script = models.TextField(verbose_name=_('contest problem label script'), blank=True,
                                             help_text=_('A custom Lua function to generate problem labels. Requires a '
                                                         'single function with an integer parameter, the zero-indexed '

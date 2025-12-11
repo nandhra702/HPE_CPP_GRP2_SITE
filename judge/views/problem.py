@@ -408,7 +408,9 @@ class ProblemList(QueryStringSortMixin, TitleMixin, SolvedProblemMixin, ListView
         return self.request.profile
 
     def get_contest_queryset(self):
-        queryset = self.profile.current_contest.contest.contest_problems.select_related('problem__group') \
+        participation = self.profile.current_contest
+        contest = participation.contest
+        queryset = contest.contest_problems.select_related('problem__group') \
             .defer('problem__description').order_by('problem__code') \
             .annotate(user_count=Count('submission__participation', distinct=True)) \
             .annotate(i18n_translation=FilteredRelation(
@@ -416,6 +418,11 @@ class ProblemList(QueryStringSortMixin, TitleMixin, SolvedProblemMixin, ListView
             )).annotate(i18n_name=Coalesce(
                 F('i18n_translation__name'), F('problem__name'), output_field=CharField(),
             )).order_by('order')
+
+        if participation.format_data and 'selected_problems' in participation.format_data:
+            selected_ids = participation.format_data['selected_problems']
+            queryset = queryset.filter(problem_id__in=selected_ids)
+
         return [{
             'id': p['problem_id'],
             'code': p['problem__code'],

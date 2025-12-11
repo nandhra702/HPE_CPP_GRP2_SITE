@@ -172,6 +172,13 @@ class MCQList(QueryStringSortMixin, TitleMixin, SolvedMCQMixin, ListView):
         contest_data = {cm['mcq_question_id']: {'points': cm['points'], 'order': cm['order']} 
                        for cm in contest_mcq_data}
         mcq_ids = list(contest_data.keys())
+
+        # Filter randomized MCQs
+        if self.profile and self.profile.current_contest and self.profile.current_contest.contest_id == self.contest.id:
+            participation = self.profile.current_contest
+            if participation.format_data and 'selected_mcqs' in participation.format_data:
+                selected_ids = set(participation.format_data['selected_mcqs'])
+                mcq_ids = [mid for mid in mcq_ids if mid in selected_ids]
         
         # Get the actual MCQQuestion objects
         queryset = MCQQuestion.objects.filter(
