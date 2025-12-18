@@ -115,19 +115,18 @@ class MCQQuestionAdmin(NoBatchDeleteMixin, VersionAdmin):
     fieldsets = (
         (None, {
             'fields': (
-                'code', 'name', 'question_type', 'is_public', 'date',
+                'code', 'question_type', 'is_public', 'date',
                 'authors', 'curators', 'organizations', 'description',
             ),
         }),
         (_('Settings'), {
             'fields': ('points', 'partial_credit', 'explanation', 'license'),
         }),
-        (_('Taxonomy'), {'fields': ('types', 'group')}),
         (_('History'), {'fields': ('change_message',)}),
     )
-    list_display = ['code', 'name', 'question_type', 'show_authors', 'points', 'is_public']
+    list_display = ['code', 'question_type', 'show_authors', 'points', 'is_public']
     ordering = ['code']
-    search_fields = ('code', 'name', 'authors__user__username', 'curators__user__username')
+    search_fields = ('code', 'description', 'authors__user__username', 'curators__user__username')
     inlines = [MCQOptionInline]
     list_max_show_all = 1000
     actions_on_top = True

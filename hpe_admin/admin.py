@@ -15,7 +15,7 @@ from django.db import transaction
 import json
 
 from .sites import HPEAdminSite
-from .forms import ContestParticipantUploadForm, HPEContestForm, HPEProblemForm, HPEMCQForm
+from .forms import ContestParticipantUploadForm, HPEContestForm, HPEProblemForm, HPEMCQForm, HPEProblemBulkUploadForm, HPEMCQBulkUploadForm
 
 from judge.models import Problem, MCQQuestion, Contest, ContestProblem, ContestMCQ, Profile
 from judge.admin.problem import ProblemAdmin
@@ -234,30 +234,409 @@ Good luck!
 class HPEProblemAdmin(ProblemAdmin):
     form = HPEProblemForm
     change_list_template = 'hpe_admin/problem_change_list.html'
+    change_form_template = 'hpe_admin/problem_change_form.html'
+    
+    # Show difficulty in list view (renamed from group)
+    list_display = ['code', 'name', 'difficulty_display', 'points', 'is_public', 'date']
+    list_filter = ['group', 'is_public']  # Filter by difficulty level
+    search_fields = ['code', 'name']
+    
+    # Custom fieldsets with Difficulty dropdown
+    fieldsets = (
+        (None, {'fields': ('code', 'name', 'authors', 'testers')}),
+        (_('Problem Body'), {'fields': ('description',)}),
+        (_('Difficulty'), {'fields': ('group',)}),  # Difficulty dropdown
+        (_('Resources'), {'fields': ('time_limit', 'memory_limit', 'points', 'partial')}),
+        (_('Languages'), {'fields': ('allowed_languages',)}),
+    )
+    
+    def difficulty_display(self, obj):
+        """Display group as 'Difficulty' with colored styling"""
+        if obj.group:
+            return obj.group.full_name
+        return '-'
+    difficulty_display.short_description = 'Difficulty'
+    difficulty_display.admin_order_field = 'group'
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+             path('bulk-upload/', self.bulk_upload_view, name='hpe_problem_bulk_upload'),
+        ]
+        return custom_urls + urls
+
+    def bulk_upload_view(self, request):
+        if request.method == 'POST':
+            form = HPEProblemBulkUploadForm(request.POST, request.FILES)
+            if form.is_valid():
+                try:
+                    uploaded_file = request.FILES['csv_file']
+                    file_name = uploaded_file.name.lower()
+                    
+                    import csv
+                    import io
+                    import zipfile
+                    import yaml
+                    from django.core.files.base import ContentFile
+                    from django.utils.text import slugify
+                    from judge.models import ProblemData
+                    
+                    rows = []
+                    
+                    # Handle Excel files (.xlsx)
+                    if file_name.endswith('.xlsx'):
+                        from openpyxl import load_workbook
+                        wb = load_workbook(filename=io.BytesIO(uploaded_file.read()))
+                        ws = wb.active
+                        for row in ws.iter_rows(values_only=True):
+                            # Convert None to empty string and ensure all are strings
+                            rows.append([str(cell) if cell is not None else '' for cell in row])
+                    else:
+                        # Handle CSV files
+                        decoded_file = uploaded_file.read().decode('utf-8').splitlines()
+                        reader = csv.reader(decoded_file)
+                        rows = list(reader)
+                    
+                    # Expected format: Name, Body, Constraints, TL, ML, Difficulty, In1, Out1, In2, Out2...
+                    
+                    # Map difficulty names to group IDs
+                    difficulty_map = {
+                        'easy': 2,
+                        'medium': 3,
+                        'hard': 4,
+                    }
+                    
+                    count = 0
+                    for row in rows:
+                        if len(row) < 6: continue # Minimum fields (including difficulty)
+                        
+                        # Skip rows where ALL columns are empty
+                        if all(not cell or str(cell).strip() == '' for cell in row):
+                            continue
+                        
+                        name = row[0].strip()
+                        if not name: continue  # Skip rows with empty name
+                        
+                        body = row[1]
+                        constraints = row[2]
+                        
+                        # Handle Null/empty time limit - default to 60 seconds (max reasonable)
+                        tl_value = row[3].strip().lower() if row[3] else ''
+                        if tl_value in ('null', 'none', '') or not tl_value:
+                            time_limit = 60.0  # Default max time limit
+                        else:
+                            try:
+                                time_limit = float(row[3])
+                            except:
+                                time_limit = 60.0
+                        
+                        # Handle Null/empty memory limit - default to 512MB (524288 KB)
+                        ml_value = row[4].strip().lower() if row[4] else ''
+                        if ml_value in ('null', 'none', '') or not ml_value:
+                            memory_limit = 524288  # 512MB default
+                        else:
+                            try:
+                                memory_limit = int(row[4])
+                            except:
+                                memory_limit = 524288
+                        
+                        # Handle Difficulty level - REQUIRED (easy/medium/hard)
+                        # Get the difficulty value safely
+                        raw_difficulty = row[5] if len(row) > 5 and row[5] else ''
+                        difficulty_value = raw_difficulty.strip().lower()
+                        
+                        if difficulty_value not in difficulty_map:
+                            messages.error(request, f"Row '{name}': Invalid difficulty '{raw_difficulty}'. Must be easy, medium, or hard (case insensitive).")
+                            continue  # Skip this row
+                        group_id = difficulty_map[difficulty_value]
+                        
+                        # Generate unique problem code from name
+                        base_code = slugify(name)[:20] or "prob"
+                        code = base_code
+                        suffix = 1
+                        while Problem.objects.filter(code=code).exists():
+                            code = f"{base_code}{suffix}"
+                            suffix += 1
+                        
+                        # Parse test cases first to build Examples (now starting from index 6)
+                        test_cases_data = row[6:]
+                        examples_md = ""
+                        example_num = 1
+                        
+                        # Build Examples section from test case pairs
+                        for i in range(0, len(test_cases_data), 2):
+                            if i + 1 >= len(test_cases_data): break
+                            
+                            in_data = test_cases_data[i]
+                            out_data = test_cases_data[i+1]
+                            
+                            # Only show first 2 examples in description (visible to users)
+                            if example_num <= 2:
+                                examples_md += f"\n## Example {example_num}\n"
+                                examples_md += f"**Input:**\n```\n{in_data}\n```\n\n"
+                                examples_md += f"**Output:**\n```\n{out_data}\n```\n"
+                            
+                            example_num += 1
+                        
+                        # Build the full markdown description
+                        description = body
+                        
+                        if examples_md:
+                            description += f"\n{examples_md}"
+                        
+                        if constraints and constraints.lower() != 'none':
+                            description += f"\n## Constraints\n{constraints}\n"
+                            
+                        # Create Problem with difficulty group
+                        problem = Problem.objects.create(
+                            code=code,
+                            name=name,
+                            description=description,
+                            time_limit=time_limit,
+                            memory_limit=memory_limit,
+                            points=0,  # Default points (can be adjusted later)
+                            is_public=False,
+                            is_manually_managed=True,
+                            group_id=group_id  # Use mapped difficulty group
+                        )
+                        
+                        # M2M
+                        if form.cleaned_data['creators']:
+                            problem.authors.set(form.cleaned_data['creators'])
+                        if form.cleaned_data['testers']:
+                            problem.testers.set(form.cleaned_data['testers'])
+                        if form.cleaned_data['allowed_languages']:
+                            problem.allowed_languages.set(form.cleaned_data['allowed_languages'])
+                            
+                        # Test Cases - Create folder structure in site/problems/{code}/
+                        if test_cases_data:
+                            import os
+                            from django.conf import settings
+                            
+                            # Get the problems directory path
+                            problems_dir = os.path.join(settings.BASE_DIR, 'problems')
+                            problem_dir = os.path.join(problems_dir, code)
+                            
+                            # Create the problem directory
+                            os.makedirs(problem_dir, exist_ok=True)
+                            
+                            # Build init.yml content
+                            init_yml_content = {
+                                'name': name,
+                                'code': code,
+                                'type': 'standard',
+                                'validator': 'token',
+                                'limits': {
+                                    'time': time_limit,
+                                    'memory': memory_limit
+                                },
+                                'archive': 'testcases.zip',
+                                'cases': []
+                            }
+                            
+                            # Create individual test case files and add to zip
+                            zip_buffer = io.BytesIO()
+                            
+                            with zipfile.ZipFile(zip_buffer, 'w') as zf:
+                                case_idx = 1
+                                for i in range(0, len(test_cases_data), 2):
+                                    if i + 1 >= len(test_cases_data): break
+                                    
+                                    in_data = test_cases_data[i]
+                                    out_data = test_cases_data[i+1]
+                                    
+                                    in_name = f"{case_idx}.in"
+                                    out_name = f"{case_idx}.out"
+                                    
+                                    # Write individual files to folder
+                                    with open(os.path.join(problem_dir, in_name), 'w') as f:
+                                        f.write(in_data)
+                                    with open(os.path.join(problem_dir, out_name), 'w') as f:
+                                        f.write(out_data)
+                                    
+                                    # Add to zip
+                                    zf.writestr(in_name, in_data)
+                                    zf.writestr(out_name, out_data)
+                                    
+                                    init_yml_content['cases'].append({
+                                        'in': in_name,
+                                        'out': out_name
+                                    })
+                                    case_idx += 1
+                            
+                            if init_yml_content['cases']:
+                                # Write init.yml to folder with specific field order
+                                yml_lines = [
+                                    f"name: {name}",
+                                    f"code: {code}",
+                                    "type: standard",
+                                    "validator: token",
+                                    "limits:",
+                                    f"  time: {time_limit}",
+                                    f"  memory: {memory_limit}",
+                                    "archive: testcases.zip",
+                                    "cases:",
+                                ]
+                                for case in init_yml_content['cases']:
+                                    yml_lines.append(f"  - in: {case['in']}")
+                                    yml_lines.append(f"    out: {case['out']}")
+                                
+                                with open(os.path.join(problem_dir, 'init.yml'), 'w') as f:
+                                    f.write('\n'.join(yml_lines) + '\n')
+                                
+                                # Write testcases.zip to folder
+                                with open(os.path.join(problem_dir, 'testcases.zip'), 'wb') as f:
+                                    f.write(zip_buffer.getvalue())
+                        
+                        count += 1
+                    
+                    messages.success(request, f"Successfully uploaded {count} problems.")
+                    return redirect('hpe_admin:judge_problem_changelist')
+                    
+                except Exception as e:
+                    messages.error(request, f"Error processing file: {e}")
+        else:
+            form = HPEProblemBulkUploadForm()
+            
+        return render(request, 'hpe_admin/bulk_problem_upload.html', {
+            'form': form,
+            'title': _('Bulk Upload Problems')
+        })
     
     def get_form(self, request, obj=None, **kwargs):
         # Bypass ProblemAdmin.get_form
         return super(ProblemAdmin, self).get_form(request, obj, **kwargs)
-    
-    fieldsets = (
-        (None, {'fields': ('code', 'name', 'authors', 'testers')}),
-        (_('Resources'), {'fields': ('time_limit', 'memory_limit', 'points', 'partial')}),
-        (_('Languages'), {'fields': ('allowed_languages',)}),
-    )
     # Note: Bulk Upload button will be added via template
 
 class HPEMCQQuestionAdmin(MCQQuestionAdmin):
     form = HPEMCQForm
     change_list_template = 'hpe_admin/mcq_change_list.html'
     
+    # Simplified list view
+    list_display = ['code', 'question_type', 'points', 'is_public']
+    search_fields = ['code', 'description']
+    
     def get_form(self, request, obj=None, **kwargs):
         # Bypass MCQQuestionAdmin.get_form
         return super(MCQQuestionAdmin, self).get_form(request, obj, **kwargs)
     
+    # Simplified fieldsets - removed 'name' and Taxonomy
     fieldsets = (
-        (None, {'fields': ('code', 'name', 'authors')}), # Removed 'testers' as it doesn't exist
-        (_('Details'), {'fields': ('points', 'explanation')}),
+        (None, {'fields': ('code', 'authors', 'description')}),
+        (_('Settings'), {'fields': ('question_type', 'points', 'partial_credit', 'explanation')}),
     )
+    
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('bulk-upload/', self.bulk_upload_view, name='hpe_mcq_bulk_upload'),
+        ]
+        return custom_urls + urls
+    
+    def bulk_upload_view(self, request):
+        from judge.models import MCQQuestion, MCQOption
+        from django.utils.text import slugify
+        import csv
+        import io
+        
+        if request.method == 'POST':
+            form = HPEMCQBulkUploadForm(request.POST, request.FILES)
+            if form.is_valid():
+                try:
+                    uploaded_file = request.FILES['csv_file']
+                    file_name = uploaded_file.name.lower()
+                    
+                    rows = []
+                    
+                    # Handle Excel files (.xlsx)
+                    if file_name.endswith('.xlsx'):
+                        from openpyxl import load_workbook
+                        wb = load_workbook(filename=io.BytesIO(uploaded_file.read()))
+                        ws = wb.active
+                        for row in ws.iter_rows(values_only=True):
+                            rows.append([str(cell) if cell is not None else '' for cell in row])
+                    else:
+                        # Handle CSV files
+                        decoded_file = uploaded_file.read().decode('utf-8').splitlines()
+                        reader = csv.reader(decoded_file)
+                        rows = list(reader)
+                    
+                    # Format: Question, Option1, Option2, Option3, Option4, Answer(s)...
+                    count = 0
+                    for row in rows:
+                        if len(row) < 6: continue  # Minimum: Question + 4 options + 1 answer
+                        
+                        # Skip rows where ALL columns are empty
+                        if all(not cell or str(cell).strip() == '' for cell in row):
+                            continue
+                        
+                        question_text = row[0].strip()
+                        if not question_text: continue  # Skip rows with empty question
+                        
+                        # Get the 4 options
+                        options = [row[i].strip() if i < len(row) else '' for i in range(1, 5)]
+                        
+                        # Get answer columns (column 6 onwards) - these are the ANSWER TEXTS
+                        answers_raw = [row[i].strip().lower() for i in range(5, len(row)) if i < len(row) and row[i] and row[i].strip()]
+                        
+                        # Match answers to options by TEXT (case-insensitive)
+                        correct_options = set()
+                        for idx, option in enumerate(options):
+                            if option.lower() in answers_raw:
+                                correct_options.add(idx + 1)  # 1-indexed
+                        
+                        if not correct_options:
+                            messages.error(request, f"Row '{question_text[:50]}...': No matching answers found. Check that answer text matches option text exactly.")
+                            continue
+                        
+                        # Determine question type
+                        question_type = 'MULTIPLE' if len(correct_options) > 1 else 'SINGLE'
+                        
+                        # Generate unique code
+                        base_code = slugify(question_text[:15]).replace('-', '') or "mcq"
+                        code = base_code[:20]
+                        suffix = 1
+                        while MCQQuestion.objects.filter(code=code).exists():
+                            code = f"{base_code[:17]}{suffix}"
+                            suffix += 1
+                        
+                        # Create MCQ Question
+                        mcq = MCQQuestion.objects.create(
+                            code=code,
+                            description=question_text,  # Full question text
+                            question_type=question_type,
+                            points=1.0,
+                            is_public=False
+                        )
+                        
+                        # Set creators if specified
+                        if form.cleaned_data['creators']:
+                            mcq.authors.set(form.cleaned_data['creators'])
+                        
+                        # Create options
+                        for idx, option_text in enumerate(options):
+                            if option_text:  # Only create non-empty options
+                                MCQOption.objects.create(
+                                    question=mcq,
+                                    option_text=option_text,
+                                    is_correct=(idx + 1) in correct_options,
+                                    order=idx
+                                )
+                        
+                        count += 1
+                    
+                    messages.success(request, f"Successfully uploaded {count} MCQ questions.")
+                    return redirect('hpe_admin:judge_mcqquestion_changelist')
+                    
+                except Exception as e:
+                    messages.error(request, f"Error processing file: {e}")
+        else:
+            form = HPEMCQBulkUploadForm()
+            
+        return render(request, 'hpe_admin/bulk_mcq_upload.html', {
+            'form': form,
+            'title': _('Bulk Upload MCQ Questions')
+        })
     # Note: Bulk Upload button will be added via template
 
 

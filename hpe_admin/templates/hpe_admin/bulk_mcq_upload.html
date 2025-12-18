@@ -1,0 +1,82 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block extrahead %}
+{{ block.super }}
+<script src="{% static 'admin/js/vendor/jquery/jquery.min.js' %}"></script>
+<script src="{% url 'admin:jsi18n' %}"></script>
+{{ form.media }}
+{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static 'admin/css/forms.css' %}">
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; <a href="{% url 'hpe_admin:index' %}">{% trans 'HPE Admin' %}</a>
+    &rsaquo; <a href="{% url 'hpe_admin:judge_mcqquestion_changelist' %}">{% trans 'MCQ Questions' %}</a>
+    &rsaquo; {% trans 'Bulk Upload' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <form action="" method="post" enctype="multipart/form-data">{% csrf_token %}
+        {% if form.errors %}
+        <p class="errornote">
+            {% if form.errors|length == 1 %}{% trans "Please correct the error below." %}{% else %}{% trans "Please
+            correct the errors below." %}{% endif %}
+        </p>
+        {{ form.non_field_errors }}
+        {% endif %}
+
+        <fieldset class="module aligned">
+            <h2>{% trans 'Creators' %}</h2>
+
+            <div class="form-row field-creators">
+                <div>
+                    <label for="{{ form.creators.id_for_label }}">{{ form.creators.label }}:</label>
+                    {{ form.creators }}
+                    {% if form.creators.help_text %}<p class="help">{{ form.creators.help_text|safe }}</p>{% endif %}
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="module aligned">
+            <h2>{% trans 'CSV/Excel Upload' %}</h2>
+
+            <div class="form-row field-csv_file">
+                <div>
+                    <label for="{{ form.csv_file.id_for_label }}" class="required">{{ form.csv_file.label }}:</label>
+                    {{ form.csv_file }}
+                    {% if form.csv_file.help_text %}<p class="help">{{ form.csv_file.help_text|safe }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="help"
+                    style="margin-top: 10px; padding: 10px; background: #f8f8f8; border: 1px solid #ddd; border-radius: 4px;">
+                    <strong>{% trans 'CSV Format:' %}</strong><br>
+                    <code>Question, Option1, Option2, Option3, Option4, Answer(s)...</code><br><br>
+                    <strong>{% trans 'Examples:' %}</strong><br>
+                    <small>Single answer: <code>"What is 2+2?", "3", "4", "5", "6", "4"</code></small><br>
+                    <small>Multiple answers:
+                        <code>"Select all primes", "2", "3", "4", "6", "2", "3"</code></small><br><br>
+                    <strong>{% trans 'Notes:' %}</strong><br>
+                    <small>• Answer columns contain the <b>actual answer text</b> (must match an option
+                        exactly)</small><br>
+                    <small>• For multiple correct answers, add more answer columns</small><br>
+                    <small>• Questions with multiple answers are auto-detected as "Multiple Choice"</small>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="submit-row">
+            <input type="submit" value="{% trans 'Upload MCQ Questions' %}" class="default" name="_save">
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -6,8 +6,8 @@ import json
 from judge.admin.contest import ContestForm, DashboardButtonWidget
 from judge.admin.problem import ProblemForm
 from judge.admin.mcq import MCQQuestionForm
-from judge.models import Profile, Problem
-from judge.widgets import AdminHeavySelect2Widget
+from judge.models import Profile, Problem, Language
+from judge.widgets import AdminHeavySelect2MultipleWidget, AdminSelect2MultipleWidget, AdminHeavySelect2Widget, CheckboxSelectMultipleWithSelectAll
 
 class ContestParticipantUploadForm(forms.Form):
     participants_csv = forms.FileField(
@@ -103,6 +103,12 @@ class HPEProblemForm(ProblemForm):
              self.fields['change_message'].widget.attrs.update({
                 'placeholder': _('Describe the changes you made (optional)'),
             })
+        
+        # Rename 'group' to 'Difficulty'
+        if 'group' in self.fields:
+            self.fields['group'].label = _('Difficulty')
+            self.fields['group'].help_text = _('Select difficulty level: Easy, Medium, or Hard')
+            self.fields['group'].required = True
 
 class HPEMCQForm(MCQQuestionForm):
     def __init__(self, *args, **kwargs):
@@ -115,3 +121,61 @@ class HPEMCQForm(MCQQuestionForm):
             self.fields['change_message'].widget.attrs.update({
                 'placeholder': _('Describe the changes you made (optional)'),
             })
+
+class HPEProblemBulkUploadForm(forms.Form):
+    creators = forms.ModelMultipleChoiceField(
+        label=_('Creators'),
+        queryset=Profile.objects.all(),
+        widget=AdminHeavySelect2MultipleWidget(data_view='profile_select2'),
+        required=True,
+        help_text=_('These users will be able to edit the problem, and be listed as authors. '
+                    'Hold down "Control", or "Command" on a Mac, to select more than one.')
+    )
+    testers = forms.ModelMultipleChoiceField(
+        label=_('Testers'),
+        queryset=Profile.objects.all(),
+        widget=AdminHeavySelect2MultipleWidget(data_view='profile_select2'),
+        required=False,
+        help_text=_('These users will be able to view the private problem, but not edit it. '
+                    'Hold down "Control", or "Command" on a Mac, to select more than one.')
+    )
+    allowed_languages = forms.ModelMultipleChoiceField(
+        label=_('Allowed languages'),
+        queryset=Language.objects.all(),
+        widget=CheckboxSelectMultipleWithSelectAll,
+        required=False,
+        help_text=_('List of allowed submission languages.')
+    )
+    csv_file = forms.FileField(
+        label=_('CSV/Excel File'),
+        help_text=mark_safe(_(
+            '<b>Accepts:</b> .csv or .xlsx files<br>'
+            'Format: Name, Body, Constraints, Time Limit (s), Memory Limit (kb), <b>Difficulty</b>, Test Cases...<br>'
+            '<b>Difficulty</b>: Required. Must be <code>easy</code>, <code>medium</code>, or <code>hard</code>.<br>'
+            'Test Cases: Input1, Output1, Input2, Output2, etc.<br>'
+            '<small>Example: "Sum", "Find A+B", "none", 1, 65536, "easy", "1 2", "3", "5 5", "10"</small>'
+        )),
+        validators=[FileExtensionValidator(allowed_extensions=['csv', 'xlsx'])]
+    )
+
+
+class HPEMCQBulkUploadForm(forms.Form):
+    """Form for bulk uploading MCQ questions via CSV/Excel"""
+    creators = forms.ModelMultipleChoiceField(
+        label=_('Creators'),
+        queryset=Profile.objects.all(),
+        widget=AdminHeavySelect2MultipleWidget(data_view='profile_select2'),
+        required=False,
+        help_text=_('Users who can edit these questions. Hold down "Control", or "Command" on a Mac, to select more than one.')
+    )
+    csv_file = forms.FileField(
+        label=_('CSV/Excel File'),
+        help_text=mark_safe(_(
+            '<b>Accepts:</b> .csv or .xlsx files<br>'
+            'Format: Question Text, Option1, Option2, Option3, Option4, <b>Answer(s)</b>...<br>'
+            '<b>Answer columns:</b> Use the actual answer text (must match an option exactly).<br>'
+            '<small>Example: "What is 2+2?", "3", "4", "5", "6", "4"</small><br>'
+            '<small>Multi-answer: "Select primes", "2", "3", "4", "6", "2", "3"</small>'
+        )),
+        validators=[FileExtensionValidator(allowed_extensions=['csv', 'xlsx'])]
+    )
