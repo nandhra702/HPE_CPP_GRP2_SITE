@@ -248,8 +248,9 @@ class HPEProblemAdmin(ProblemAdmin):
             form = HPEProblemBulkUploadForm(request.POST, request.FILES)
             if form.is_valid():
                 try:
-                    csv_file = request.FILES['csv_file']
-                    decoded_file = csv_file.read().decode('utf-8').splitlines()
+                    uploaded_file = request.FILES['csv_file']
+                    file_name = uploaded_file.name.lower()
+                    
                     import csv
                     import io
                     import zipfile
@@ -258,27 +259,72 @@ class HPEProblemAdmin(ProblemAdmin):
                     from django.utils.text import slugify
                     from judge.models import ProblemData
                     
-                    reader = csv.reader(decoded_file)
-                    # Expected format: Name, Body, Constraints, TL, ML, In1, Out1, In2, Out2...
+                    rows = []
+                    
+                    # Handle Excel files (.xlsx)
+                    if file_name.endswith('.xlsx'):
+                        from openpyxl import load_workbook
+                        wb = load_workbook(filename=io.BytesIO(uploaded_file.read()))
+                        ws = wb.active
+                        for row in ws.iter_rows(values_only=True):
+                            # Convert None to empty string and ensure all are strings
+                            rows.append([str(cell) if cell is not None else '' for cell in row])
+                    else:
+                        # Handle CSV files
+                        decoded_file = uploaded_file.read().decode('utf-8').splitlines()
+                        reader = csv.reader(decoded_file)
+                        rows = list(reader)
+                    
+                    # Expected format: Name, Body, Constraints, TL, ML, Difficulty, In1, Out1, In2, Out2...
+                    
+                    # Map difficulty names to group IDs
+                    difficulty_map = {
+                        'easy': 2,
+                        'medium': 3,
+                        'hard': 4,
+                    }
                     
                     count = 0
-                    for row in reader:
-                        if len(row) < 5: continue # Minimum fields
+                    for row in rows:
+                        if len(row) < 6: continue # Minimum fields (including difficulty)
                         
                         name = row[0].strip()
-                        if not name: continue
+                        if not name: continue  # Skip empty rows or header rows
                         
                         body = row[1]
                         constraints = row[2]
-                        try:
-                            time_limit = float(row[3])
-                        except: time_limit = 1.0
                         
-                        try:
-                            memory_limit = int(row[4])
-                        except: memory_limit = 65536
+                        # Handle Null/empty time limit - default to 60 seconds (max reasonable)
+                        tl_value = row[3].strip().lower() if row[3] else ''
+                        if tl_value in ('null', 'none', '') or not tl_value:
+                            time_limit = 60.0  # Default max time limit
+                        else:
+                            try:
+                                time_limit = float(row[3])
+                            except:
+                                time_limit = 60.0
                         
-                        # Generate unique code
+                        # Handle Null/empty memory limit - default to 512MB (524288 KB)
+                        ml_value = row[4].strip().lower() if row[4] else ''
+                        if ml_value in ('null', 'none', '') or not ml_value:
+                            memory_limit = 524288  # 512MB default
+                        else:
+                            try:
+                                memory_limit = int(row[4])
+                            except:
+                                memory_limit = 524288
+                        
+                        # Handle Difficulty level - REQUIRED (easy/medium/hard)
+                        # Get the difficulty value safely
+                        raw_difficulty = row[5] if len(row) > 5 and row[5] else ''
+                        difficulty_value = raw_difficulty.strip().lower()
+                        
+                        if difficulty_value not in difficulty_map:
+                            messages.error(request, f"Row '{name}': Invalid difficulty '{raw_difficulty}'. Must be easy, medium, or hard (case insensitive).")
+                            continue  # Skip this row
+                        group_id = difficulty_map[difficulty_value]
+                        
+                        # Generate unique problem code from name
                         base_code = slugify(name)[:20] or "prob"
                         code = base_code
                         suffix = 1
@@ -286,8 +332,8 @@ class HPEProblemAdmin(ProblemAdmin):
                             code = f"{base_code}{suffix}"
                             suffix += 1
                         
-                        # Parse test cases first to build Examples
-                        test_cases_data = row[5:]
+                        # Parse test cases first to build Examples (now starting from index 6)
+                        test_cases_data = row[6:]
                         examples_md = ""
                         example_num = 1
                         
@@ -315,15 +361,17 @@ class HPEProblemAdmin(ProblemAdmin):
                         if constraints and constraints.lower() != 'none':
                             description += f"\n## Constraints\n{constraints}\n"
                             
-                        # Create Problem
+                        # Create Problem with difficulty group
                         problem = Problem.objects.create(
                             code=code,
                             name=name,
                             description=description,
                             time_limit=time_limit,
                             memory_limit=memory_limit,
+                            points=0,  # Default points (can be adjusted later)
                             is_public=False,
-                            is_manually_managed=True
+                            is_manually_managed=True,
+                            group_id=group_id  # Use mapped difficulty group
                         )
                         
                         # M2M
@@ -334,40 +382,70 @@ class HPEProblemAdmin(ProblemAdmin):
                         if form.cleaned_data['allowed_languages']:
                             problem.allowed_languages.set(form.cleaned_data['allowed_languages'])
                             
-                        # Test Cases - Add ALL to zip for judging
+                        # Test Cases - Create folder structure in site/problems/{code}/
                         if test_cases_data:
+                            import os
+                            from django.conf import settings
+                            
+                            # Get the problems directory path
+                            problems_dir = os.path.join(settings.BASE_DIR, 'problems')
+                            problem_dir = os.path.join(problems_dir, code)
+                            
+                            # Create the problem directory
+                            os.makedirs(problem_dir, exist_ok=True)
+                            
+                            # Build init.yml content
+                            init_yml_content = {
+                                'name': name,
+                                'code': code,
+                                'type': 'standard',
+                                'validator': 'token',
+                                'limits': {
+                                    'time': time_limit,
+                                    'memory': memory_limit
+                                },
+                                'archive': 'testcases.zip',
+                                'cases': []
+                            }
+                            
+                            # Create individual test case files and add to zip
                             zip_buffer = io.BytesIO()
-                            init_yml = {'test_cases': []}
                             
                             with zipfile.ZipFile(zip_buffer, 'w') as zf:
                                 case_idx = 1
-                                # Iterate in pairs
                                 for i in range(0, len(test_cases_data), 2):
                                     if i + 1 >= len(test_cases_data): break
                                     
                                     in_data = test_cases_data[i]
                                     out_data = test_cases_data[i+1]
                                     
-                                    # Create file names
-                                    in_name = f"case{case_idx}.in"
-                                    out_name = f"case{case_idx}.out"
+                                    in_name = f"{case_idx}.in"
+                                    out_name = f"{case_idx}.out"
                                     
+                                    # Write individual files to folder
+                                    with open(os.path.join(problem_dir, in_name), 'w') as f:
+                                        f.write(in_data)
+                                    with open(os.path.join(problem_dir, out_name), 'w') as f:
+                                        f.write(out_data)
+                                    
+                                    # Add to zip
                                     zf.writestr(in_name, in_data)
                                     zf.writestr(out_name, out_data)
                                     
-                                    init_yml['test_cases'].append({
+                                    init_yml_content['cases'].append({
                                         'in': in_name,
-                                        'out': out_name,
-                                        'points': 10 # Default points
+                                        'out': out_name
                                     })
                                     case_idx += 1
-                                
-                                if init_yml['test_cases']:
-                                    zf.writestr('init.yml', yaml.dump(init_yml))
                             
-                            if init_yml['test_cases']:
-                                problem_data = ProblemData.objects.create(problem=problem)
-                                problem_data.zipfile.save('data.zip', ContentFile(zip_buffer.getvalue()))
+                            if init_yml_content['cases']:
+                                # Write init.yml to folder
+                                with open(os.path.join(problem_dir, 'init.yml'), 'w') as f:
+                                    yaml.dump(init_yml_content, f, default_flow_style=False)
+                                
+                                # Write testcases.zip to folder
+                                with open(os.path.join(problem_dir, 'testcases.zip'), 'wb') as f:
+                                    f.write(zip_buffer.getvalue())
                         
                         count += 1
                     

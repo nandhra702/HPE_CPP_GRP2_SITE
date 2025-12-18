@@ -141,11 +141,13 @@ class HPEProblemBulkUploadForm(forms.Form):
         help_text=_('List of allowed submission languages.')
     )
     csv_file = forms.FileField(
-        label=_('CSV File'),
+        label=_('CSV/Excel File'),
         help_text=mark_safe(_(
-            'Format: Problem Name, Body, Constraints, Time Limit (s), Memory Limit (kb), Test Cases...<br>'
-            'Test Cases: variable columns at the end. Input1, Output1, Input2, Output2, etc.<br>'
-            '<small>Example: "Sum", "Find A+B", "none", 1, 65536, "1 2", "3", "5 5", "10"</small>'
+            '<b>Accepts:</b> .csv or .xlsx files<br>'
+            'Format: Name, Body, Constraints, Time Limit (s), Memory Limit (kb), <b>Difficulty</b>, Test Cases...<br>'
+            '<b>Difficulty</b>: Required. Must be <code>easy</code>, <code>medium</code>, or <code>hard</code>.<br>'
+            'Test Cases: Input1, Output1, Input2, Output2, etc.<br>'
+            '<small>Example: "Sum", "Find A+B", "none", 1, 65536, "easy", "1 2", "3", "5 5", "10"</small>'
         )),
-        validators=[FileExtensionValidator(allowed_extensions=['csv'])]
+        validators=[FileExtensionValidator(allowed_extensions=['csv', 'xlsx'])]
     )
