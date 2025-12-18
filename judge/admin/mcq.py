@@ -32,8 +32,6 @@ class MCQQuestionForm(ModelForm):
             'authors': AdminHeavySelect2MultipleWidget(data_view='profile_select2'),
             'curators': AdminHeavySelect2MultipleWidget(data_view='profile_select2'),
             'organizations': AdminHeavySelect2MultipleWidget(data_view='organization_select2'),
-            'types': AdminSelect2MultipleWidget,
-            'group': AdminSelect2Widget,
             'description': AdminMartorWidget(attrs={'data-markdownfy-url': reverse_lazy('problem_preview')}),
             'explanation': AdminMartorWidget(attrs={'data-markdownfy-url': reverse_lazy('problem_preview')}),
         }

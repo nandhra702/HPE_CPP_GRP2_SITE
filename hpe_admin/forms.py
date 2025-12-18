@@ -63,14 +63,13 @@ class HPEContestForm(ContestForm):
                 })
             
             m_data = []
-            for cm in self.instance.contest_mcqs.select_related('mcq_question', 'mcq_question__group').order_by('order'):
+            for cm in self.instance.contest_mcqs.select_related('mcq_question').order_by('order'):
                 m_data.append({
                     'id': cm.mcq_question_id,
                     'code': cm.mcq_question.code,
-                    'name': cm.mcq_question.name,
+                    'name': cm.mcq_question.description[:50] + '...' if len(cm.mcq_question.description) > 50 else cm.mcq_question.description,
                     'points': cm.points,
                     'order': cm.order,
-                    'group': cm.mcq_question.group.full_name if cm.mcq_question.group else 'Uncategorized'
                 })
                 
             self.fields['contest_problems_json'].initial = json.dumps(p_data)
