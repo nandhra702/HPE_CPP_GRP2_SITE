@@ -205,7 +205,7 @@ class HPEContestAdmin(ContestAdmin):
             user.save()
             
             # Send Email
-            contest_url = request.build_absolute_uri(reverse('contest_view', args=[contest.key]))
+            contest_url = request.build_absolute_uri(reverse('hpe_contest_view', args=[contest.key]))
             subject = f"Invitation to {contest.name}"
             message = f"""
 Hello {user.username},
@@ -215,6 +215,8 @@ You have been invited to participate in the contest "{contest.name}".
 Link: {contest_url}
 Username: {user.username}
 Password: {new_password}
+
+Please log in using the credentials above.
 
 Good luck!
             """

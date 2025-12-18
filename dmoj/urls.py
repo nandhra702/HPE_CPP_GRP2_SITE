@@ -109,6 +109,7 @@ urlpatterns = [
     path('i18n/', include('django.conf.urls.i18n')),
     path('accounts/', include(register_patterns)),
     path('', include('social_django.urls')),
+    path('hpe/', include('hpe_admin.public_urls')),
 
     path('problems/', xframe_options_exempt(problem.ProblemList.as_view()), name='problem_list'),
     path('problems/random/', xframe_options_exempt(problem.RandomProblem.as_view()), name='problem_random'),

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Access Denied</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #dc2626;
+            margin-top: 0;
+        }
+
+        a {
+            color: #01a982;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>Access Denied</h1>
+        <p>You do not have permission to view the contest <strong>{{ contest.name }}</strong>.</p>
+        <p>Please <a href="{{ url('hpe_contest_login') }}?next={{ request.path }}">login with an authorized account</a>.
+        </p>
+    </div>
+</body>
+
+</html>
