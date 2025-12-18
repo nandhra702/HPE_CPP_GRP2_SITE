@@ -1,9 +1,12 @@
 from .sites import HPEAdminSite
-from judge.models import Problem, MCQQuestion
+
+from judge.models import Problem, MCQQuestion, Contest
 from judge.admin.problem import ProblemAdmin
 from judge.admin.mcq import MCQQuestionAdmin
+from judge.admin.contest import ContestAdmin
 
 hpe_admin_site = HPEAdminSite(name='hpe_admin')
 
 hpe_admin_site.register(Problem, ProblemAdmin)
 hpe_admin_site.register(MCQQuestion, MCQQuestionAdmin)
+hpe_admin_site.register(Contest, ContestAdmin)
