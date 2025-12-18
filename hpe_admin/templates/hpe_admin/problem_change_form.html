@@ -1,0 +1,13 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{# Override to remove links to submission/votes that don't exist in HPE admin #}
+
+{% block extrahead %}
+{{ block.super }}
+{% endblock %}
+
+{% block after_field_sets %}
+{{ block.super }}
+{# Removed "View submissions" and "View problem votes" links as they reference URLs not available in HPE Admin #}
+{% endblock %}

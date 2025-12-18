@@ -4,7 +4,7 @@
 {% block object-tools-items %}
 {{ block.super }}
 <li>
-    <a href="#" class="addlink" onclick="alert('Bulk Upload is pending implementation.'); return false;">
+    <a href="{% url 'hpe_admin:hpe_problem_bulk_upload' %}" class="addlink">
         {% trans "Bulk Upload (CSV)" %}
     </a>
 </li>

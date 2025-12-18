@@ -15,7 +15,7 @@ from django.db import transaction
 import json
 
 from .sites import HPEAdminSite
-from .forms import ContestParticipantUploadForm, HPEContestForm, HPEProblemForm, HPEMCQForm
+from .forms import ContestParticipantUploadForm, HPEContestForm, HPEProblemForm, HPEMCQForm, HPEProblemBulkUploadForm
 
 from judge.models import Problem, MCQQuestion, Contest, ContestProblem, ContestMCQ, Profile
 from judge.admin.problem import ProblemAdmin
@@ -234,6 +234,155 @@ Good luck!
 class HPEProblemAdmin(ProblemAdmin):
     form = HPEProblemForm
     change_list_template = 'hpe_admin/problem_change_list.html'
+    change_form_template = 'hpe_admin/problem_change_form.html'
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+             path('bulk-upload/', self.bulk_upload_view, name='hpe_problem_bulk_upload'),
+        ]
+        return custom_urls + urls
+
+    def bulk_upload_view(self, request):
+        if request.method == 'POST':
+            form = HPEProblemBulkUploadForm(request.POST, request.FILES)
+            if form.is_valid():
+                try:
+                    csv_file = request.FILES['csv_file']
+                    decoded_file = csv_file.read().decode('utf-8').splitlines()
+                    import csv
+                    import io
+                    import zipfile
+                    import yaml
+                    from django.core.files.base import ContentFile
+                    from django.utils.text import slugify
+                    from judge.models import ProblemData
+                    
+                    reader = csv.reader(decoded_file)
+                    # Expected format: Name, Body, Constraints, TL, ML, In1, Out1, In2, Out2...
+                    
+                    count = 0
+                    for row in reader:
+                        if len(row) < 5: continue # Minimum fields
+                        
+                        name = row[0].strip()
+                        if not name: continue
+                        
+                        body = row[1]
+                        constraints = row[2]
+                        try:
+                            time_limit = float(row[3])
+                        except: time_limit = 1.0
+                        
+                        try:
+                            memory_limit = int(row[4])
+                        except: memory_limit = 65536
+                        
+                        # Generate unique code
+                        base_code = slugify(name)[:20] or "prob"
+                        code = base_code
+                        suffix = 1
+                        while Problem.objects.filter(code=code).exists():
+                            code = f"{base_code}{suffix}"
+                            suffix += 1
+                        
+                        # Parse test cases first to build Examples
+                        test_cases_data = row[5:]
+                        examples_md = ""
+                        example_num = 1
+                        
+                        # Build Examples section from test case pairs
+                        for i in range(0, len(test_cases_data), 2):
+                            if i + 1 >= len(test_cases_data): break
+                            
+                            in_data = test_cases_data[i]
+                            out_data = test_cases_data[i+1]
+                            
+                            # Only show first 2 examples in description (visible to users)
+                            if example_num <= 2:
+                                examples_md += f"\n## Example {example_num}\n"
+                                examples_md += f"**Input:**\n```\n{in_data}\n```\n\n"
+                                examples_md += f"**Output:**\n```\n{out_data}\n```\n"
+                            
+                            example_num += 1
+                        
+                        # Build the full markdown description
+                        description = body
+                        
+                        if examples_md:
+                            description += f"\n{examples_md}"
+                        
+                        if constraints and constraints.lower() != 'none':
+                            description += f"\n## Constraints\n{constraints}\n"
+                            
+                        # Create Problem
+                        problem = Problem.objects.create(
+                            code=code,
+                            name=name,
+                            description=description,
+                            time_limit=time_limit,
+                            memory_limit=memory_limit,
+                            is_public=False,
+                            is_manually_managed=True
+                        )
+                        
+                        # M2M
+                        if form.cleaned_data['creators']:
+                            problem.authors.set(form.cleaned_data['creators'])
+                        if form.cleaned_data['testers']:
+                            problem.testers.set(form.cleaned_data['testers'])
+                        if form.cleaned_data['allowed_languages']:
+                            problem.allowed_languages.set(form.cleaned_data['allowed_languages'])
+                            
+                        # Test Cases - Add ALL to zip for judging
+                        if test_cases_data:
+                            zip_buffer = io.BytesIO()
+                            init_yml = {'test_cases': []}
+                            
+                            with zipfile.ZipFile(zip_buffer, 'w') as zf:
+                                case_idx = 1
+                                # Iterate in pairs
+                                for i in range(0, len(test_cases_data), 2):
+                                    if i + 1 >= len(test_cases_data): break
+                                    
+                                    in_data = test_cases_data[i]
+                                    out_data = test_cases_data[i+1]
+                                    
+                                    # Create file names
+                                    in_name = f"case{case_idx}.in"
+                                    out_name = f"case{case_idx}.out"
+                                    
+                                    zf.writestr(in_name, in_data)
+                                    zf.writestr(out_name, out_data)
+                                    
+                                    init_yml['test_cases'].append({
+                                        'in': in_name,
+                                        'out': out_name,
+                                        'points': 10 # Default points
+                                    })
+                                    case_idx += 1
+                                
+                                if init_yml['test_cases']:
+                                    zf.writestr('init.yml', yaml.dump(init_yml))
+                            
+                            if init_yml['test_cases']:
+                                problem_data = ProblemData.objects.create(problem=problem)
+                                problem_data.zipfile.save('data.zip', ContentFile(zip_buffer.getvalue()))
+                        
+                        count += 1
+                    
+                    messages.success(request, f"Successfully uploaded {count} problems.")
+                    return redirect('hpe_admin:judge_problem_changelist')
+                    
+                except Exception as e:
+                    messages.error(request, f"Error processing file: {e}")
+        else:
+            form = HPEProblemBulkUploadForm()
+            
+        return render(request, 'hpe_admin/bulk_problem_upload.html', {
+            'form': form,
+            'title': _('Bulk Upload Problems')
+        })
     
     def get_form(self, request, obj=None, **kwargs):
         # Bypass ProblemAdmin.get_form
@@ -241,6 +390,7 @@ class HPEProblemAdmin(ProblemAdmin):
     
     fieldsets = (
         (None, {'fields': ('code', 'name', 'authors', 'testers')}),
+        (_('Problem Body'), {'fields': ('description',)}),
         (_('Resources'), {'fields': ('time_limit', 'memory_limit', 'points', 'partial')}),
         (_('Languages'), {'fields': ('allowed_languages',)}),
     )
