@@ -15,7 +15,7 @@ from django.db import transaction
 import json
 
 from .sites import HPEAdminSite
-from .forms import ContestParticipantUploadForm, HPEContestForm, HPEProblemForm, HPEMCQForm, HPEProblemBulkUploadForm
+from .forms import ContestParticipantUploadForm, HPEContestForm, HPEProblemForm, HPEMCQForm, HPEProblemBulkUploadForm, HPEMCQBulkUploadForm
 
 from judge.models import Problem, MCQQuestion, Contest, ContestProblem, ContestMCQ, Profile
 from judge.admin.problem import ProblemAdmin
@@ -512,14 +512,131 @@ class HPEMCQQuestionAdmin(MCQQuestionAdmin):
     form = HPEMCQForm
     change_list_template = 'hpe_admin/mcq_change_list.html'
     
+    # Show difficulty in list view
+    list_display = ['code', 'name', 'question_type', 'points', 'is_public']
+    search_fields = ['code', 'name']
+    
     def get_form(self, request, obj=None, **kwargs):
         # Bypass MCQQuestionAdmin.get_form
         return super(MCQQuestionAdmin, self).get_form(request, obj, **kwargs)
     
     fieldsets = (
-        (None, {'fields': ('code', 'name', 'authors')}), # Removed 'testers' as it doesn't exist
-        (_('Details'), {'fields': ('points', 'explanation')}),
+        (None, {'fields': ('code', 'name', 'authors', 'description')}),
+        (_('Settings'), {'fields': ('question_type', 'points', 'partial_credit', 'explanation')}),
     )
+    
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('bulk-upload/', self.bulk_upload_view, name='hpe_mcq_bulk_upload'),
+        ]
+        return custom_urls + urls
+    
+    def bulk_upload_view(self, request):
+        from judge.models import MCQQuestion, MCQOption
+        from django.utils.text import slugify
+        import csv
+        import io
+        
+        if request.method == 'POST':
+            form = HPEMCQBulkUploadForm(request.POST, request.FILES)
+            if form.is_valid():
+                try:
+                    uploaded_file = request.FILES['csv_file']
+                    file_name = uploaded_file.name.lower()
+                    
+                    rows = []
+                    
+                    # Handle Excel files (.xlsx)
+                    if file_name.endswith('.xlsx'):
+                        from openpyxl import load_workbook
+                        wb = load_workbook(filename=io.BytesIO(uploaded_file.read()))
+                        ws = wb.active
+                        for row in ws.iter_rows(values_only=True):
+                            rows.append([str(cell) if cell is not None else '' for cell in row])
+                    else:
+                        # Handle CSV files
+                        decoded_file = uploaded_file.read().decode('utf-8').splitlines()
+                        reader = csv.reader(decoded_file)
+                        rows = list(reader)
+                    
+                    # Format: Question, Option1, Option2, Option3, Option4, Answer(s)...
+                    count = 0
+                    for row in rows:
+                        if len(row) < 6: continue  # Minimum: Question + 4 options + 1 answer
+                        
+                        # Skip rows where ALL columns are empty
+                        if all(not cell or str(cell).strip() == '' for cell in row):
+                            continue
+                        
+                        question_text = row[0].strip()
+                        if not question_text: continue  # Skip rows with empty question
+                        
+                        # Get the 4 options
+                        options = [row[i].strip() if i < len(row) else '' for i in range(1, 5)]
+                        
+                        # Get answer columns (column 6 onwards) - these are the ANSWER TEXTS
+                        answers_raw = [row[i].strip().lower() for i in range(5, len(row)) if i < len(row) and row[i] and row[i].strip()]
+                        
+                        # Match answers to options by TEXT (case-insensitive)
+                        correct_options = set()
+                        for idx, option in enumerate(options):
+                            if option.lower() in answers_raw:
+                                correct_options.add(idx + 1)  # 1-indexed
+                        
+                        if not correct_options:
+                            messages.error(request, f"Row '{question_text[:50]}...': No matching answers found. Check that answer text matches option text exactly.")
+                            continue
+                        
+                        # Determine question type
+                        question_type = 'MULTIPLE' if len(correct_options) > 1 else 'SINGLE'
+                        
+                        # Generate unique code
+                        base_code = slugify(question_text[:15]).replace('-', '') or "mcq"
+                        code = base_code[:20]
+                        suffix = 1
+                        while MCQQuestion.objects.filter(code=code).exists():
+                            code = f"{base_code[:17]}{suffix}"
+                            suffix += 1
+                        
+                        # Create MCQ Question
+                        mcq = MCQQuestion.objects.create(
+                            code=code,
+                            name=question_text[:200],  # Title (truncate if too long)
+                            description=question_text,  # Full question text
+                            question_type=question_type,
+                            points=1.0,
+                            is_public=False
+                        )
+                        
+                        # Set creators if specified
+                        if form.cleaned_data['creators']:
+                            mcq.authors.set(form.cleaned_data['creators'])
+                        
+                        # Create options
+                        for idx, option_text in enumerate(options):
+                            if option_text:  # Only create non-empty options
+                                MCQOption.objects.create(
+                                    question=mcq,
+                                    option_text=option_text,
+                                    is_correct=(idx + 1) in correct_options,
+                                    order=idx
+                                )
+                        
+                        count += 1
+                    
+                    messages.success(request, f"Successfully uploaded {count} MCQ questions.")
+                    return redirect('hpe_admin:judge_mcqquestion_changelist')
+                    
+                except Exception as e:
+                    messages.error(request, f"Error processing file: {e}")
+        else:
+            form = HPEMCQBulkUploadForm()
+            
+        return render(request, 'hpe_admin/bulk_mcq_upload.html', {
+            'form': form,
+            'title': _('Bulk Upload MCQ Questions')
+        })
     # Note: Bulk Upload button will be added via template
 
 

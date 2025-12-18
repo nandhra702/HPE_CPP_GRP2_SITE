@@ -157,3 +157,25 @@ class HPEProblemBulkUploadForm(forms.Form):
         )),
         validators=[FileExtensionValidator(allowed_extensions=['csv', 'xlsx'])]
     )
+
+
+class HPEMCQBulkUploadForm(forms.Form):
+    """Form for bulk uploading MCQ questions via CSV/Excel"""
+    creators = forms.ModelMultipleChoiceField(
+        label=_('Creators'),
+        queryset=Profile.objects.all(),
+        widget=AdminHeavySelect2MultipleWidget(data_view='profile_select2'),
+        required=False,
+        help_text=_('Users who can edit these questions. Hold down "Control", or "Command" on a Mac, to select more than one.')
+    )
+    csv_file = forms.FileField(
+        label=_('CSV/Excel File'),
+        help_text=mark_safe(_(
+            '<b>Accepts:</b> .csv or .xlsx files<br>'
+            'Format: Question Text, Option1, Option2, Option3, Option4, <b>Answer(s)</b>...<br>'
+            '<b>Answer columns:</b> Use the actual answer text (must match an option exactly).<br>'
+            '<small>Example: "What is 2+2?", "3", "4", "5", "6", "4"</small><br>'
+            '<small>Multi-answer: "Select primes", "2", "3", "4", "6", "2", "3"</small>'
+        )),
+        validators=[FileExtensionValidator(allowed_extensions=['csv', 'xlsx'])]
+    )
