@@ -12,14 +12,15 @@ from django.contrib.auth.models import User
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_POST
 from django.db import transaction
+import json
 
 from .sites import HPEAdminSite
 from .forms import ContestParticipantUploadForm, HPEContestForm, HPEProblemForm, HPEMCQForm
 
-from judge.models import Problem, MCQQuestion, Contest, Profile
+from judge.models import Problem, MCQQuestion, Contest, ContestProblem, ContestMCQ, Profile
 from judge.admin.problem import ProblemAdmin
 from judge.admin.mcq import MCQQuestionAdmin
-from judge.admin.contest import ContestAdmin, ContestForm
+from judge.admin.contest import ContestAdmin, ContestForm, ContestProblemInline, ContestMCQInline
 
 # Initialize the custom admin site
 hpe_admin_site = HPEAdminSite(name='hpe_admin')
@@ -27,6 +28,7 @@ hpe_admin_site = HPEAdminSite(name='hpe_admin')
 class HPEContestAdmin(ContestAdmin):
     form = HPEContestForm
     change_form_template = 'hpe_admin/contest_change_form.html'
+    inlines = [ContestProblemInline, ContestMCQInline] # Added Inlines
     
     def get_form(self, request, obj=None, **kwargs):
         # We skip ContestAdmin.get_form because it assumes fields exist that we removed.
@@ -53,10 +55,83 @@ class HPEContestAdmin(ContestAdmin):
         ]
         return custom_urls + urls
 
-    def save_model(self, request, obj, form, change):
-        super().save_model(request, obj, form, change)
+    def save_related(self, request, form, formsets, change):
+        # 1. Save Inlines (Standard Django behavior)
+        admin.ModelAdmin.save_related(self, request, form, formsets, change)
         
-        # Handle Participant CSV Upload
+        # 2. Rescore logic
+        if not self._rescored and any(formset.has_changed() for formset in formsets):
+            self._rescore(form.cleaned_data['key'])
+
+        # 3. JSON Logic (Non-destructive / Merging)
+        if 'contest_problems_json' in form.cleaned_data and form.cleaned_data['contest_problems_json']:
+            try:
+                problems_data = json.loads(form.cleaned_data['contest_problems_json'])
+                normalized_problems = []
+                for item in problems_data:
+                    if isinstance(item, int): normalized_problems.append({'id': item})
+                    else: normalized_problems.append(item)
+                
+                current_problems = {cp.problem_id: cp for cp in form.instance.contest_problems.all()}
+                
+                for i, p_item in enumerate(normalized_problems):
+                    pid = int(p_item['id'])
+                    points = p_item.get('points')
+                    partial = p_item.get('partial', True)
+                    is_pretested = p_item.get('is_pretested', False)
+                    max_submissions = p_item.get('max_submissions')
+                    output_prefix_override = p_item.get('output_prefix_override', 0)
+                    
+                    if pid in current_problems:
+                        cp = current_problems[pid]
+                        changed = False
+                        if cp.order != i: cp.order = i; changed = True
+                        if points is not None and cp.points != points: cp.points = points; changed = True
+                        if changed: cp.save()
+                    else:
+                        prob = Problem.objects.get(id=pid)
+                        ContestProblem.objects.create(
+                            contest=form.instance,
+                            problem=prob,
+                            points=points if points is not None else prob.points,
+                            partial=partial,
+                            is_pretested=is_pretested,
+                            max_submissions=max_submissions,
+                            output_prefix_override=output_prefix_override,
+                            order=i
+                        )
+            except Exception as e: pass
+
+        if 'contest_mcqs_json' in form.cleaned_data and form.cleaned_data['contest_mcqs_json']:
+            try:
+                mcq_data = json.loads(form.cleaned_data['contest_mcqs_json'])
+                normalized_mcqs = []
+                for item in mcq_data:
+                    if isinstance(item, int): normalized_mcqs.append({'id': item})
+                    else: normalized_mcqs.append(item)
+
+                current_mcqs = {cm.mcq_question_id: cm for cm in form.instance.contest_mcqs.all()}
+                
+                for i, m_item in enumerate(normalized_mcqs):
+                    mid = int(m_item['id'])
+                    points = m_item.get('points')
+                    if mid in current_mcqs:
+                        cm = current_mcqs[mid]
+                        changed = False
+                        if cm.order != i: cm.order = i; changed = True
+                        if points is not None and cm.points != points: cm.points = points; changed = True
+                        if changed: cm.save()
+                    else:
+                        mcq = MCQQuestion.objects.get(id=mid)
+                        ContestMCQ.objects.create(
+                            contest=form.instance,
+                            mcq_question=mcq,
+                            points=points if points is not None else mcq.points,
+                            order=i
+                        )
+            except Exception as e: pass
+
+        # 4. Handle Participant CSV Upload (Moved from save_model to ensure M2M persistence)
         if 'participants_csv' in request.FILES:
             csv_file = request.FILES['participants_csv']
             try:
@@ -72,10 +147,16 @@ class HPEContestAdmin(ContestAdmin):
                     email = row[0].strip()
                     if not email or '@' not in email: continue
                     
-                    username = row[1].strip() if len(row) > 1 else email.split('@')[0]
+                    email_val = row[0].strip()
+                    if not email_val or '@' not in email_val: continue
+                    
+                    if len(row) > 1 and row[1].strip():
+                         username = row[1].strip()
+                    else:
+                         username = email_val.split('@')[0]
                     
                     user, created = User.objects.get_or_create(
-                        email=email,
+                        email=email_val,
                         defaults={'username': username}
                     )
                     
@@ -87,20 +168,22 @@ class HPEContestAdmin(ContestAdmin):
                         created_count += 1
                     
                     profile = user.profile
-                    if not obj.private_contestants.filter(id=profile.id).exists():
-                        obj.private_contestants.add(profile)
+                    # Use form.instance (obj)
+                    if not form.instance.private_contestants.filter(id=profile.id).exists():
+                        form.instance.private_contestants.add(profile)
                         added_count += 1
                 
-                if not obj.is_private and added_count > 0:
-                    obj.is_private = True
-                    obj.save()
+                if not form.instance.is_private and added_count > 0:
+                    form.instance.is_private = True
+                    form.instance.save()
 
                 if added_count > 0:
                     self.message_user(request, f"Processed CSV: {created_count} accounts created, {added_count} participants added.", level=messages.SUCCESS)
                     
             except Exception as e:
                 self.message_user(request, f"Error processing CSV: {e}", level=messages.ERROR)
-    
+
+
     def upload_participants_view(self, request, contest_id):
         # ... kept for backward compatibility if needed, but primary method is now valid on save_model
         return redirect('hpe_admin:judge_contest_change', contest_id)
@@ -110,6 +193,8 @@ class HPEContestAdmin(ContestAdmin):
         
         # Iterate private contestants
         count = 0
+        failed_emails = []
+        
         for profile in contest.private_contestants.all():
             user = profile.user
             if not user.email: continue
@@ -134,12 +219,15 @@ Password: {new_password}
 Good luck!
             """
             try:
-                send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=True)
+                send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
                 count += 1
-            except Exception:
-                pass # Fail silently for demo
+            except Exception as e:
+                failed_emails.append(f"{user.email}: {str(e)}")
         
         messages.success(request, f"Sent invites to {count} participants.")
+        if failed_emails:
+            messages.warning(request, f"Failed to send to {len(failed_emails)} participants: <br>" + "<br>".join(failed_emails))
+            
         return redirect('hpe_admin:judge_contest_change', contest_id)
 
 

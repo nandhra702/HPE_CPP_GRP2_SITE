@@ -1,11 +1,13 @@
 from django import forms
 from django.core.validators import FileExtensionValidator
 from django.utils.translation import gettext_lazy as _
+from django.utils.safestring import mark_safe
 import json
 from judge.admin.contest import ContestForm, DashboardButtonWidget
 from judge.admin.problem import ProblemForm
 from judge.admin.mcq import MCQQuestionForm
-from judge.models import Profile
+from judge.models import Profile, Problem
+from judge.widgets import AdminHeavySelect2Widget
 
 class ContestParticipantUploadForm(forms.Form):
     participants_csv = forms.FileField(
@@ -18,7 +20,21 @@ class ContestParticipantUploadForm(forms.Form):
 class HPEContestForm(ContestForm):
     participants_csv = forms.FileField(
         label=_('Upload Participants CSV'),
-        help_text=_('CSV format: username,email (optional: password)'),
+        help_text=mark_safe(_(
+            'Upload a CSV file containing participant emails.<br>'
+            '<small>Usernames will be automatically generated from emails if not provided.</small><br>'
+            '<details>'
+            '<summary><strong>View Example CSV Format</strong></summary>'
+            '<pre style="margin-top: 5px; background: #f5f5f5; padding: 5px; border-radius: 4px;">'
+            '<strong>Option 1: Email only</strong>\n'
+            'john@example.com\n'
+            'jane@example.com\n\n'
+            '<strong>Option 2: Email and Username</strong>\n'
+            'john@example.com,john_doe\n'
+            'jane@example.com,jane_smith'
+            '</pre>'
+            '</details>'
+        )),
         validators=[FileExtensionValidator(allowed_extensions=['csv'])],
         required=False
     )
@@ -60,6 +76,12 @@ class HPEContestForm(ContestForm):
             self.fields['contest_problems_json'].initial = json.dumps(p_data)
             self.fields['contest_mcqs_json'].initial = json.dumps(m_data)
             self.fields['contest_randomization_json'].initial = json.dumps(self.instance.randomization_config)
+
+    def clean(self):
+        # Skip ContestForm.clean which expects 'banned_users'
+        # Go directly to ModelForm.clean
+        cleaned_data = super(ContestForm, self).clean()
+        return cleaned_data
 
 class HPEProblemForm(ProblemForm):
     def __init__(self, *args, **kwargs):
