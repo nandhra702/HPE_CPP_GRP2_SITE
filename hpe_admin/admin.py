@@ -512,16 +512,17 @@ class HPEMCQQuestionAdmin(MCQQuestionAdmin):
     form = HPEMCQForm
     change_list_template = 'hpe_admin/mcq_change_list.html'
     
-    # Show difficulty in list view
-    list_display = ['code', 'name', 'question_type', 'points', 'is_public']
-    search_fields = ['code', 'name']
+    # Simplified list view
+    list_display = ['code', 'question_type', 'points', 'is_public']
+    search_fields = ['code', 'description']
     
     def get_form(self, request, obj=None, **kwargs):
         # Bypass MCQQuestionAdmin.get_form
         return super(MCQQuestionAdmin, self).get_form(request, obj, **kwargs)
     
+    # Simplified fieldsets - removed 'name' and Taxonomy
     fieldsets = (
-        (None, {'fields': ('code', 'name', 'authors', 'description')}),
+        (None, {'fields': ('code', 'authors', 'description')}),
         (_('Settings'), {'fields': ('question_type', 'points', 'partial_credit', 'explanation')}),
     )
     
@@ -602,7 +603,6 @@ class HPEMCQQuestionAdmin(MCQQuestionAdmin):
                         # Create MCQ Question
                         mcq = MCQQuestion.objects.create(
                             code=code,
-                            name=question_text[:200],  # Title (truncate if too long)
                             description=question_text,  # Full question text
                             question_type=question_type,
                             points=1.0,

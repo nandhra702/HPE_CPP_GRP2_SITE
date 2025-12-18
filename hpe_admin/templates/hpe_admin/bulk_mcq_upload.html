@@ -62,12 +62,13 @@
                     <strong>{% trans 'CSV Format:' %}</strong><br>
                     <code>Question, Option1, Option2, Option3, Option4, Answer(s)...</code><br><br>
                     <strong>{% trans 'Examples:' %}</strong><br>
-                    <small>Single answer: <code>"What is 2+2?", "3", "4", "5", "6", "2"</code></small><br>
+                    <small>Single answer: <code>"What is 2+2?", "3", "4", "5", "6", "4"</code></small><br>
                     <small>Multiple answers:
-                        <code>"Select all primes", "2", "3", "4", "6", "1", "2"</code></small><br><br>
+                        <code>"Select all primes", "2", "3", "4", "6", "2", "3"</code></small><br><br>
                     <strong>{% trans 'Notes:' %}</strong><br>
-                    <small>• Answer columns use option numbers (1-4)</small><br>
-                    <small>• For multiple correct answers, add more columns after the first answer</small><br>
+                    <small>• Answer columns contain the <b>actual answer text</b> (must match an option
+                        exactly)</small><br>
+                    <small>• For multiple correct answers, add more answer columns</small><br>
                     <small>• Questions with multiple answers are auto-detected as "Multiple Choice"</small>
                 </div>
             </div>

@@ -1,237 +1,199 @@
 {% extends "common-content.html" %}
 
 {% block media %}
-    <style>
-        #mcq-table th a {
-            color: inherit;
-            text-decoration: none;
-        }
-        #mcq-table th a:hover {
-            text-decoration: underline;
-        }
-        {% if not request.in_contest %}
-            #mcq-table th {
-                padding: 0;
-            }
-        {% endif %}
-    </style>
+<style>
+    #mcq-table th a {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    #mcq-table th a:hover {
+        text-decoration: underline;
+    }
+
+        {
+        % if not request.in_contest %
+    }
+
+    #mcq-table th {
+        padding: 0;
+    }
+
+        {
+        % endif %
+    }
+</style>
 {% endblock %}
 
 {% block js_media %}
-    {% compress js %}
-        <script>
-            $(function () {
-                var $form = $('form#filter-form');
-                var $search = $('#search');
-                var $category = $('#category');
-                var $format = $('#format');
+{% compress js %}
+<script>
+    $(function () {
+        var $form = $('form#filter-form');
+        var $search = $('#search');
+        var $format = $('#format');
 
-                function prep_form() {
-                    $search.prop('disabled', !$search.val());
-                    $category.prop('disabled', !$category.val());
-                    $format.prop('disabled', !$format.val());
-                }
+        function prep_form() {
+            $search.prop('disabled', !$search.val());
+            $format.prop('disabled', !$format.val());
+        }
 
-                function clean_submit() {
-                    prep_form();
-                    $form.submit();
-                }
+        function clean_submit() {
+            prep_form();
+            $form.submit();
+        }
 
-                $category.select2({
-                    theme: '{{ DMOJ_SELECT2_THEME }}'
-                }).css({'visibility': 'visible'}).change(clean_submit);
-                
-                $format.select2({
-                    theme: '{{ DMOJ_SELECT2_THEME }}',
-                    minimumResultsForSearch: -1
-                }).css({'visibility': 'visible'}).change(clean_submit);
-                
-                $('#types').select2({
-                    theme: '{{ DMOJ_SELECT2_THEME }}',
-                    multiple: 1,
-                    placeholder: {{ _('Filter by type...')|htmltojs }}
-                }).css({'visibility': 'visible'});
+        $format.select2({
+            theme: '{{ DMOJ_SELECT2_THEME }}',
+            minimumResultsForSearch: -1
+        }).css({ 'visibility': 'visible' }).change(clean_submit);
 
-                $search.keypress(function (e) {
-                    if (e.keyCode == 13)
-                        $('#go').click();
-                });
+        $search.keypress(function (e) {
+            if (e.keyCode == 13)
+                $('#go').click();
+        });
 
-                $('#go').click(clean_submit);
+        $('#go').click(clean_submit);
 
-                $('input#hide_solved').click(function () {
-                    prep_form();
-                    ($('<form>').attr('action', window.location.pathname + '?' + $form.serialize())
-                        .append($('<input>').attr('type', 'hidden').attr('name', 'csrfmiddlewaretoken')
-                            .attr('value', $.cookie('csrftoken')))
-                        .attr('method', 'POST').appendTo($('body')).submit());
-                });
-            });
-        </script>
-    {% endcompress %}
+        $('input#hide_solved').click(function () {
+            prep_form();
+            ($('<form>').attr('action', window.location.pathname + '?' + $form.serialize())
+                .append($('<input>').attr('type', 'hidden').attr('name', 'csrfmiddlewaretoken')
+                    .attr('value', $.cookie('csrftoken')))
+                .attr('method', 'POST').appendTo($('body')).submit());
+        });
+    });
+</script>
+{% endcompress %}
 {% endblock %}
 
 {% block title_ruler %}{% endblock %}
 
 {% block title_row %}
-    <div class="content-description">
-        <h2 style="display: inline-block;">{{ _('MCQ Questions') }}</h2>
-    </div>
+<div class="content-description">
+    <h2 style="display: inline-block;">{{ _('MCQ Questions') }}</h2>
+</div>
 {% endblock %}
 
 {% block body %}
-    {% if page_obj.has_other_pages() %}
-        <div class="top-pagination-bar">{% include "list-pages.html" %}</div>
-    {% endif %}
+{% if page_obj.has_other_pages() %}
+<div class="top-pagination-bar">{% include "list-pages.html" %}</div>
+{% endif %}
 
-    <div id="common-content">
-        <div id="content-right" class="problems">
-            <div class="info-float">
-                <div class="sidebox">
-                    <h3>{{ _('Filter') }}</h3>
-                    <div class="sidebox-content">
-                        <form id="filter-form" name="form" action="" method="get">
-                            <div class="filter-form-group">
-                                <label for="search"><i class="fa fa-search"></i> {{ _('Search') }}</label>
-                                <input id="search" type="text" name="search" value="{{ search_query }}" placeholder="{{ _('Search MCQ questions...') }}">
-                                <button id="go" type="button"><i class="fa fa-arrow-right"></i></button>
+<div id="common-content">
+    <div id="content-right" class="problems">
+        <div class="info-float">
+            <div class="sidebox">
+                <h3>{{ _('Filter') }}</h3>
+                <div class="sidebox-content">
+                    <form id="filter-form" name="form" action="" method="get">
+                        <div class="filter-form-group">
+                            <label for="search"><i class="fa fa-search"></i> {{ _('Search') }}</label>
+                            <input id="search" type="text" name="search" value="{{ search_query }}"
+                                placeholder="{{ _('Search MCQ questions...') }}">
+                            <button id="go" type="button"><i class="fa fa-arrow-right"></i></button>
+                        </div>
+                        <div class="filter-form-group">
+                            <label for="format"><i class="fa fa-list-ul"></i> {{ _('Format') }}</label>
+                            <select id="format" name="format" style="visibility:hidden">
+                                <option value="">{{ _('All') }}</option>
+                                <option value="SINGLE" {% if format=='SINGLE' %} selected{% endif %}>{{ _('Single
+                                    Choice') }}</option>
+                                <option value="MULTIPLE" {% if format=='MULTIPLE' %} selected{% endif %}>{{ _('Multiple
+                                    Choice') }}</option>
+                            </select>
+                        </div>
+                        <div class="filter-form-group">
+                            <div class="checkbox-group">
+                                <input id="hide_solved" type="checkbox" name="hide_solved" value="1" {% if hide_solved
+                                    %} checked{% endif %}>
+                                <label for="hide_solved">{{ _('Hide solved') }}</label>
                             </div>
-                            <div class="filter-form-group">
-                                <label for="category"><i class="fa fa-folder"></i> {{ _('Category') }}</label>
-                                <select id="category" name="category" style="visibility:hidden">
-                                    <option value="">{{ _('All') }}</option>
-                                    {% for cat in categories %}
-                                        <option value="{{ cat.id }}"{% if category == cat.id %} selected{% endif %}>{{ cat.full_name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="filter-form-group">
-                                <label for="format"><i class="fa fa-list-ul"></i> {{ _('Format') }}</label>
-                                <select id="format" name="format" style="visibility:hidden">
-                                    <option value="">{{ _('All') }}</option>
-                                    <option value="SINGLE"{% if format == 'SINGLE' %} selected{% endif %}>{{ _('Single Choice') }}</option>
-                                    <option value="MULTIPLE"{% if format == 'MULTIPLE' %} selected{% endif %}>{{ _('Multiple Choice') }}</option>
-                                </select>
-                            </div>
-                            <div class="filter-form-group">
-                                <label for="types"><i class="fa fa-tag"></i> {{ _('Types') }}</label>
-                                <select id="types" name="type" multiple style="visibility:hidden">
-                                    {% for type in mcq_types %}
-                                        <option value="{{ type.id }}"{% if type.id in selected_types %} selected{% endif %}>{{ type.full_name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="filter-form-group">
-                                <div class="checkbox-group">
-                                    <input id="hide_solved" type="checkbox" name="hide_solved" value="1"{% if hide_solved %} checked{% endif %}>
-                                    <label for="hide_solved">{{ _('Hide solved') }}</label>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
-        
-        <div id="content-left" class="problems h-scrollable-table">
-            <table id="mcq-table" class="table striped">
-                <thead>
+    </div>
+
+    <div id="content-left" class="problems h-scrollable-table">
+        <table id="mcq-table" class="table striped">
+            <thead>
                 <tr>
                     {% if request.user.is_authenticated %}
-                        <th class="solved">
-                            <a href="{{ sort_links.solved }}">
-                                <i class="fa fa-check"></i>{{ sort_order.solved }}
-                            </a>
-                        </th>
+                    <th class="solved">
+                        <a href="{{ sort_links.solved }}">
+                            <i class="fa fa-check"></i>{{ sort_order.solved }}
+                        </a>
+                    </th>
                     {% endif %}
-                    <th class="problem">
-                        <a href="{{ sort_links.name }}">{{ _('Question') }}{{ sort_order.name }}</a>
-                    </th>
+                    <th class="problem">{{ _('Question') }}</th>
                     <th class="type">{{ _('Format') }}</th>
-                    <th class="category">
-                        <a href="{{ sort_links.group }}">{{ _('Category') }}{{ sort_order.group }}</a>
-                    </th>
-                    <th class="types">
-                        <a href="{{ sort_links.type }}">{{ _('Tags') }}{{ sort_order.type }}</a>
-                    </th>
                     <th class="points">
                         {% if in_contest %}
-                            {{ _('Points') }}
+                        {{ _('Points') }}
                         {% else %}
-                            <a href="{{ sort_links.points }}">{{ _('Points') }}{{ sort_order.points }}</a>
+                        <a href="{{ sort_links.points }}">{{ _('Points') }}{{ sort_order.points }}</a>
                         {% endif %}
                     </th>
                     {% if not in_contest %}
-                        <th class="ac-rate">
-                            <a href="{{ sort_links.ac_rate }}">{{ _('AC %%') }}{{ sort_order.ac_rate }}</a>
-                        </th>
-                        <th class="users">
-                            <a href="{{ sort_links.user_count }}">{{ _('Users') }}{{ sort_order.user_count }}</a>
-                        </th>
+                    <th class="ac-rate">
+                        <a href="{{ sort_links.ac_rate }}">{{ _('AC %%') }}{{ sort_order.ac_rate }}</a>
+                    </th>
+                    <th class="users">
+                        <a href="{{ sort_links.user_count }}">{{ _('Users') }}{{ sort_order.user_count }}</a>
+                    </th>
                     {% endif %}
                 </tr>
-                </thead>
-                <tbody>
+            </thead>
+            <tbody>
                 {% for mcq in mcqs %}
-                    <tr>
-                        {% if request.user.is_authenticated %}
-                            {% if mcq.id in completed_mcq_ids %}
-                                <td>
-                                    <i class="solved-problem-color fa fa-check-circle"></i>
-                                </td>
-                            {% elif mcq.id in attempted_mcqs %}
-                                <td>
-                                    <i class="attempted-problem-color fa fa-minus-circle"></i>
-                                </td>
-                            {% else %}
-                                <td>
-                                    <i class="unsolved-problem-color fa fa-circle-o"></i>
-                                </td>
-                            {% endif %}
+                <tr>
+                    {% if request.user.is_authenticated %}
+                    {% if mcq.id in completed_mcq_ids %}
+                    <td>
+                        <i class="solved-problem-color fa fa-check-circle"></i>
+                    </td>
+                    {% elif mcq.id in attempted_mcqs %}
+                    <td>
+                        <i class="attempted-problem-color fa fa-minus-circle"></i>
+                    </td>
+                    {% else %}
+                    <td>
+                        <i class="unsolved-problem-color fa fa-circle-o"></i>
+                    </td>
+                    {% endif %}
+                    {% endif %}
+                    <td class="problem">
+                        <a href="{{ url('mcq_detail', mcq.code) }}">{{ mcq.description[:80] }}{% if
+                            mcq.description|length > 80 %}...{% endif %}</a>
+                    </td>
+                    <td class="type">
+                        {% if mcq.question_type == 'SINGLE' %}
+                        <span class="badge badge-info">{{ _('Single Choice') }}</span>
+                        {% elif mcq.question_type == 'MULTIPLE' %}
+                        <span class="badge badge-warning">{{ _('Multiple Choice') }}</span>
                         {% endif %}
-                        <td class="problem">
-                            <a href="{{ url('mcq_detail', mcq.code) }}">{{ mcq.name }}</a>
-                        </td>
-                        <td class="type">
-                            {% if mcq.question_type == 'SINGLE' %}
-                                <span class="badge badge-info">{{ _('Single Choice') }}</span>
-                            {% elif mcq.question_type == 'MULTIPLE' %}
-                                <span class="badge badge-warning">{{ _('Multiple Choice') }}</span>
-                            {% endif %}
-                        </td>
-                        <td class="category">
-                            {% if mcq.group %}
-                                {{ mcq.group.full_name }}
-                            {% else %}
-                                {{ _('Uncategorized') }}
-                            {% endif %}
-                        </td>
-                        <td class="types">
-                            {% if not in_contest %}
-                                {% for type in mcq.types_list %}
-                                    <span class="type-tag">{{ type }}</span>{% if not loop.last %}, {% endif %}
-                                {% endfor %}
-                            {% endif %}
-                        </td>
-                        <td class="points">
-                            {% if in_contest %}
-                                {{ mcq.contest_points|floatformat }}
-                            {% else %}
-                                {{ mcq.points|floatformat }}
-                            {% endif %}
-                        </td>
-                        {% if not in_contest %}
-                            <td class="ac-rate">{{ mcq.ac_rate|floatformat(1) }}%</td>
-                            <td class="users">{{ mcq.user_count }}</td>
+                    </td>
+                    <td class="points">
+                        {% if in_contest %}
+                        {{ mcq.contest_points|floatformat }}
+                        {% else %}
+                        {{ mcq.points|floatformat }}
                         {% endif %}
-                    </tr>
+                    </td>
+                    {% if not in_contest %}
+                    <td class="ac-rate">{{ mcq.ac_rate|floatformat(1) }}%</td>
+                    <td class="users">{{ mcq.user_count }}</td>
+                    {% endif %}
+                </tr>
                 {% endfor %}
-                </tbody>
-            </table>
-        </div>
+            </tbody>
+        </table>
     </div>
-    
-    {% if page_obj.has_other_pages() %}
-        <div class="bottom-pagination-bar">{% include "list-pages.html" %}</div>
-    {% endif %}
+</div>
+
+{% if page_obj.has_other_pages() %}
+<div class="bottom-pagination-bar">{% include "list-pages.html" %}</div>
+{% endif %}
 {% endblock %}

@@ -31,13 +31,6 @@ class MCQQuestion(models.Model):
         validators=[RegexValidator('^[a-z0-9]+$', _('Question code must be ^[a-z0-9]+$'))],
         help_text=_('A short, unique code for the question, used in the URL after /mcq/')
     )
-    name = models.CharField(
-        max_length=200,
-        verbose_name=_('question title'),
-        db_index=True,
-        help_text=_('The title/summary of the question'),
-        validators=[disallowed_characters_validator]
-    )
     description = models.TextField(
         verbose_name=_('question text'),
         help_text=_('The full question text, supports markdown'),
@@ -66,22 +59,6 @@ class MCQQuestion(models.Model):
         blank=True,
         help_text=_('Explanation shown after answering (optional)'),
         validators=[disallowed_characters_validator]
-    )
-    
-    # Categorization
-    types = models.ManyToManyField(
-        ProblemType,
-        verbose_name=_('question types'),
-        help_text=_("The type of question, similar to problem types"),
-        blank=True
-    )
-    group = models.ForeignKey(
-        ProblemGroup,
-        verbose_name=_('question group'),
-        on_delete=CASCADE,
-        help_text=_('The group/category of question'),
-        null=True,
-        blank=True
     )
     
     # Access control
@@ -152,12 +129,8 @@ class MCQQuestion(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    @cached_property
-    def types_list(self):
-        return list(map(user_gettext, map(attrgetter('full_name'), self.types.all())))
-
     def __str__(self):
-        return f"{self.code} - {self.name}"
+        return f"{self.code} - {self.description[:50]}..."
 
     def get_absolute_url(self):
         # URL pattern not yet implemented, return admin URL for now
