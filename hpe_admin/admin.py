@@ -235,6 +235,28 @@ class HPEProblemAdmin(ProblemAdmin):
     form = HPEProblemForm
     change_list_template = 'hpe_admin/problem_change_list.html'
     change_form_template = 'hpe_admin/problem_change_form.html'
+    
+    # Show difficulty in list view (renamed from group)
+    list_display = ['code', 'name', 'difficulty_display', 'points', 'is_public', 'date']
+    list_filter = ['group', 'is_public']  # Filter by difficulty level
+    search_fields = ['code', 'name']
+    
+    # Custom fieldsets with Difficulty dropdown
+    fieldsets = (
+        (None, {'fields': ('code', 'name', 'authors', 'testers')}),
+        (_('Problem Body'), {'fields': ('description',)}),
+        (_('Difficulty'), {'fields': ('group',)}),  # Difficulty dropdown
+        (_('Resources'), {'fields': ('time_limit', 'memory_limit', 'points', 'partial')}),
+        (_('Languages'), {'fields': ('allowed_languages',)}),
+    )
+    
+    def difficulty_display(self, obj):
+        """Display group as 'Difficulty' with colored styling"""
+        if obj.group:
+            return obj.group.full_name
+        return '-'
+    difficulty_display.short_description = 'Difficulty'
+    difficulty_display.admin_order_field = 'group'
 
     def get_urls(self):
         urls = super().get_urls()
@@ -288,8 +310,12 @@ class HPEProblemAdmin(ProblemAdmin):
                     for row in rows:
                         if len(row) < 6: continue # Minimum fields (including difficulty)
                         
+                        # Skip rows where ALL columns are empty
+                        if all(not cell or str(cell).strip() == '' for cell in row):
+                            continue
+                        
                         name = row[0].strip()
-                        if not name: continue  # Skip empty rows or header rows
+                        if not name: continue  # Skip rows with empty name
                         
                         body = row[1]
                         constraints = row[2]
@@ -439,9 +465,24 @@ class HPEProblemAdmin(ProblemAdmin):
                                     case_idx += 1
                             
                             if init_yml_content['cases']:
-                                # Write init.yml to folder
+                                # Write init.yml to folder with specific field order
+                                yml_lines = [
+                                    f"name: {name}",
+                                    f"code: {code}",
+                                    "type: standard",
+                                    "validator: token",
+                                    "limits:",
+                                    f"  time: {time_limit}",
+                                    f"  memory: {memory_limit}",
+                                    "archive: testcases.zip",
+                                    "cases:",
+                                ]
+                                for case in init_yml_content['cases']:
+                                    yml_lines.append(f"  - in: {case['in']}")
+                                    yml_lines.append(f"    out: {case['out']}")
+                                
                                 with open(os.path.join(problem_dir, 'init.yml'), 'w') as f:
-                                    yaml.dump(init_yml_content, f, default_flow_style=False)
+                                    f.write('\n'.join(yml_lines) + '\n')
                                 
                                 # Write testcases.zip to folder
                                 with open(os.path.join(problem_dir, 'testcases.zip'), 'wb') as f:
@@ -465,13 +506,6 @@ class HPEProblemAdmin(ProblemAdmin):
     def get_form(self, request, obj=None, **kwargs):
         # Bypass ProblemAdmin.get_form
         return super(ProblemAdmin, self).get_form(request, obj, **kwargs)
-    
-    fieldsets = (
-        (None, {'fields': ('code', 'name', 'authors', 'testers')}),
-        (_('Problem Body'), {'fields': ('description',)}),
-        (_('Resources'), {'fields': ('time_limit', 'memory_limit', 'points', 'partial')}),
-        (_('Languages'), {'fields': ('allowed_languages',)}),
-    )
     # Note: Bulk Upload button will be added via template
 
 class HPEMCQQuestionAdmin(MCQQuestionAdmin):

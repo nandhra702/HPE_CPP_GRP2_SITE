@@ -103,6 +103,12 @@ class HPEProblemForm(ProblemForm):
              self.fields['change_message'].widget.attrs.update({
                 'placeholder': _('Describe the changes you made (optional)'),
             })
+        
+        # Rename 'group' to 'Difficulty'
+        if 'group' in self.fields:
+            self.fields['group'].label = _('Difficulty')
+            self.fields['group'].help_text = _('Select difficulty level: Easy, Medium, or Hard')
+            self.fields['group'].required = True
 
 class HPEMCQForm(MCQQuestionForm):
     def __init__(self, *args, **kwargs):
