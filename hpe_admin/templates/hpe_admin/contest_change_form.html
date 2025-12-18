@@ -1,0 +1,129 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls %}
+
+{% block object-tools-items %}
+{{ block.super }}
+{% if original %}
+<li>
+    <a href="{% url 'hpe_admin:hpe_contest_send_invites' original.pk %}" class="historylink">{% trans "Send Invites"
+        %}</a>
+</li>
+{% endif %}
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script>
+    (function () {
+        // Wait for DOM to be ready
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log("HPE Admin CSV Script Loaded!");
+
+            var csvInput = document.getElementById('id_participants_csv');
+            if (!csvInput) {
+                console.error("ERROR: #id_participants_csv not found!");
+                return;
+            }
+            console.log("Found CSV input element");
+
+            csvInput.addEventListener('change', function (e) {
+                console.log("File selected!");
+                var file = this.files[0];
+                if (!file) return;
+
+                console.log("File name:", file.name);
+
+                var formData = new FormData();
+                formData.append('private_contestants_csv', file);
+
+                // Get CSRF token from cookie or form
+                var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+                if (csrfToken) {
+                    formData.append('csrfmiddlewaretoken', csrfToken.value);
+                }
+
+                // Create status div
+                var existingStatus = this.parentNode.querySelector('.csv-status');
+                if (existingStatus) existingStatus.remove();
+
+                var statusDiv = document.createElement('div');
+                statusDiv.className = 'csv-status';
+                statusDiv.style.cssText = 'margin-top:10px; padding:10px; background:#f8f9fa; border:1px solid #ddd; border-radius:4px;';
+                statusDiv.textContent = 'Reading file...';
+                this.parentNode.appendChild(statusDiv);
+
+                // Make AJAX request
+                var url = "{% url 'hpe_admin:judge_contest_add_private_contestants_new' %}";
+                console.log("Posting to:", url);
+
+                fetch(url, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                })
+                    .then(function (response) {
+                        return response.json();
+                    })
+                    .then(function (data) {
+                        console.log("Response:", data);
+                        var html = "";
+                        var addedCount = 0;
+
+                        // Add existing users to the select widget
+                        if (data.profile_data && data.profile_data.length > 0) {
+                            var selectEl = document.getElementById('id_private_contestants');
+                            if (selectEl) {
+                                data.profile_data.forEach(function (profile) {
+                                    // Check if already exists
+                                    var exists = false;
+                                    for (var i = 0; i < selectEl.options.length; i++) {
+                                        if (selectEl.options[i].value == profile.id) {
+                                            selectEl.options[i].selected = true;
+                                            exists = true;
+                                            break;
+                                        }
+                                    }
+                                    if (!exists) {
+                                        var opt = document.createElement('option');
+                                        opt.value = profile.id;
+                                        opt.text = profile.text;
+                                        opt.selected = true;
+                                        selectEl.appendChild(opt);
+                                        addedCount++;
+                                    }
+                                });
+                                // Trigger change event for Select2
+                                if (window.django && window.django.jQuery) {
+                                    django.jQuery(selectEl).trigger('change');
+                                }
+                            }
+                        }
+
+                        // Build status message
+                        if (addedCount > 0) {
+                            html += "<div style='color:green; margin-bottom:5px;'>✓ Added " + addedCount + " existing user(s) to the list.</div>";
+                        } else if (data.already_added > 0) {
+                            html += "<div style='color:#666; margin-bottom:5px;'>All found users are already in the list.</div>";
+                        }
+
+                        if (data.not_found > 0) {
+                            html += "<div style='background-color:#e3f2fd; color:#0d47a1; padding:8px; border-radius:4px; border:1px solid #90caf9; margin-top:5px; font-weight:bold;'>" +
+                                "+ " + data.not_found + " new user(s) will be created when you click Save." +
+                                "</div>";
+                        }
+
+                        if (!html) {
+                            html = "<div style='color:#666;'>No users found in file.</div>";
+                        }
+
+                        statusDiv.innerHTML = html;
+                    })
+                    .catch(function (error) {
+                        console.error("AJAX Error:", error);
+                        statusDiv.innerHTML = "<span style='color:red;'>Error: " + error.message + "</span>";
+                    });
+            });
+        });
+    })();
+</script>
+{% endblock %}

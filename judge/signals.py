@@ -5,6 +5,7 @@ from typing import Optional
 from django.conf import settings
 from django.core.cache import cache
 from django.core.cache.utils import make_template_fragment_key
+from django.contrib.auth.models import User
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
@@ -153,3 +154,9 @@ def misc_config_delete(sender, instance, **kwargs):
 @receiver(post_save, sender=ContestSubmission)
 def contest_submission_update(sender, instance, **kwargs):
     Submission.objects.filter(id=instance.submission_id).update(contest_object_id=instance.participation.contest_id)
+
+
+@receiver(post_save, sender=User)
+def create_profile(sender, instance, created, **kwargs):
+    if created:
+        Profile.objects.create(user=instance, language=Language.get_default_language())
