@@ -1,0 +1,45 @@
+{% extends "hpe_admin/logo_base.html" %}
+
+{% block title %}Instructions - {{ contest.name }}{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper" style="max-width: 800px;">
+    <div class="auth-card">
+        <h2 class="auth-title">Exam Instructions</h2>
+        <div class="contest-meta" style="text-align: center; margin-bottom: 30px; color: #666;">
+            <span><i class="fa fa-clock-o"></i> Duration: {{ contest.time_limit|default("Unknown") }}</span>
+            <span style="margin: 0 15px;">|</span>
+            <span><i class="fa fa-list"></i> Questions: {{ contest.problems.count() }}</span>
+        </div>
+
+        <div class="instructions-content" style="text-align: left; line-height: 1.6; color: #444;">
+            <h3>Please read carefully:</h3>
+            <ul style="margin-bottom: 25px;">
+                <li><strong>Fullscreen Mode:</strong> The exam will be conducted in fullscreen mode. Exiting fullscreen
+                    will be recorded as a violation.</li>
+                <li><strong>Proctoring:</strong> Your webcam will be active throughout the session. Please ensure your
+                    face is visible at all times.</li>
+                <li><strong>Tab Switching:</strong> Navigating away from the exam tab is strictly prohibited and will be
+                    monitored.</li>
+                <li><strong>Submission:</strong> Ensure you submit your code for each question. You can revisit
+                    questions at any time.</li>
+            </ul>
+
+            <div class="alert alert-warning"
+                style="background: #fff3cd; color: #856404; padding: 15px; border-radius: 5px; border: 1px solid #ffeeba;">
+                <i class="fa fa-exclamation-triangle"></i> <strong>Warning:</strong> Any attempt to cheat, including
+                using multiple devices or external help, will result in immediate disqualification.
+            </div>
+        </div>
+
+        <div class="auth-actions" style="margin-top: 40px; text-align: center;">
+            <form action="{{ url('hpe_contest_exam', contest.key) }}" method="get"> {# Using GET for now to transition,
+                or POST if we want to lock start time #}
+                <button type="submit" class="auth-btn" style="padding: 15px 40px; font-size: 18px;">
+                    I Agree, Start Exam <i class="fa fa-arrow-right"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
