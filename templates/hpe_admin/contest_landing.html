@@ -1,0 +1,1419 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ contest.name }} - HPE Contest</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <!-- MathJax for LaTeX rendering -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)'], ['~', '~']],
+                displayMath: [['\\[', '\\]'], ['$$', '$$']],
+                processEscapes: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-chtml.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        /* Left Panel - Contest Info (Fixed) */
+        .left-panel {
+            flex: 0 0 45%;
+            background: linear-gradient(135deg, #f0f9f6 0%, #e8f5f0 100%);
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #01a982 0%, #00875a 100%);
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .logo svg {
+            width: 32px;
+            height: 32px;
+            fill: white;
+        }
+
+        .contest-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .welcome-text {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            line-height: 1.2;
+            margin-bottom: 2rem;
+        }
+
+        .info-badges {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+
+        .info-badge {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 0.25rem;
+        }
+
+        .info-value {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .footer-links a {
+            color: #01a982;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+
+        .footer-links span {
+            color: #d1d5db;
+        }
+
+        /* Right Panel - Sliding Steps Container */
+        .right-panel {
+            flex: 0 0 55%;
+            background: white;
+            position: relative;
+            overflow: hidden;
+            border-left: 1px solid #e5e7eb;
+        }
+
+        .slides-container {
+            display: flex;
+            width: 300%;
+            height: 100%;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .slide {
+            flex: 0 0 33.333%;
+            height: 100%;
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overflow-y: auto;
+        }
+
+        .slide-content {
+            max-width: 450px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Slide positioning */
+        .slides-container[data-step="1"] {
+            transform: translateX(0);
+        }
+
+        .slides-container[data-step="2"] {
+            transform: translateX(-33.333%);
+        }
+
+        .slides-container[data-step="3"] {
+            transform: translateX(-66.666%);
+        }
+
+        /* Form Styles */
+        .form-header {
+            margin-bottom: 2rem;
+        }
+
+        .form-header h2 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-header p {
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            border: 1.5px solid #d1d5db;
+            border-radius: 8px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: #fafafa;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #01a982;
+            box-shadow: 0 0 0 3px rgba(1, 169, 130, 0.1);
+            background: white;
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, #01a982 0%, #00875a 100%);
+            color: white;
+            padding: 0.875rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+            margin-top: 0.5rem;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(1, 169, 130, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            color: #dc2626;
+            font-size: 0.875rem;
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: #fef2f2;
+            border-radius: 6px;
+            border-left: 3px solid #dc2626;
+        }
+
+        /* Permission Check Styles */
+        .check-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .check-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 10px;
+            background: #fafafa;
+            transition: all 0.3s ease;
+        }
+
+        .check-item.checking {
+            border-color: #fbbf24;
+            background: #fffbeb;
+        }
+
+        .check-item.success {
+            border-color: #22c55e;
+            background: #f0fdf4;
+        }
+
+        .check-item.error {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .check-icon {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border-radius: 10px;
+            margin-right: 1rem;
+            font-size: 1.25rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .check-info {
+            flex: 1;
+        }
+
+        .check-info h4 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.25rem;
+        }
+
+        .check-info p {
+            font-size: 0.8rem;
+            color: #6b7280;
+        }
+
+        .check-status {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #9ca3af;
+        }
+
+        .check-item.success .check-status {
+            color: #22c55e;
+        }
+
+        .check-item.error .check-status {
+            color: #ef4444;
+        }
+
+        .check-item.checking .check-status {
+            color: #f59e0b;
+        }
+
+        /* Individual Check Buttons */
+        .check-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: linear-gradient(135deg, #01a982 0%, #00875a 100%);
+            color: white;
+            min-width: 80px;
+        }
+
+        .check-btn:hover:not(:disabled) {
+            transform: scale(1.02);
+            box-shadow: 0 2px 8px rgba(1, 169, 130, 0.3);
+        }
+
+        .check-btn:disabled {
+            background: #d1d5db;
+            color: #6b7280;
+            cursor: not-allowed;
+        }
+
+        .check-btn.success {
+            background: #22c55e;
+            cursor: default;
+        }
+
+        .check-btn.error {
+            background: #ef4444;
+        }
+
+
+        /* Video Preview */
+        .video-preview {
+            margin-top: 1rem;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #000;
+            display: none;
+        }
+
+        .video-preview.show {
+            display: block;
+        }
+
+        .video-preview video {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+        }
+
+        /* Question List Styles */
+        .question-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .question-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.875rem 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+
+        .question-item .q-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .question-item .q-type {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .question-item .q-type.coding {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .question-item .q-type.mcq {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        .question-item .q-name {
+            font-weight: 500;
+            color: #1f2937;
+        }
+
+        .question-item .q-points {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #01a982;
+        }
+
+        .summary-stats {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: linear-gradient(135deg, #f0f9f6 0%, #e8f5f0 100%);
+            border-radius: 10px;
+        }
+
+        .stat-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #01a982;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .left-panel {
+                flex: 0 0 auto;
+                padding: 2rem;
+            }
+
+            .right-panel {
+                flex: 1;
+                border-left: none;
+                border-top: 1px solid #e5e7eb;
+            }
+
+            .welcome-text {
+                font-size: 1.75rem;
+            }
+
+            .info-badges {
+                flex-direction: row;
+                gap: 1.5rem;
+            }
+        }
+
+        /* Loading spinner */
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #d1d5db;
+            border-top-color: #01a982;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Left Panel - Contest Info (Fixed) -->
+        <div class="left-panel">
+            <div class="logo">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor"
+                        stroke-width="2" fill="none" />
+                </svg>
+            </div>
+
+            <div class="contest-info">
+                <h1 class="welcome-text">
+                    Welcome to<br>{{ contest.name }}
+                </h1>
+
+                <div class="info-badges">
+                    <div class="info-badge">
+                        <span class="info-label">Test duration</span>
+                        <span class="info-value">{{ duration_display }}</span>
+                    </div>
+                    <div class="info-badge">
+                        <span class="info-label">No. of questions</span>
+                        <span class="info-value">{{ total_questions }} questions</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-links">
+                <a href="#">Platform Help</a>
+                <span>|</span>
+                <a href="#">Execution Environment</a>
+                <span>|</span>
+                <a href="#">FAQ</a>
+            </div>
+        </div>
+
+        <!-- Right Panel - Sliding Steps -->
+        <div class="right-panel">
+            <div class="slides-container" data-step="1" id="slidesContainer">
+
+                <!-- Step 1: Login -->
+                <div class="slide" id="step-login">
+                    <div class="slide-content">
+                        <div class="form-header">
+                            <h2>Sign In to Continue</h2>
+                            <p>Enter your credentials to access the contest</p>
+                        </div>
+
+                        <form id="loginForm">
+                            <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+                            <div class="form-group">
+                                <label for="id_username">Username</label>
+                                <input type="text" name="username" id="id_username" required autofocus
+                                    placeholder="Enter your username">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="id_password">Password</label>
+                                <input type="password" name="password" id="id_password" required
+                                    placeholder="Enter your password">
+                            </div>
+
+                            <button type="submit" class="btn-primary" id="loginBtn">Continue</button>
+
+                            <div class="error-message" id="loginError" style="display: none;"></div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Step 2: Permission Checks -->
+                <div class="slide" id="step-permissions">
+                    <div class="slide-content">
+                        <div class="form-header">
+                            <h2>System Permissions</h2>
+                            <p>Complete each check to proceed</p>
+                        </div>
+
+                        <div class="check-list">
+                            <div class="check-item" id="check-camera">
+                                <div class="check-icon">📷</div>
+                                <div class="check-info">
+                                    <h4>Camera Access</h4>
+                                    <p>Required for proctoring</p>
+                                </div>
+                                <button type="button" class="check-btn" id="btn-camera">Enable</button>
+                            </div>
+
+                            <div class="check-item" id="check-fullscreen">
+                                <div class="check-icon">⛶</div>
+                                <div class="check-info">
+                                    <h4>Fullscreen Mode</h4>
+                                    <p>Exam must be in fullscreen</p>
+                                </div>
+                                <button type="button" class="check-btn" id="btn-fullscreen">Enable</button>
+                            </div>
+
+                            <div class="check-item" id="check-internet">
+                                <div class="check-icon">📶</div>
+                                <div class="check-info">
+                                    <h4>Internet Connection</h4>
+                                    <p>Stable connection required</p>
+                                </div>
+                                <button type="button" class="check-btn" id="btn-internet">Check</button>
+                            </div>
+                        </div>
+
+                        <div class="video-preview" id="videoPreview">
+                            <video id="cameraPreview" autoplay muted playsinline></video>
+                        </div>
+
+                        <button type="button" class="btn-primary" id="continueToInfoBtn" disabled>Continue</button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Contest Info & Questions -->
+                <div class="slide" id="step-info">
+                    <div class="slide-content">
+                        <div class="form-header">
+                            <h2>Contest Overview</h2>
+                            <p>Review the questions and scoring before you begin</p>
+                        </div>
+
+                        <div class="summary-stats">
+                            <div class="stat-item">
+                                <div class="stat-value">{{ total_questions }}</div>
+                                <div class="stat-label">Questions</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ total_points }}</div>
+                                <div class="stat-label">Total Points</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ duration_display }}</div>
+                                <div class="stat-label">Duration</div>
+                            </div>
+                        </div>
+
+                        <div class="question-list">
+                            {% for q in questions %}
+                            <div class="question-item">
+                                <div class="q-info">
+                                    <span class="q-type {{ q.type }}">{{ q.type }}</span>
+                                    <span class="q-name">{{ q.name }}</span>
+                                </div>
+                                <span class="q-points">{{ q.points }} pts</span>
+                            </div>
+                            {% else %}
+                            <div class="question-item">
+                                <span class="q-name">No questions added yet</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <button type="button" class="btn-primary" id="startExamBtn">Start Exam</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const slidesContainer = document.getElementById('slidesContainer');
+            let currentStep = 1;
+            let mediaStream = null;
+
+            // Permission check states
+            const checks = {
+                camera: false,
+                fullscreen: false,
+                internet: false
+            };
+
+            function goToStep(step) {
+                currentStep = step;
+                slidesContainer.setAttribute('data-step', step);
+            }
+
+            // ===== Step 1: Login =====
+            const loginForm = document.getElementById('loginForm');
+            const loginBtn = document.getElementById('loginBtn');
+            const loginError = document.getElementById('loginError');
+
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                loginBtn.disabled = true;
+                loginBtn.innerHTML = '<span class="spinner"></span> Signing in...';
+                loginError.style.display = 'none';
+
+                const formData = new FormData(loginForm);
+
+                try {
+                    const response = await fetch(window.location.href, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        goToStep(2);
+                    } else {
+                        loginError.textContent = data.error || 'Login failed. Please try again.';
+                        loginError.style.display = 'block';
+                    }
+                } catch (err) {
+                    loginError.textContent = 'An error occurred. Please try again.';
+                    loginError.style.display = 'block';
+                }
+
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = 'Continue';
+            });
+
+            // ===== Step 2: Permission Checks =====
+            const btnCamera = document.getElementById('btn-camera');
+            const btnFullscreen = document.getElementById('btn-fullscreen');
+            const btnInternet = document.getElementById('btn-internet');
+            const continueToInfoBtn = document.getElementById('continueToInfoBtn');
+            const videoPreview = document.getElementById('videoPreview');
+            const cameraPreview = document.getElementById('cameraPreview');
+
+            function updateButtonState(btn, status, text) {
+                btn.classList.remove('success', 'error');
+                if (status === 'success') {
+                    btn.classList.add('success');
+                    btn.textContent = text || '✓ Done';
+                    btn.disabled = true;
+                } else if (status === 'error') {
+                    btn.classList.add('error');
+                    btn.textContent = text || 'Retry';
+                } else {
+                    btn.textContent = text || 'Enable';
+                }
+            }
+
+            function updateCheckItem(id, status) {
+                const item = document.getElementById(id);
+                item.classList.remove('checking', 'success', 'error');
+                item.classList.add(status);
+            }
+
+            function checkAllPassed() {
+                if (checks.camera && checks.fullscreen && checks.internet) {
+                    continueToInfoBtn.disabled = false;
+                }
+            }
+
+            // Camera Check
+            btnCamera.addEventListener('click', async () => {
+                btnCamera.textContent = 'Checking...';
+                btnCamera.disabled = true;
+                updateCheckItem('check-camera', 'checking');
+
+                try {
+                    mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    cameraPreview.srcObject = mediaStream;
+                    videoPreview.classList.add('show');
+                    checks.camera = true;
+                    updateCheckItem('check-camera', 'success');
+                    updateButtonState(btnCamera, 'success', '✓ Enabled');
+                } catch (err) {
+                    checks.camera = false;
+                    updateCheckItem('check-camera', 'error');
+                    updateButtonState(btnCamera, 'error', 'Retry');
+                    btnCamera.disabled = false;
+                }
+                checkAllPassed();
+            });
+
+            // Fullscreen Check - Actually enters fullscreen
+            btnFullscreen.addEventListener('click', async () => {
+                btnFullscreen.textContent = 'Enabling...';
+                btnFullscreen.disabled = true;
+                updateCheckItem('check-fullscreen', 'checking');
+
+                try {
+                    const docEl = document.documentElement;
+                    if (docEl.requestFullscreen) {
+                        await docEl.requestFullscreen();
+                    } else if (docEl.webkitRequestFullscreen) {
+                        await docEl.webkitRequestFullscreen();
+                    } else if (docEl.mozRequestFullScreen) {
+                        await docEl.mozRequestFullScreen();
+                    } else {
+                        throw new Error('Fullscreen not supported');
+                    }
+                    checks.fullscreen = true;
+                    updateCheckItem('check-fullscreen', 'success');
+                    updateButtonState(btnFullscreen, 'success', '✓ Enabled');
+                } catch (err) {
+                    checks.fullscreen = false;
+                    updateCheckItem('check-fullscreen', 'error');
+                    updateButtonState(btnFullscreen, 'error', 'Retry');
+                    btnFullscreen.disabled = false;
+                }
+                checkAllPassed();
+            });
+
+            // Internet Check
+            btnInternet.addEventListener('click', () => {
+                btnInternet.textContent = 'Checking...';
+                btnInternet.disabled = true;
+                updateCheckItem('check-internet', 'checking');
+
+                // Small delay to show checking state
+                setTimeout(() => {
+                    if (navigator.onLine) {
+                        checks.internet = true;
+                        updateCheckItem('check-internet', 'success');
+                        updateButtonState(btnInternet, 'success', '✓ Connected');
+                    } else {
+                        checks.internet = false;
+                        updateCheckItem('check-internet', 'error');
+                        updateButtonState(btnInternet, 'error', 'Offline');
+                        btnInternet.disabled = false;
+                    }
+                    checkAllPassed();
+                }, 500);
+            });
+
+            continueToInfoBtn.addEventListener('click', () => {
+                goToStep(3);
+            });
+
+
+            // ===== Step 3: Start Exam =====
+            const startExamBtn = document.getElementById('startExamBtn');
+
+            startExamBtn.addEventListener('click', async () => {
+                startExamBtn.disabled = true;
+                startExamBtn.innerHTML = '<span class="spinner"></span> Loading exam...';
+
+                try {
+                    // Fetch exam content via AJAX
+                    const response = await fetch("{{ url('hpe_exam_content', contest.key) }}", {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load exam content');
+                    }
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // Store DMOJ data globally
+                        window.dmojData = data.dmoj_data;
+
+                        // Hide the landing page container
+                        document.querySelector('.container').style.display = 'none';
+
+                        // Create exam container
+                        const examContainer = document.createElement('div');
+                        examContainer.id = 'exam-container';
+                        examContainer.innerHTML = data.html;
+                        document.body.appendChild(examContainer);
+
+                        // Initialize the exam (proctoring, editor, etc.)
+                        initializeExam(mediaStream);
+                    } else {
+                        throw new Error(data.error || 'Failed to load exam');
+                    }
+                } catch (err) {
+                    alert('Error loading exam: ' + err.message);
+                    startExamBtn.disabled = false;
+                    startExamBtn.innerHTML = 'Start Exam';
+                }
+            });
+
+            // ===== Exam Initialization =====
+            async function initializeExam(stream) {
+                // Load required scripts dynamically
+                await loadScript('https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.4/ace.js');
+
+                // Initialize ACE Editor
+                window.editor = ace.edit("ace-editor");
+                window.editor.setTheme("ace/theme/monokai");
+                window.editor.session.setMode("ace/mode/python");
+                window.editor.setOptions({
+                    fontSize: "14px",
+                    showPrintMargin: false,
+                    highlightActiveLine: true
+                });
+
+                // Initialize proctoring with existing stream
+                initProctoringWithStream(stream);
+
+                // Initialize timer
+                initTimer();
+
+                // Initialize resize handle
+                initResize();
+
+                // Show proctoring status
+                document.getElementById('proctor-status').style.display = 'flex';
+
+                // Setup fullscreen monitoring
+                setupFullscreenMonitor();
+            }
+
+            function loadScript(src) {
+                return new Promise((resolve, reject) => {
+                    if (document.querySelector(`script[src="${src}"]`)) {
+                        resolve();
+                        return;
+                    }
+                    const script = document.createElement('script');
+                    script.src = src;
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+            }
+
+            function initProctoringWithStream(stream) {
+                const video = document.getElementById('webcam');
+                const debugVideo = document.getElementById('debug-video-feed');
+                
+                if (video && stream) {
+                    video.srcObject = stream;
+                }
+                if (debugVideo && stream) {
+                    debugVideo.srcObject = stream;
+                }
+
+                // Setup WebSocket for proctoring
+                const WS_URL = "ws://127.0.0.1:8001/ws?session_id=hpe_" + window.dmojData.userId + "_" + Date.now();
+                let socket;
+                let isConnected = false;
+
+                function initWebSocket() {
+                    socket = new WebSocket(WS_URL);
+                    socket.onopen = () => {
+                        isConnected = true;
+                        const status = document.getElementById('debug-status');
+                        if (status) status.textContent = "Active";
+                    };
+                    socket.onclose = () => {
+                        isConnected = false;
+                        const status = document.getElementById('debug-status');
+                        if (status) status.textContent = "Reconnecting...";
+                        setTimeout(initWebSocket, 3000);
+                    };
+                    socket.onerror = () => socket.close();
+                }
+
+                initWebSocket();
+
+                // Capture frames periodically
+                const canvas = document.getElementById('canvas');
+                if (canvas && video) {
+                    setInterval(() => {
+                        if (video.readyState !== 4) return;
+                        canvas.width = video.videoWidth || 320;
+                        canvas.height = video.videoHeight || 240;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        canvas.toBlob((blob) => {
+                            if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
+                                socket.send(blob);
+                            }
+                        }, 'image/jpeg', 0.5);
+                    }, 1000);
+                }
+
+                // Tab switch detection
+                let tabSwitchCount = 0;
+                document.addEventListener("visibilitychange", () => {
+                    if (document.hidden) {
+                        tabSwitchCount++;
+                        const tabCountEl = document.getElementById('debug-tab-count');
+                        if (tabCountEl) tabCountEl.textContent = tabSwitchCount;
+                        if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
+                            socket.send(JSON.stringify({ type: "tab_switch", count: tabSwitchCount }));
+                        }
+                    }
+                });
+            }
+
+            function setupFullscreenMonitor() {
+                const fullscreenModal = document.getElementById('fullscreen-warning-modal');
+                const btnReturnFullscreen = document.getElementById('btn-return-fullscreen');
+
+                function isFullscreen() {
+                    return !!(document.fullscreenElement ||
+                        document.webkitFullscreenElement ||
+                        document.mozFullScreenElement ||
+                        document.msFullscreenElement);
+                }
+
+                async function requestFullscreen() {
+                    const element = document.documentElement;
+                    const rfs = element.requestFullscreen ||
+                        element.webkitRequestFullscreen ||
+                        element.mozRequestFullScreen ||
+                        element.msRequestFullscreen;
+                    if (rfs) return rfs.call(element);
+                }
+
+                function checkFullscreen() {
+                    const isViolation = !isFullscreen() || document.hidden;
+                    if (fullscreenModal) {
+                        fullscreenModal.style.display = isViolation ? 'flex' : 'none';
+                    }
+                }
+
+                document.addEventListener('fullscreenchange', checkFullscreen);
+                document.addEventListener('webkitfullscreenchange', checkFullscreen);
+                document.addEventListener('visibilitychange', checkFullscreen);
+
+                if (btnReturnFullscreen) {
+                    btnReturnFullscreen.addEventListener('click', async () => {
+                        try {
+                            await requestFullscreen();
+                        } catch (e) {
+                            console.error("Fullscreen request failed:", e);
+                        }
+                    });
+                }
+
+                // Initial check
+                checkFullscreen();
+            }
+
+            function initTimer() {
+                const endTime = new Date("{{ contest.end_time.isoformat() }}");
+
+                function updateTimer() {
+                    const now = new Date();
+                    const diff = endTime - now;
+
+                    if (diff <= 0) {
+                        document.getElementById('countdown').textContent = 'Time Up!';
+                        return;
+                    }
+
+                    const hours = Math.floor(diff / 3600000);
+                    const mins = Math.floor((diff % 3600000) / 60000);
+                    const secs = Math.floor((diff % 60000) / 1000);
+
+                    document.getElementById('countdown').textContent =
+                        String(hours).padStart(2, '0') + ':' +
+                        String(mins).padStart(2, '0') + ':' +
+                        String(secs).padStart(2, '0');
+                }
+
+                updateTimer();
+                setInterval(updateTimer, 1000);
+            }
+
+            function initResize() {
+                const handle = document.getElementById('resize-handle');
+                const problemPanel = document.getElementById('problem-panel');
+                if (!handle || !problemPanel) return;
+
+                let isResizing = false;
+
+                handle.addEventListener('mousedown', () => {
+                    isResizing = true;
+                    document.body.style.cursor = 'col-resize';
+                    document.body.style.userSelect = 'none';
+                });
+
+                document.addEventListener('mousemove', (e) => {
+                    if (!isResizing) return;
+                    const editorView = document.getElementById('editor-view');
+                    if (!editorView) return;
+                    const rect = editorView.getBoundingClientRect();
+                    const newWidth = ((e.clientX - rect.left) / rect.width) * 100;
+                    if (newWidth >= 25 && newWidth <= 75) {
+                        problemPanel.style.width = newWidth + '%';
+                    }
+                });
+
+                document.addEventListener('mouseup', () => {
+                    isResizing = false;
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                    if (window.editor) window.editor.resize();
+                });
+            }
+
+            // ===== Exam Navigation Functions (Global) =====
+            window.showDashboard = function() {
+                document.getElementById('dashboard-view').style.display = 'block';
+                document.getElementById('editor-view').classList.remove('active');
+                const mcqView = document.getElementById('mcq-view');
+                if (mcqView) mcqView.classList.remove('active');
+                document.getElementById('btn-dashboard').classList.add('active');
+            };
+
+            window.toggleDebugPanel = function() {
+                const panel = document.getElementById('proctor-debug-panel');
+                if (panel) panel.classList.toggle('active');
+            };
+
+            window.toggleResults = function(show) {
+                const panel = document.getElementById('results-panel');
+                if (!panel) return;
+                if (show === false) panel.classList.remove('open');
+                else if (show === true) panel.classList.add('open');
+                else panel.classList.toggle('open');
+            };
+
+            window.confirmSubmit = function() {
+                if (confirm("Are you sure you want to finish the test?")) {
+                    window.location.href = "/";
+                }
+            };
+
+            // Problem loading
+            const CONTEST_KEY = "{{ contest.key }}";
+            const PROBLEM_CODES = [{% for cp in contest.contest_problems.all() %}"{{ cp.problem.code }}"{% if not loop.last %}, {% endif %}{% endfor %}];
+            let currentProblemCode = null;
+            let currentProblemIndex = -1;
+
+            window.loadProblem = async function(problemCode) {
+                currentProblemCode = problemCode;
+                currentProblemIndex = PROBLEM_CODES.indexOf(problemCode);
+
+                document.getElementById('dashboard-view').style.display = 'none';
+                document.getElementById('editor-view').classList.add('active');
+                document.getElementById('btn-dashboard').classList.remove('active');
+
+                document.getElementById('problem-title').textContent = 'Loading...';
+                document.getElementById('problem-content').innerHTML = '<p style="text-align:center;padding:40px;"><span class="exam-spinner"></span> Loading...</p>';
+
+                try {
+                    const response = await fetch(`/hpe/contest/${CONTEST_KEY}/problem/${problemCode}/content/`);
+                    if (!response.ok) throw new Error('Failed to load problem');
+
+                    const data = await response.json();
+
+                    document.getElementById('problem-title').textContent = data.name;
+                    document.getElementById('problem-points').textContent = data.points + ' points' + (data.partial ? ' (partial)' : '');
+                    document.getElementById('problem-limits').textContent = 'Time: ' + data.time_limit + 's • Memory: ' + (data.memory_limit / 1024).toFixed(0) + 'MB';
+                    document.getElementById('problem-content').innerHTML = data.description_html;
+                    document.getElementById('problem-nav').textContent = 'Problem ' + (data.current_index + 1) + ' of ' + data.total_problems;
+
+                    // MathJax
+                    if (window.MathJax && MathJax.typesetPromise) {
+                        MathJax.typesetPromise([document.getElementById('problem-content')]);
+                    }
+
+                    // Update language selector
+                    const langSelect = document.getElementById('language-select');
+                    langSelect.innerHTML = '';
+                    data.languages.forEach((lang, idx) => {
+                        const opt = document.createElement('option');
+                        opt.value = lang.id;
+                        opt.textContent = lang.name;
+                        opt.dataset.aceMode = lang.ace_mode;
+                        opt.dataset.template = lang.template;
+                        if (idx === 0) opt.selected = true;
+                        langSelect.appendChild(opt);
+                    });
+
+                    if (data.languages.length > 0) {
+                        const firstLang = data.languages[0];
+                        window.editor.session.setMode('ace/mode/' + firstLang.ace_mode);
+                        window.editor.setValue(firstLang.template || '', -1);
+                    }
+
+                    langSelect.onchange = function() {
+                        const opt = this.options[this.selectedIndex];
+                        window.editor.session.setMode('ace/mode/' + opt.dataset.aceMode);
+                        if (opt.dataset.template) {
+                            window.editor.setValue(opt.dataset.template, -1);
+                        }
+                    };
+
+                    toggleResults(false);
+                } catch (err) {
+                    document.getElementById('problem-content').innerHTML = '<p style="color:#f44336;">Error: ' + err.message + '</p>';
+                }
+            };
+
+            // MCQ Functions
+            window.loadMCQ = async function(mcqId) {
+                document.getElementById('dashboard-view').style.display = 'none';
+                document.getElementById('editor-view').classList.remove('active');
+                document.getElementById('btn-dashboard').classList.remove('active');
+
+                let mcqView = document.getElementById('mcq-view');
+                if (!mcqView) {
+                    mcqView = document.createElement('div');
+                    mcqView.id = 'mcq-view';
+                    mcqView.className = 'mcq-view';
+                    document.querySelector('.content-area').appendChild(mcqView);
+                }
+                mcqView.classList.add('active');
+                mcqView.innerHTML = '<div style="text-align:center;padding:40px;"><span class="exam-spinner"></span> Loading MCQ...</div>';
+
+                try {
+                    const response = await fetch(`/hpe/contest/${CONTEST_KEY}/mcq/${mcqId}/content/`);
+                    if (!response.ok) throw new Error('Failed to load MCQ');
+
+                    const data = await response.json();
+                    const isMultiple = data.question_type === 'MULTIPLE';
+                    const inputType = isMultiple ? 'checkbox' : 'radio';
+
+                    let html = '<div class="mcq-container" data-question-type="' + data.question_type + '">';
+                    html += '<div class="mcq-header"><h2>' + (data.title || 'MCQ Question') + '</h2>';
+                    html += '<div class="mcq-meta">';
+                    html += isMultiple ? '<span class="mcq-type-badge multiple">Multi-Correct</span>' : '<span class="mcq-type-badge single">Single Choice</span>';
+                    html += '<span class="mcq-points">' + (data.points || '') + ' points</span></div></div>';
+                    if (isMultiple) html += '<div class="mcq-hint"><i class="fa fa-info-circle"></i> Select all correct answers</div>';
+                    html += '<div class="mcq-question">' + (data.question_text || data.question || '') + '</div>';
+                    html += '<div class="mcq-options">';
+
+                    if (data.options) {
+                        data.options.forEach((opt, idx) => {
+                            const optLabel = String.fromCharCode(65 + idx);
+                            html += '<label class="mcq-option"><input type="' + inputType + '" name="mcq_answer" value="' + (opt.id || idx) + '">';
+                            html += '<span class="option-label">' + optLabel + '</span>';
+                            html += '<span class="option-text">' + (opt.text || opt) + '</span></label>';
+                        });
+                    }
+
+                    html += '</div><div class="mcq-footer">';
+                    html += '<button class="btn btn-back" onclick="showDashboard()"><i class="fa fa-arrow-left"></i>&nbsp; Back</button>';
+                    html += '<button class="btn btn-submit" onclick="submitMCQ(' + mcqId + ')"><i class="fa fa-check"></i>&nbsp; Submit Answer</button>';
+                    html += '</div></div>';
+
+                    mcqView.innerHTML = html;
+                } catch (err) {
+                    mcqView.innerHTML = '<div style="color:#f44336;padding:40px;">Error loading MCQ: ' + err.message + '</div>';
+                }
+            };
+
+            window.submitMCQ = async function(mcqId) {
+                const container = document.querySelector('.mcq-container');
+                const questionType = container ? container.dataset.questionType : 'SINGLE';
+                const selectedInputs = document.querySelectorAll('input[name="mcq_answer"]:checked');
+
+                if (selectedInputs.length === 0) {
+                    alert('Please select an answer!');
+                    return;
+                }
+
+                const answers = Array.from(selectedInputs).map(input => input.value);
+                const payload = questionType === 'MULTIPLE' ? { answers } : { answer: answers[0] };
+
+                try {
+                    const response = await fetch(`/hpe/contest/${CONTEST_KEY}/mcq/${mcqId}/submit/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const data = await response.json();
+                    alert(data.correct ? '✓ Correct!' : '✗ Incorrect.');
+                    showDashboard();
+                } catch (err) {
+                    alert('Error submitting answer: ' + err.message);
+                }
+            };
+
+            // Code submission functions
+            window.runCode = async function() { await submitCodeInternal('sample'); };
+            window.runTest = async function() { await submitCodeInternal('test'); };
+            window.submitCode = async function() { await submitCodeInternal('submit'); };
+
+            async function submitCodeInternal(mode) {
+                const source = window.editor.getValue();
+                const langId = document.getElementById('language-select').value;
+
+                if (!source.trim()) {
+                    alert('Please write some code first!');
+                    return;
+                }
+
+                let loadingMessage = mode === 'test' ? 'Running all tests...' : mode === 'submit' ? 'Submitting...' : 'Running...';
+                showResults('<div class="result-item pending"><span class="exam-spinner"></span> ' + loadingMessage + '</div>');
+
+                try {
+                    const formData = new FormData();
+                    formData.append('language', langId);
+                    formData.append('source', source);
+
+                    const response = await fetch(`/problem/${currentProblemCode}/submit`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        }
+                    });
+
+                    if (!response.ok) throw new Error('Server error: ' + response.status);
+
+                    const data = await response.json();
+                    if (data.error) {
+                        showResults('<div class="result-item fail">' + data.error + '</div>');
+                        return;
+                    }
+
+                    if (data.submission) {
+                        pollSubmissionStatus(data.submission, mode);
+                    } else {
+                        showResults('<div class="result-item fail">Submission failed</div>');
+                    }
+                } catch (err) {
+                    showResults('<div class="result-item fail">Error: ' + err.message + '</div>');
+                }
+            }
+
+            async function pollSubmissionStatus(submissionId, mode) {
+                let attempts = 0;
+                const maxAttempts = 60;
+
+                const poll = async () => {
+                    try {
+                        const response = await fetch(`/ajax/submission_status/?id=${submissionId}`);
+                        const data = await response.json();
+
+                        let html = '';
+                        if (!data.is_graded) {
+                            html = '<div class="result-item pending"><span class="exam-spinner"></span> Judging... (' + (data.status_display || data.status) + ')</div>';
+                        } else {
+                            const isAC = data.status === 'AC';
+                            html = '<div class="result-item ' + (isAC ? 'pass' : 'fail') + '"><strong>' + (data.status_display || data.status) + '</strong>';
+                            if (data.points != null) html += ' • ' + data.points + ' points';
+                            if (data.time) html += ' • ' + parseFloat(data.time).toFixed(3) + 's';
+                            if (data.memory) html += ' • ' + Math.round(parseFloat(data.memory)) + 'KB';
+                            html += '</div>';
+
+                            if (data.test_cases) {
+                                const maxCases = mode === 'sample' ? 2 : data.test_cases.length;
+                                data.test_cases.slice(0, maxCases).forEach((tc, idx) => {
+                                    html += '<div class="result-item ' + (tc.status === 'AC' ? 'pass' : 'fail') + '">Test ' + (idx + 1) + ': ' + tc.status + '</div>';
+                                });
+                                if (mode === 'sample' && data.test_cases.length > 2) {
+                                    html += '<div class="result-item" style="color:#888;">... and ' + (data.test_cases.length - 2) + ' more</div>';
+                                }
+                            }
+
+                            if (mode === 'submit' && isAC) {
+                                const nextIdx = currentProblemIndex + 1;
+                                if (nextIdx < PROBLEM_CODES.length) {
+                                    html += '<div class="result-item pass" style="margin-top:10px;">✓ Correct! Loading next problem...</div>';
+                                    setTimeout(() => loadProblem(PROBLEM_CODES[nextIdx]), 1500);
+                                } else {
+                                    html += '<div class="result-item pass" style="margin-top:10px;">✓ All problems completed!</div>';
+                                    setTimeout(() => showDashboard(), 1500);
+                                }
+                            }
+                        }
+
+                        showResults(html);
+
+                        if (!data.is_graded && attempts < maxAttempts) {
+                            attempts++;
+                            setTimeout(poll, 1000);
+                        }
+                    } catch (err) {
+                        showResults('<div class="result-item fail">Polling error: ' + err.message + '</div>');
+                    }
+                };
+
+                poll();
+            }
+
+            function showResults(html) {
+                document.getElementById('results-content').innerHTML = html;
+                document.getElementById('results-panel').classList.add('open');
+            }
+
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+
+            // Handle already logged in user
+            {% if request.user.is_authenticated and not error %}
+            goToStep(2);
+            {% endif %}
+        })();
+    </script>
+</body>
+
+</html>

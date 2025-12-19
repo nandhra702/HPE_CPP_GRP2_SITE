@@ -1,12 +1,154 @@
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import DetailView
+from django.contrib.auth import authenticate, login
+from django.views.generic import DetailView, TemplateView
+from django.views import View
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 
 from judge.models import Contest
+
+
+class HPEContestLandingView(View):
+    """Public landing page for HPE contests with inline login."""
+    template_name = 'hpe_admin/contest_landing.html'
+    
+    def get_contest(self, contest_key):
+        return get_object_or_404(Contest, key=contest_key)
+    
+    def get_context_data(self, contest):
+        # Calculate duration
+        if contest.time_limit:
+            total_seconds = int(contest.time_limit.total_seconds())
+            hours, remainder = divmod(total_seconds, 3600)
+            minutes = remainder // 60
+            if hours > 0:
+                duration_display = f"{hours} hr {minutes} mins" if minutes else f"{hours} hr"
+            else:
+                duration_display = f"{minutes} mins"
+        else:
+            # Use contest window if no time limit
+            duration = contest.end_time - contest.start_time
+            total_seconds = int(duration.total_seconds())
+            hours, remainder = divmod(total_seconds, 3600)
+            minutes = remainder // 60
+            if hours > 0:
+                duration_display = f"{hours} hr {minutes} mins" if minutes else f"{hours} hr"
+            else:
+                duration_display = f"{minutes} mins"
+        
+        # Get problems with details
+        problems = []
+        for cp in contest.contest_problems.select_related('problem').order_by('order'):
+            problems.append({
+                'label': f"Problem {cp.order + 1}",
+                'name': cp.problem.name,
+                'code': cp.problem.code,
+                'points': cp.points,
+                'type': 'coding'
+            })
+        
+        # Get MCQs with details
+        mcqs = []
+        for cm in contest.contest_mcqs.select_related('mcq_question').order_by('order'):
+            mcqs.append({
+                'label': f"MCQ {cm.order + 1}",
+                'name': cm.mcq_question.code,
+                'id': cm.mcq_question.id,
+                'points': cm.points,
+                'type': 'mcq'
+            })
+        
+        # Combine all questions
+        all_questions = problems + mcqs
+        total_points = sum(q['points'] for q in all_questions)
+        
+        return {
+            'contest': contest,
+            'duration_display': duration_display,
+            'total_questions': len(all_questions),
+            'problem_count': len(problems),
+            'mcq_count': len(mcqs),
+            'questions': all_questions,
+            'total_points': total_points,
+        }
+
+    
+    def check_permission(self, user, contest):
+        """Check if authenticated user can access the contest."""
+        if user.has_perm('judge.edit_all_contest'):
+            return True
+        if user.profile in contest.authors.all():
+            return True
+        if user.profile in contest.curators.all():
+            return True
+        if contest.private_contestants.filter(id=user.profile.id).exists():
+            return True
+        return False
+    
+    def get(self, request, contest_key):
+        contest = self.get_contest(contest_key)
+        
+        # If user is already authenticated, check permission and redirect
+        if request.user.is_authenticated:
+            if self.check_permission(request.user, contest):
+                # Stay on page for multi-step flow instead of redirecting
+                context = self.get_context_data(contest)
+                context['logged_in'] = True
+                return render(request, self.template_name, context)
+            else:
+                # Show landing page with permission denied error
+                context = self.get_context_data(contest)
+                context['error'] = "You do not have permission to access this contest."
+                return render(request, self.template_name, context)
+        
+        context = self.get_context_data(contest)
+        return render(request, self.template_name, context)
+    
+    def post(self, request, contest_key):
+        from django.http import JsonResponse
+        
+        contest = self.get_contest(contest_key)
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '')
+        
+        if not username or not password:
+            if is_ajax:
+                return JsonResponse({'success': False, 'error': 'Please enter both username and password.'})
+            context = self.get_context_data(contest)
+            context['form_errors'] = ['Please enter both username and password.']
+            return render(request, self.template_name, context)
+        
+        user = authenticate(request, username=username, password=password)
+        
+        if user is None:
+            if is_ajax:
+                return JsonResponse({'success': False, 'error': 'Invalid username or password.'})
+            context = self.get_context_data(contest)
+            context['form_errors'] = ['Invalid username or password.']
+            return render(request, self.template_name, context)
+        
+        # Check contest permission before logging in
+        if not self.check_permission(user, contest):
+            if is_ajax:
+                return JsonResponse({'success': False, 'error': 'You do not have permission to access this contest.'})
+            context = self.get_context_data(contest)
+            context['error'] = "You do not have permission to access this contest."
+            return render(request, self.template_name, context)
+        
+        # Login the user
+        login(request, user)
+        
+        if is_ajax:
+            return JsonResponse({'success': True})
+        
+        # For non-AJAX, redirect to the same page (now logged in)
+        return redirect('hpe_contest_landing', contest_key=contest.key)
+
 
 class HPEContestLoginView(auth_views.LoginView):
     template_name = 'hpe_admin/login.html'
@@ -87,6 +229,35 @@ class HPEContestExamView(HPEContestAccessMixin, DetailView):
             # 'disableBackend': True, # Uncomment for testing without backend
         }
         return context
+
+
+class HPEExamContentView(HPEContestAccessMixin, View):
+    """Returns exam dashboard content as HTML fragment for SPA loading."""
+    
+    def get(self, request, *args, **kwargs):
+        from django.template.loader import render_to_string
+        
+        # Build DMOJ data for proctoring
+        dmoj_data = {
+            'userId': request.user.id,
+            'username': request.user.username,
+            'contestName': self.contest.name,
+            'contestKey': self.contest.key,
+        }
+        
+        context = {
+            'contest': self.contest,
+            'dmoj_data': dmoj_data,
+            'request': request,
+        }
+        
+        html = render_to_string('hpe_admin/exam_content.html', context, request=request)
+        return JsonResponse({
+            'success': True,
+            'html': html,
+            'dmoj_data': dmoj_data,
+        })
+
 
 from judge.models import Problem, ContestProblem, Language, Submission
 from django.http import JsonResponse

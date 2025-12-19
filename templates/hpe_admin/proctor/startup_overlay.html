@@ -29,193 +29,131 @@
     .startup-title {
         font-size: 24px;
         font-weight: 600;
-        margin-bottom: 30px;
+        margin-bottom: 20px;
         color: var(--hpe-green, #01a982);
     }
 
-    .step-box {
-        background: #2d2d2d;
-        padding: 20px;
-        border-radius: 6px;
-        margin-bottom: 15px;
-        text-align: left;
-        border: 1px solid #404040;
-        transition: all 0.3s;
-        opacity: 0.5;
-        pointer-events: none;
-    }
-
-    .step-box.active {
-        opacity: 1;
-        pointer-events: auto;
-        border-color: var(--hpe-green, #01a982);
-    }
-
-    .step-box.completed {
-        opacity: 0.8;
-        border-color: #4caf50;
-    }
-
-    .step-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 10px;
-        font-weight: 600;
+    .startup-message {
         font-size: 16px;
+        color: #ccc;
+        margin-bottom: 30px;
     }
 
-    .step-icon {
-        margin-right: 10px;
-        width: 24px;
-        text-align: center;
+    .startup-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid #404040;
+        border-top-color: var(--hpe-green, #01a982);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
     }
 
-    .action-btn {
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .startup-error {
+        color: #ff5252;
+        margin-top: 20px;
+        padding: 15px;
+        background: rgba(255, 82, 82, 0.1);
+        border-radius: 6px;
+        display: none;
+    }
+
+    .retry-btn {
         background: var(--hpe-green, #01a982);
         color: white;
         border: none;
-        padding: 10px 20px;
+        padding: 12px 24px;
         border-radius: 4px;
         cursor: pointer;
         font-size: 14px;
-        width: 100%;
+        margin-top: 15px;
         transition: background 0.2s;
     }
 
-    .action-btn:hover {
+    .retry-btn:hover {
         background: #008f6d;
-    }
-
-    .action-btn:disabled {
-        background: #404040;
-        cursor: not-allowed;
-        color: #888;
-    }
-
-    .video-preview-box {
-        margin-top: 15px;
-        background: #000;
-        border-radius: 4px;
-        overflow: hidden;
-        height: 0;
-        transition: height 0.3s;
-    }
-
-    .video-preview-box.show {
-        height: 150px;
-    }
-
-    #startup-video-preview {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
     }
 </style>
 
 <div id="startup-overlay">
     <div class="startup-card">
-        <div class="startup-title">Exam Setup</div>
-
-        <!-- Step 1: Camera -->
-        <div id="step-camera" class="step-box active">
-            <div class="step-header">
-                <span class="step-icon">📷</span>
-                <span>Camera Access</span>
-            </div>
-            <p style="font-size: 13px; color: #ccc; margin-bottom: 15px;">Camera monitoring is required for this exam.
-            </p>
-            <button id="btn-camera" class="action-btn">Enable Camera</button>
-            <div id="camera-preview-container" class="video-preview-box">
-                <video id="startup-video-preview" autoplay muted playsinline></video>
-            </div>
-        </div>
-
-        <!-- Step 2: Fullscreen -->
-        <div id="step-fullscreen" class="step-box">
-            <div class="step-header">
-                <span class="step-icon">⛶</span>
-                <span>Fullscreen Mode</span>
-            </div>
-            <p style="font-size: 13px; color: #ccc; margin-bottom: 15px;">The exam must be taken in fullscreen mode.</p>
-            <button id="btn-fullscreen" class="action-btn">Enter Fullscreen</button>
-        </div>
-
-        <!-- Step 3: Start -->
-        <div id="step-start" class="step-box">
-            <div class="step-header">
-                <span class="step-icon">🚀</span>
-                <span>Ready to Start</span>
-            </div>
-            <button id="btn-start-exam" class="action-btn">Start Exam</button>
-        </div>
+        <div class="startup-title">Preparing Exam</div>
+        <div class="startup-spinner" id="startup-spinner"></div>
+        <div class="startup-message" id="startup-message">Initializing proctoring...</div>
+        <div class="startup-error" id="startup-error"></div>
+        <button class="retry-btn" id="startup-retry" style="display: none;">Retry</button>
     </div>
 </div>
 
 <script>
     (function () {
+        const overlay = document.getElementById('startup-overlay');
+        const spinner = document.getElementById('startup-spinner');
+        const message = document.getElementById('startup-message');
+        const errorDiv = document.getElementById('startup-error');
+        const retryBtn = document.getElementById('startup-retry');
+
         let mediaStream = null;
 
-        const els = {
-            stepCamera: document.getElementById('step-camera'),
-            stepFullscreen: document.getElementById('step-fullscreen'),
-            stepStart: document.getElementById('step-start'),
-            btnCamera: document.getElementById('btn-camera'),
-            btnFullscreen: document.getElementById('btn-fullscreen'),
-            btnStart: document.getElementById('btn-start-exam'),
-            videoPreview: document.getElementById('startup-video-preview'),
-            videoContainer: document.getElementById('camera-preview-container')
-        };
-
-        // Helper to transition steps
-        function activateStep(stepEl) {
-            stepEl.classList.remove('active', 'completed');
-            stepEl.classList.add('active');
+        function showError(msg) {
+            spinner.style.display = 'none';
+            message.textContent = 'Setup failed';
+            errorDiv.textContent = msg;
+            errorDiv.style.display = 'block';
+            retryBtn.style.display = 'inline-block';
         }
 
-        function completeStep(stepEl) {
-            stepEl.classList.remove('active');
-            stepEl.classList.add('completed');
-        }
-
-        // Camera Handlers
-        els.btnCamera.addEventListener('click', async () => {
+        async function initializeExam() {
             try {
+                // Step 1: Get camera/audio (permissions already granted from landing page)
+                message.textContent = 'Accessing camera...';
                 mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                els.videoPreview.srcObject = mediaStream;
-                els.videoContainer.classList.add('show');
 
-                els.btnCamera.textContent = "Camera Enabled ✓";
-                els.btnCamera.disabled = true;
+                // Step 2: Enter fullscreen
+                message.textContent = 'Entering fullscreen...';
+                try {
+                    const docEl = document.documentElement;
+                    if (docEl.requestFullscreen) {
+                        await docEl.requestFullscreen();
+                    } else if (docEl.webkitRequestFullscreen) {
+                        await docEl.webkitRequestFullscreen();
+                    } else if (docEl.mozRequestFullScreen) {
+                        await docEl.mozRequestFullScreen();
+                    }
+                } catch (fsErr) {
+                    console.warn('Fullscreen request failed, continuing anyway:', fsErr);
+                }
 
-                completeStep(els.stepCamera);
-                activateStep(els.stepFullscreen);
-            } catch (e) {
-                alert("Camera access failed: " + e.message);
+                // Step 3: Start proctoring
+                message.textContent = 'Starting exam...';
+                if (window.handleProctoringStart) {
+                    window.handleProctoringStart({
+                        stream: mediaStream
+                    });
+                } else {
+                    throw new Error('Proctoring handler not initialized');
+                }
+
+            } catch (err) {
+                console.error('Exam initialization failed:', err);
+                showError(err.message || 'Failed to initialize exam. Please ensure camera permissions are granted.');
             }
+        }
+
+        // Retry button handler
+        retryBtn.addEventListener('click', () => {
+            spinner.style.display = 'block';
+            errorDiv.style.display = 'none';
+            retryBtn.style.display = 'none';
+            initializeExam();
         });
 
-        // Fullscreen Handlers
-        els.btnFullscreen.addEventListener('click', async () => {
-            try {
-                await document.documentElement.requestFullscreen();
-                els.btnFullscreen.textContent = "Fullscreen Enabled ✓";
-                els.btnFullscreen.disabled = true;
-
-                completeStep(els.stepFullscreen);
-                activateStep(els.stepStart);
-            } catch (e) {
-                alert("Fullscreen failed: " + e.message);
-            }
-        });
-
-        // Start Handler
-        els.btnStart.addEventListener('click', () => {
-            if (window.handleProctoringStart && mediaStream) {
-                window.handleProctoringStart({
-                    stream: mediaStream
-                });
-            }
-        });
+        // Auto-start after a brief delay to let the page fully load
+        setTimeout(initializeExam, 500);
 
     })();
 </script>

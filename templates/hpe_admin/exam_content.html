@@ -1,0 +1,900 @@
+<!-- Exam Content Partial - Loaded dynamically into contest_landing.html -->
+<!-- This template contains only the exam content, not a full HTML document -->
+
+<!-- Exam Styles -->
+<style>
+    :root {
+        --hpe-green: #01a982;
+        --header-height: 60px;
+    }
+
+    /* --- Main Layout --- */
+    .exam-wrapper {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #1e1e1e;
+        z-index: 1000;
+        overflow: hidden;
+    }
+
+    .top-bar {
+        height: var(--header-height);
+        background: #2d2d2d;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 20px;
+        border-bottom: 1px solid #404040;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+    }
+
+    .logo-area {
+        display: flex;
+        align-items: center;
+        font-weight: bold;
+        font-size: 16px;
+    }
+
+    .logo-box {
+        background: var(--hpe-green);
+        color: white;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        margin-right: 12px;
+        font-weight: 900;
+        font-size: 14px;
+    }
+
+    .timer-area {
+        display: flex;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 14px;
+    }
+
+    .user-menu {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 14px;
+    }
+
+    .main-container {
+        display: flex;
+        height: calc(100vh - var(--header-height));
+        margin-top: var(--header-height);
+    }
+
+    /* --- Sidebar --- */
+    .sidebar {
+        width: 50px;
+        background: #252526;
+        border-right: 1px solid #404040;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 15px;
+        flex-shrink: 0;
+    }
+
+    .side-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #858585;
+        margin-bottom: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .side-btn.active {
+        color: var(--hpe-green);
+        background: rgba(1, 169, 130, 0.15);
+    }
+
+    .side-btn:hover {
+        background: #3c3c3c;
+        color: #fff;
+    }
+
+    /* --- Content Area --- */
+    .content-area {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+    }
+
+    /* --- Dashboard View --- */
+    .dashboard-view {
+        padding: 30px 40px;
+        overflow-y: auto;
+        max-width: 900px;
+        margin: 0 auto;
+        width: 100%;
+    }
+
+    .dashboard-title {
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 25px;
+        color: #fff;
+    }
+
+    .question-card {
+        background: #2d2d2d;
+        border-radius: 8px;
+        padding: 18px 24px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border: 1px solid #404040;
+        transition: all 0.2s;
+    }
+
+    .question-card:hover {
+        border-color: var(--hpe-green);
+        background: #333;
+    }
+
+    .q-info {
+        flex-grow: 1;
+    }
+
+    .q-title {
+        font-weight: 600;
+        font-size: 15px;
+        margin-bottom: 4px;
+        color: #fff;
+    }
+
+    .q-meta {
+        font-size: 13px;
+        color: #888;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .badge {
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .badge-code {
+        background: #3794ff;
+        color: white;
+    }
+
+    .badge-mcq {
+        background: #9c27b0;
+        color: white;
+    }
+
+    .btn-mcq {
+        background: #9c27b0 !important;
+    }
+
+    .btn-mcq:hover {
+        background: #7b1fa2 !important;
+    }
+
+    .solve-btn {
+        background: var(--hpe-green);
+        color: white;
+        border: none;
+        padding: 8px 24px;
+        border-radius: 4px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 13px;
+        transition: background 0.2s;
+    }
+
+    .solve-btn:hover {
+        background: #00bf96;
+    }
+
+    .submit-test-container {
+        margin-top: 30px;
+        text-align: center;
+    }
+
+    .submit-test-btn {
+        background: transparent;
+        border: 2px solid var(--hpe-green);
+        color: var(--hpe-green);
+        padding: 12px 40px;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .submit-test-btn:hover {
+        background: var(--hpe-green);
+        color: #fff;
+    }
+
+    /* --- MCQ View Styles --- */
+    .mcq-view {
+        display: none;
+        padding: 30px;
+        height: 100%;
+        overflow-y: auto;
+    }
+
+    .mcq-view.active {
+        display: block;
+    }
+
+    .mcq-container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: #2d2d2d;
+        border-radius: 8px;
+        padding: 30px;
+    }
+
+    .mcq-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #404040;
+    }
+
+    .mcq-header h2 {
+        margin: 0;
+        color: #fff;
+        font-size: 18px;
+    }
+
+    .mcq-points {
+        background: #9c27b0;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .mcq-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .mcq-type-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .mcq-type-badge.single {
+        background: #2196f3;
+        color: white;
+    }
+
+    .mcq-type-badge.multiple {
+        background: #ff9800;
+        color: white;
+    }
+
+    .mcq-hint {
+        background: rgba(255, 152, 0, 0.15);
+        color: #ff9800;
+        padding: 10px 15px;
+        border-radius: 6px;
+        margin-bottom: 15px;
+        font-size: 14px;
+    }
+
+    .mcq-question {
+        font-size: 16px;
+        line-height: 1.6;
+        color: #e0e0e0;
+        margin-bottom: 25px;
+        padding: 15px;
+        background: #333;
+        border-radius: 6px;
+    }
+
+    .mcq-options {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 25px;
+    }
+
+    .mcq-option {
+        display: flex;
+        align-items: center;
+        padding: 15px;
+        background: #333;
+        border: 2px solid #404040;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .mcq-option:hover {
+        border-color: #9c27b0;
+        background: #3a3a3a;
+    }
+
+    .mcq-option input[type="radio"],
+    .mcq-option input[type="checkbox"] {
+        display: none;
+    }
+
+    .mcq-option input:checked + .option-label {
+        background: #9c27b0;
+        color: white;
+    }
+
+    .mcq-option input:checked ~ .option-text {
+        color: #fff;
+    }
+
+    .option-label {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #555;
+        color: #fff;
+        border-radius: 50%;
+        font-weight: 600;
+        margin-right: 15px;
+        flex-shrink: 0;
+    }
+
+    .option-text {
+        color: #ccc;
+        font-size: 15px;
+    }
+
+    .mcq-footer {
+        display: flex;
+        justify-content: space-between;
+        padding-top: 20px;
+        border-top: 1px solid #404040;
+    }
+
+    /* --- Problem Editor View --- */
+    .editor-view {
+        display: none;
+        flex: 1;
+        flex-direction: row;
+        height: 100%;
+    }
+
+    .editor-view.active {
+        display: flex;
+    }
+
+    .problem-panel {
+        width: 45%;
+        background: #1e1e1e;
+        border-right: 1px solid #404040;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .problem-header {
+        padding: 15px 20px;
+        border-bottom: 1px solid #404040;
+        background: #252526;
+    }
+
+    .problem-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #fff;
+    }
+
+    .problem-meta {
+        font-size: 12px;
+        color: #888;
+        display: flex;
+        gap: 20px;
+    }
+
+    .problem-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        line-height: 1.8;
+        font-size: 14px;
+        color: #e0e0e0;
+    }
+
+    .problem-content h1, .problem-content h2, .problem-content h3, .problem-content h4 {
+        color: #fff;
+        margin-top: 24px;
+        margin-bottom: 12px;
+        font-weight: 600;
+    }
+
+    .problem-content h1 { font-size: 20px; border-bottom: 1px solid #404040; padding-bottom: 8px; }
+    .problem-content h2 { font-size: 17px; color: var(--hpe-green); }
+    .problem-content h3 { font-size: 15px; }
+    .problem-content h4 { font-size: 14px; color: #bbb; }
+
+    .problem-content p { margin-bottom: 14px; }
+
+    .problem-content pre {
+        background: #2d2d2d;
+        padding: 14px;
+        border-radius: 6px;
+        overflow-x: auto;
+        border: 1px solid #404040;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 13px;
+        line-height: 1.5;
+        margin: 12px 0;
+    }
+
+    .problem-content code {
+        background: #3c3c3c;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 13px;
+    }
+
+    .problem-content pre code { background: none; padding: 0; }
+
+    .code-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: #1e1e1e;
+    }
+
+    .code-header {
+        padding: 10px 15px;
+        background: #252526;
+        border-bottom: 1px solid #404040;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .code-header select {
+        background: #3c3c3c;
+        color: #fff;
+        border: 1px solid #555;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 13px;
+    }
+
+    .code-editor-container {
+        flex: 1;
+        position: relative;
+    }
+
+    #ace-editor {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+    }
+
+    .code-footer {
+        padding: 10px 15px;
+        background: #252526;
+        border-top: 1px solid #404040;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .btn-group { display: flex; gap: 10px; }
+
+    .btn {
+        padding: 8px 20px;
+        border-radius: 4px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 13px;
+        border: none;
+        transition: all 0.2s;
+    }
+
+    .btn-back { background: #404040; color: #fff; }
+    .btn-back:hover { background: #555; }
+    .btn-run { background: #3794ff; color: #fff; }
+    .btn-run:hover { background: #2080e5; }
+    .btn-test { background: #ff9800; color: #fff; }
+    .btn-test:hover { background: #e68900; }
+    .btn-submit { background: var(--hpe-green); color: #fff; }
+    .btn-submit:hover { background: #00bf96; }
+
+    /* Results Panel */
+    .results-panel {
+        background: #252526;
+        border-top: 1px solid #404040;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+    }
+
+    .results-panel.open { max-height: 250px; }
+
+    .results-header {
+        padding: 10px 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #404040;
+    }
+
+    .results-header h4 { margin: 0; font-size: 14px; color: #fff; }
+
+    .results-content {
+        padding: 15px;
+        overflow-y: auto;
+        max-height: 200px;
+    }
+
+    .result-item {
+        display: flex;
+        align-items: center;
+        padding: 6px 10px;
+        margin-bottom: 6px;
+        border-radius: 4px;
+        font-size: 13px;
+        color: #fff;
+    }
+
+    .result-item.pass { background: rgba(76, 175, 80, 0.15); border-left: 3px solid #4caf50; }
+    .result-item.fail { background: rgba(244, 67, 54, 0.15); border-left: 3px solid #f44336; }
+    .result-item.pending { background: rgba(255, 152, 0, 0.15); border-left: 3px solid #ff9800; }
+
+    .resize-handle {
+        width: 4px;
+        background: #404040;
+        cursor: col-resize;
+        flex-shrink: 0;
+    }
+
+    .resize-handle:hover { background: var(--hpe-green); }
+
+    /* Spinner */
+    .exam-spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #555;
+        border-top: 2px solid var(--hpe-green);
+        border-radius: 50%;
+        animation: exam-spin 0.8s linear infinite;
+        margin-right: 10px;
+    }
+
+    @keyframes exam-spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Proctoring Status */
+    .proctor-status {
+        position: fixed;
+        bottom: 15px;
+        right: 15px;
+        background: rgba(0, 0, 0, 0.85);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 11px;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .proctor-status .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #00ff00;
+    }
+
+    /* Debug Panel */
+    #proctor-debug-panel {
+        position: fixed;
+        top: 70px;
+        left: 60px;
+        width: 300px;
+        background: #252526;
+        border: 1px solid #404040;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        z-index: 10000;
+        display: none;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    #proctor-debug-panel.active { display: flex; }
+
+    .debug-header {
+        background: #1e1e1e;
+        padding: 10px 15px;
+        border-bottom: 1px solid #404040;
+        font-weight: 600;
+        font-size: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: #ccc;
+    }
+
+    .debug-content { padding: 15px; color: #ddd; font-size: 13px; }
+
+    .debug-video-box {
+        width: 100%;
+        height: 150px;
+        background: #000;
+        margin-bottom: 15px;
+        border: 1px solid #333;
+    }
+
+    .debug-video-box video { width: 100%; height: 100%; object-fit: cover; }
+
+    .debug-stat {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #333;
+    }
+
+    .debug-stat:last-child { border-bottom: none; }
+    .debug-stat span { color: #888; }
+    .debug-stat strong { color: var(--hpe-green); }
+
+    /* Fullscreen Warning Modal */
+    #fullscreen-warning-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 20000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+    }
+
+    #fullscreen-warning-modal .modal-content {
+        background: #2d2d2d;
+        padding: 40px;
+        border-radius: 8px;
+        text-align: center;
+        border: 2px solid #ff5252;
+        max-width: 500px;
+    }
+
+    #fullscreen-warning-modal .modal-icon { font-size: 48px; margin-bottom: 20px; }
+    #fullscreen-warning-modal .modal-title { color: #ff5252; font-size: 24px; font-weight: bold; margin-bottom: 15px; }
+    #fullscreen-warning-modal p { color: #ddd; margin-bottom: 30px; line-height: 1.5; }
+
+    .action-btn {
+        background: var(--hpe-green);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .action-btn:hover { background: #008f6d; }
+</style>
+
+<!-- Exam Content Structure -->
+<div class="exam-wrapper" id="exam-wrapper">
+    <!-- Header -->
+    <div class="top-bar">
+        <div class="logo-area">
+            <div class="logo-box">H</div>
+            <span>{{ contest.name }}</span>
+        </div>
+        <div class="timer-area">
+            <i class="fa fa-clock-o"></i>&nbsp;&nbsp;<span id="countdown">Loading...</span>
+        </div>
+        <div class="user-menu">
+            <span>{{ request.user.username }}</span>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="side-btn active" id="btn-dashboard" onclick="showDashboard()">
+                <i class="fa fa-list-ul"></i>
+            </div>
+            <div class="side-btn" title="Proctor Debug" id="btn-debug" onclick="toggleDebugPanel()">
+                <i class="fa fa-bug"></i>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Dashboard View -->
+            <div class="dashboard-view" id="dashboard-view">
+                <div class="dashboard-title">Problems</div>
+
+                {% for cp in contest.contest_problems.all() %}
+                <div class="question-card" data-code="{{ cp.problem.code }}" data-type="problem">
+                    <div class="q-info">
+                        <div class="q-title">{{ loop.index }}. {{ cp.problem.name }}</div>
+                        <div class="q-meta"><span class="badge badge-code">Coding</span> {{ cp.points }} points • Time: {{ cp.problem.time_limit }}s</div>
+                    </div>
+                    <button class="solve-btn" onclick="loadProblem('{{ cp.problem.code }}')">Solve</button>
+                </div>
+                {% endfor %}
+
+                {% if contest.contest_mcqs.all()|list|length > 0 %}
+                <div class="dashboard-title" style="margin-top: 30px;">MCQ Questions</div>
+
+                {% for cm in contest.contest_mcqs.all() %}
+                <div class="question-card" data-mcq-id="{{ cm.mcq_question.id }}" data-type="mcq">
+                    <div class="q-info">
+                        <div class="q-title">MCQ {{ loop.index }}. {{ cm.mcq_question.title or 'Question ' ~ loop.index }}</div>
+                        <div class="q-meta"><span class="badge badge-mcq">MCQ</span> {{ cm.points }} points</div>
+                    </div>
+                    <button class="solve-btn btn-mcq" onclick="loadMCQ({{ cm.mcq_question.id }})">Answer</button>
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                <div class="submit-test-container">
+                    <button class="submit-test-btn" onclick="confirmSubmit()">
+                        <i class="fa fa-check-circle"></i>&nbsp; Submit Test
+                    </button>
+                </div>
+            </div>
+
+            <!-- Editor View (hidden by default) -->
+            <div class="editor-view" id="editor-view">
+                <!-- Left Panel - Problem -->
+                <div class="problem-panel" id="problem-panel">
+                    <div class="problem-header">
+                        <div class="problem-title" id="problem-title">Loading...</div>
+                        <div class="problem-meta">
+                            <span id="problem-points"></span>
+                            <span id="problem-limits"></span>
+                        </div>
+                    </div>
+                    <div class="problem-content" id="problem-content">
+                        <p>Loading problem description...</p>
+                    </div>
+                </div>
+
+                <!-- Resize Handle -->
+                <div class="resize-handle" id="resize-handle"></div>
+
+                <!-- Right Panel - Code -->
+                <div class="code-panel">
+                    <div class="code-header">
+                        <select id="language-select"></select>
+                        <span id="problem-nav" style="margin-left: auto; font-size: 12px; color: #888;"></span>
+                    </div>
+                    <div class="code-editor-container">
+                        <div id="ace-editor"></div>
+                    </div>
+
+                    <!-- Results Panel -->
+                    <div class="results-panel" id="results-panel">
+                        <div class="results-header">
+                            <h4>Results</h4>
+                            <button onclick="toggleResults()" style="background:none;border:none;color:#888;cursor:pointer;">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="results-content" id="results-content"></div>
+                    </div>
+
+                    <div class="code-footer">
+                        <button class="btn btn-back" onclick="showDashboard()">
+                            <i class="fa fa-arrow-left"></i>&nbsp; Back
+                        </button>
+                        <div class="btn-group">
+                            <button class="btn btn-run" id="btn-run" onclick="runCode()">
+                                <i class="fa fa-play"></i>&nbsp; Run Code
+                            </button>
+                            <button class="btn btn-test" id="btn-test" onclick="runTest()">
+                                <i class="fa fa-check-square-o"></i>&nbsp; Run Test
+                            </button>
+                            <button class="btn btn-submit" id="btn-submit" onclick="submitCode()">
+                                <i class="fa fa-paper-plane"></i>&nbsp; Submit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Proctoring elements (hidden - runs in background) -->
+    <video id="webcam" autoplay muted playsinline style="display:none;"></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+</div>
+
+<!-- Debug Panel -->
+<div id="proctor-debug-panel">
+    <div class="debug-header">
+        <span>Proctoring Debug</span>
+        <i class="fa fa-times" style="cursor:pointer;" onclick="toggleDebugPanel()"></i>
+    </div>
+    <div class="debug-content">
+        <div class="debug-video-box">
+            <video id="debug-video-feed" autoplay muted playsinline></video>
+        </div>
+        <div class="debug-stat">
+            <span>Tab Switches:</span>
+            <strong id="debug-tab-count">0</strong>
+        </div>
+        <div class="debug-stat">
+            <span>Time Away:</span>
+            <strong id="debug-time-away">0s</strong>
+        </div>
+        <div class="debug-stat">
+            <span>Status:</span>
+            <strong id="debug-status">Initializing...</strong>
+        </div>
+    </div>
+</div>
+
+<!-- Fullscreen Warning Modal -->
+<div id="fullscreen-warning-modal" style="display:none;">
+    <div class="modal-content">
+        <div class="modal-icon">⚠️</div>
+        <div class="modal-title">Fullscreen Violation</div>
+        <p>You have exited fullscreen mode. Please return to the exam immediately to avoid disqualification.</p>
+        <button id="btn-return-fullscreen" class="action-btn">Return to Exam</button>
+    </div>
+</div>
+
+<!-- Proctoring Status Indicator -->
+<div class="proctor-status" id="proctor-status" style="display:none;">
+    <div class="dot"></div>
+    <span>Proctoring Active</span>
+</div>
