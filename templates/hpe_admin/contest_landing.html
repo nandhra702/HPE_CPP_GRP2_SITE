@@ -1234,11 +1234,22 @@
             }
 
             function initProctoringWithStream(stream) {
+                console.log("[HPE-PROCTOR] Initializing proctoring with stream");
+
                 const video = document.getElementById('webcam');
                 const debugVideo = document.getElementById('debug-video-feed');
 
                 if (video && stream) {
                     video.srcObject = stream;
+                    // IMPORTANT: Explicitly play video like old working code
+                    video.play().then(() => {
+                        console.log("[HPE-PROCTOR] ✅ Video element playing");
+                    }).catch(err => {
+                        console.error("[HPE-PROCTOR] Video play error:", err);
+                    });
+                    console.log("[HPE-PROCTOR] Video element connected to stream");
+                } else {
+                    console.error("[HPE-PROCTOR] ❌ Video element not found or no stream!");
                 }
                 if (debugVideo && stream) {
                     debugVideo.srcObject = stream;
@@ -1248,48 +1259,111 @@
                 const WS_URL = "ws://127.0.0.1:8001/ws?session_id=" + proctoringSessionId;
                 let socket;
                 let isConnected = false;
+                let frameCount = 0;
+                const FRAME_INTERVAL_MS = 500; // Match old working code (500ms = 2fps)
+
+                console.log("[HPE-PROCTOR] WebSocket URL:", WS_URL);
+
 
                 function initWebSocket() {
+                    console.log("[HPE-PROCTOR] Connecting to WebSocket...");
                     socket = new WebSocket(WS_URL);
+
                     socket.onopen = () => {
                         isConnected = true;
                         window.proctorSocket = socket; // Expose for confirmSubmit access
+                        console.log("[HPE-PROCTOR] ✅ WebSocket connected");
                         const status = document.getElementById('debug-status');
                         if (status) status.textContent = "Active";
                     };
-                    socket.onclose = () => {
+
+                    socket.onclose = (event) => {
                         isConnected = false;
+                        console.log("[HPE-PROCTOR] WebSocket closed:", event.code, event.reason);
                         const status = document.getElementById('debug-status');
                         if (status) status.textContent = "Reconnecting...";
                         setTimeout(initWebSocket, 3000);
                     };
-                    socket.onerror = () => socket.close();
+
+                    socket.onerror = (error) => {
+                        console.error("[HPE-PROCTOR] WebSocket error:", error);
+                        socket.close();
+                    };
+
+                    socket.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+
+                            // Log full server response like old working code
+                            console.log('[HPE-PROCTOR] Server response:', data);
+
+                            // Handle tab switch acknowledgment
+                            if (data.type === 'tab_switch_ack') {
+                                console.log('[HPE-PROCTOR] Tab switch acknowledged:', data);
+                                return;
+                            }
+
+                            // Handle violation detection
+                            let violationMessage = 'Pattern detected';
+                            if (Array.isArray(data.violations) && data.violations.length > 0) {
+                                violationMessage = data.violations[0]?.message || 'Pattern detected';
+                                console.log('[HPE-PROCTOR] 🚨 VIOLATION:', violationMessage);
+                            }
+
+                            const statusEl = document.getElementById('debug-status');
+                            if (statusEl) {
+                                statusEl.textContent = data.is_compliant ? 'Compliant' : 'VIOLATION';
+                            }
+
+                            // Trigger video upload if violation detected
+                            if (data.trigger_pattern_upload && videoManager) {
+                                console.log('[HPE-PROCTOR] 📹 Triggering violation video upload');
+                                videoManager.triggerViolationUpload();
+                            }
+                        } catch (e) {
+                            // Non-JSON message, ignore
+                        }
+                    };
+
                 }
 
                 initWebSocket();
 
-                // Capture frames periodically
+                // Capture and send frames periodically (1fps)
                 const canvas = document.getElementById('canvas');
                 if (canvas && video) {
+                    console.log(`[HPE-PROCTOR] Starting frame capture at ${1000 / FRAME_INTERVAL_MS}fps`);
+
                     setInterval(() => {
                         if (video.readyState !== 4) return;
+
                         canvas.width = video.videoWidth || 320;
                         canvas.height = video.videoHeight || 240;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        canvas.toBlob((blob) => {
-                            if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
-                                socket.send(blob);
+
+                        // Send Base64 encoded JPEG (same format as old working code)
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+                        const base64Data = dataUrl.split(',')[1];  // Remove "data:image/jpeg;base64," prefix
+
+                        if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
+                            socket.send(base64Data);
+                            frameCount++;
+
+                            // Log every 30 frames (every 30 seconds at 1fps)
+                            if (frameCount % 30 === 0) {
+                                console.log(`[HPE-PROCTOR] Frames sent: ${frameCount}, Size: ${(base64Data.length / 1024).toFixed(1)}KB`);
                             }
-                        }, 'image/jpeg', 0.5);
-                    }, 1000);
+                        }
+                    }, FRAME_INTERVAL_MS);
+
                 }
 
                 // Tab switch detection using HPETabSwitchDetector
                 if (window.HPETabSwitchDetector) {
                     window.HPETabSwitchDetector.initialize({
                         onTabSwitch: (count, time) => {
-                            console.log(`[HPE-EXAM] Tab Switch: ${count}, Time: ${time}s`);
+                            console.log(`[HPE-PROCTOR] Tab Switch: ${count}, Time: ${time}s`);
                             const tabCountEl = document.getElementById('debug-tab-count');
                             if (tabCountEl) tabCountEl.textContent = count;
                             if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
@@ -1299,15 +1373,23 @@
                         onTimeUpdate: (count, time) => {
                             const timeAwayEl = document.getElementById('debug-time-away');
                             if (timeAwayEl) timeAwayEl.textContent = time.toFixed(1) + 's';
+                        },
+                        onBackendUpdate: (count, time) => {
+                            console.log(`[HPE-PROCTOR] Backend update: count=${count}, time=${time}s`);
+                            if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
+                                socket.send(JSON.stringify({ type: "tab_switch", count: count, time_outside: time }));
+                            }
                         }
                     });
-                    console.log("[HPE-EXAM] HPETabSwitchDetector initialized");
+                    console.log("[HPE-PROCTOR] HPETabSwitchDetector initialized");
                 } else {
                     // Fallback to basic detection if module not loaded
+                    console.warn("[HPE-PROCTOR] HPETabSwitchDetector not available, using fallback");
                     let tabSwitchCount = 0;
                     document.addEventListener("visibilitychange", () => {
                         if (document.hidden) {
                             tabSwitchCount++;
+                            console.log(`[HPE-PROCTOR] Fallback tab switch: ${tabSwitchCount}`);
                             const tabCountEl = document.getElementById('debug-tab-count');
                             if (tabCountEl) tabCountEl.textContent = tabSwitchCount;
                             if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
@@ -1315,13 +1397,14 @@
                             }
                         }
                     });
-                    console.warn("[HPE-EXAM] HPETabSwitchDetector not available, using fallback");
                 }
 
                 // Initialize HPEProctoringVideoManager for continuous video recording
                 if (window.HPEProctoringVideoManager) {
                     videoManager = new window.HPEProctoringVideoManager(null, null, {
-                        apiBaseUrl: PROCTOR_API_URL
+                        apiBaseUrl: PROCTOR_API_URL,
+                        bufferDuration: 20,  // 20 second rolling buffer
+                        chunkInterval: 1000  // 1 second chunks
                     });
 
                     // Initialize video manager with stream and user data
@@ -1331,11 +1414,12 @@
                         contestName: window.dmojData?.contestName || '{{ contest.key }}',
                         proctoringSessionId: proctoringSessionId
                     });
-                    console.log('[HPE-PROCTOR] Video manager initialized for continuous recording');
+                    console.log('[HPE-PROCTOR] ✅ Video manager initialized - 20s buffer, continuous recording');
                 } else {
                     console.warn('[HPE-PROCTOR] HPEProctoringVideoManager not available');
                 }
             }
+
 
             function setupFullscreenMonitor() {
                 const fullscreenModal = document.getElementById('fullscreen-warning-modal');
