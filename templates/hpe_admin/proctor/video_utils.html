@@ -1,0 +1,241 @@
+<script>
+    (function () {
+        "use strict";
+
+        // HPE Proctoring Video Utilities
+        console.log("[HPE-VIDEO] Module loading...");
+
+        const DEBUG = true;
+        function log(...args) { if (DEBUG) console.log("[HPE-VIDEO]", ...args); }
+        function warn(...args) { console.warn("[HPE-VIDEO]", ...args); }
+        function error(...args) { console.error("[HPE-VIDEO]", ...args); }
+
+        class SlidingVideoBuffer {
+            constructor(maxDurationSeconds = 20, chunkIntervalMs = 1000) {
+                this.maxDuration = maxDurationSeconds * 1000;
+                this.chunkInterval = chunkIntervalMs;
+                this.chunks = [];
+                this.mediaRecorder = null;
+                this.isRecording = false;
+                this._restarting = false;
+                this._uploadTriggered = false;
+                this._currentStream = null;
+                this._currentCallback = null;
+                this._cleanupInterval = null;
+
+                // Periodic reset every 30 mins to prevent memory leaks/browser issues
+                this._resetInterval = null;
+                this._resetIntervalMs = 30 * 60 * 1000;
+            }
+
+            initializeRecorder(stream, onViolationCallback) {
+                this._currentStream = stream;
+                this._currentCallback = onViolationCallback;
+                this._createRecorder();
+                this._setupPeriodicReset();
+                log("MediaRecorder initialized");
+            }
+
+            _createRecorder() {
+                if (this.mediaRecorder) {
+                    try {
+                        if (this.mediaRecorder.state === "recording") this.mediaRecorder.stop();
+                    } catch (e) { warn("Error stopping old recorder", e); }
+                }
+
+                const videoOnlyStream = new MediaStream(this._currentStream.getVideoTracks());
+                const options = { mimeType: this.getSupportedMimeType(), videoBitsPerSecond: 1000000 };
+
+                try {
+                    this.mediaRecorder = new MediaRecorder(videoOnlyStream, options);
+                } catch (e) {
+                    error("Failed to create MediaRecorder", e);
+                    return;
+                }
+
+                this.mediaRecorder.ondataavailable = (event) => {
+                    if (event.data && event.data.size > 0) {
+                        this.addChunk({ data: event.data, timestamp: Date.now(), size: event.data.size, type: event.data.type });
+                    }
+                };
+
+                this.mediaRecorder.onstop = async () => {
+                    if (this._restarting) return;
+
+                    if (this._uploadTriggered && this._currentCallback) {
+                        this._uploadTriggered = false;
+                        const blob = this.createVideoBlob();
+                        if (blob.size > 0) {
+                            log(`Uploading violation blob: ${(blob.size / 1024 / 1024).toFixed(2)}MB`);
+                            await this._currentCallback(blob);
+                            this.clearBuffer();
+                        }
+                    }
+
+                    // Auto-restart if we are still supposedly recording
+                    if (this.isRecording) {
+                        this._restarting = true;
+                        setTimeout(() => {
+                            if (this.isRecording && this.mediaRecorder.state === "inactive") {
+                                this.mediaRecorder.start(this.chunkInterval);
+                            }
+                            this._restarting = false;
+                        }, 100);
+                    }
+                };
+            }
+
+            getSupportedMimeType() {
+                const types = ["video/webm; codecs=vp9", "video/webm; codecs=vp8", "video/webm", "video/mp4"];
+                for (const type of types) {
+                    if (MediaRecorder.isTypeSupported(type)) return type;
+                }
+                return "video/webm";
+            }
+
+            addChunk(chunk) {
+                this.chunks.push(chunk);
+                this.maintainSlidingWindow();
+            }
+
+            maintainSlidingWindow() {
+                const now = Date.now();
+                const cutoff = now - this.maxDuration;
+
+                // Remove old chunks
+                while (this.chunks.length > 0 && this.chunks[0].timestamp < cutoff) {
+                    this.chunks.shift();
+                }
+            }
+
+            createVideoBlob() {
+                if (this.chunks.length === 0) return new Blob([], { type: "video/webm" });
+                const validChunks = this.chunks.filter(c => c.data && c.data.size > 0).map(c => c.data);
+                if (validChunks.length === 0) return new Blob([], { type: "video/webm" });
+                return new Blob(validChunks, { type: validChunks[0].type });
+            }
+
+            clearBuffer() {
+                this.chunks = [];
+            }
+
+            startRecording() {
+                if (!this.mediaRecorder) return;
+                if (this.mediaRecorder.state === "recording") return;
+
+                this.isRecording = true;
+                this.mediaRecorder.start(this.chunkInterval);
+                this._cleanupInterval = setInterval(() => this.maintainSlidingWindow(), 10000);
+                log("Recording started");
+            }
+
+            stopRecording() {
+                this.isRecording = false;
+                if (this._cleanupInterval) clearInterval(this._cleanupInterval);
+                if (this._resetInterval) clearInterval(this._resetInterval);
+                if (this.mediaRecorder && this.mediaRecorder.state === "recording") {
+                    this.mediaRecorder.stop();
+                }
+            }
+
+            triggerViolationUpload() {
+                if (!this.mediaRecorder || this.mediaRecorder.state !== "recording") return false;
+                if (this._restarting) return false;
+
+                this._uploadTriggered = true;
+                this.mediaRecorder.stop(); // Triggers onstop which handles upload
+                return true;
+            }
+
+            _setupPeriodicReset() {
+                if (this._resetInterval) clearInterval(this._resetInterval);
+                this._resetInterval = setInterval(() => {
+                    if (this.isRecording && !this._restarting) {
+                        log("Performing periodic recorder reset");
+                        this._performPeriodicReset();
+                    }
+                }, this._resetIntervalMs);
+            }
+
+            async _performPeriodicReset() {
+                if (this._restarting) return;
+                this._restarting = true;
+                if (this.mediaRecorder && this.mediaRecorder.state === "recording") {
+                    this.mediaRecorder.stop();
+                }
+                await new Promise(r => setTimeout(r, 500));
+                this._createRecorder();
+                if (this.isRecording) this.mediaRecorder.start(this.chunkInterval);
+                this._restarting = false;
+            }
+        }
+
+        class HPEProctoringVideoManager {
+            constructor(videoElement, statusElement, config = {}) {
+                this.video = videoElement;
+                this.status = statusElement;
+                // Use provided API URL or default to protocol-relative (to handle http vs https)
+                // But for development it is often on port 8001.
+                this.apiBaseUrl = config.apiBaseUrl || "http://127.0.0.1:8001";
+
+                this.buffer = new SlidingVideoBuffer(config.bufferDuration || 20, 1000);
+                this.isUploading = false;
+                this.userData = {};
+            }
+
+            async initialize(mediaStream, userData) {
+                this.userData = userData;
+                this.buffer.initializeRecorder(mediaStream, this.handleViolationUpload.bind(this));
+                this.buffer.startRecording();
+                log("Video Manager initialized");
+            }
+
+            async handleViolationUpload(videoBlob) {
+                if (this.isUploading) return;
+                this.isUploading = true;
+
+                if (this.status) this.status.textContent = "Uploading violation evidence...";
+
+                const formData = new FormData();
+                formData.append("file", videoBlob, `violation_${Date.now()}.webm`);
+                formData.append("dmoj_user_id", this.userData.userId);
+                formData.append("dmoj_user_name", this.userData.username || "");
+                formData.append("dmoj_contest_name", this.userData.contestName || "");
+                formData.append("timestamp", new Date().toISOString());
+
+                try {
+                    const response = await fetch(`${this.apiBaseUrl}/upload-clip`, {
+                        method: "POST",
+                        body: formData,
+                        headers: { "ngrok-skip-browser-warning": "true" }
+                    });
+
+                    if (response.ok) {
+                        log("Upload successful");
+                        if (this.status) this.status.textContent = "Evidence uploaded.";
+                    } else {
+                        warn("Upload failed", response.status);
+                    }
+                } catch (e) {
+                    error("Upload error", e);
+                } finally {
+                    this.isUploading = false;
+                    setTimeout(() => {
+                        if (this.status && !this.isUploading) this.status.textContent = "Monitoring active";
+                    }, 3000);
+                }
+            }
+
+            triggerViolationUpload() {
+                return this.buffer.triggerViolationUpload();
+            }
+
+            cleanup() {
+                this.buffer.stopRecording();
+            }
+        }
+
+        window.HPEProctoringVideoManager = HPEProctoringVideoManager;
+        log("Module ready");
+    })();
+</script>

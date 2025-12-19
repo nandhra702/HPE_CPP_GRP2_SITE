@@ -76,6 +76,18 @@ class HPEContestExamView(HPEContestAccessMixin, DetailView):
     def get_object(self, queryset=None):
         return self.contest
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Add DMOJ data for proctoring
+        context['dmoj_data'] = {
+            'userId': self.request.user.id,
+            'username': self.request.user.username,
+            'contestName': self.contest.name,
+            'contestKey': self.contest.key,
+            # 'disableBackend': True, # Uncomment for testing without backend
+        }
+        return context
+
 from judge.models import Problem, ContestProblem, Language, Submission
 from django.http import JsonResponse
 from django.views import View

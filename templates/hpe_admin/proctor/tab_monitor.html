@@ -1,0 +1,161 @@
+<script>
+    (function () {
+        'use strict';
+        console.log("[HPE-TAB] Module loading...");
+
+        window.HPETabSwitchDetector = {
+            // State
+            tabSwitchCount: 0,
+            totalTimeOutside: 0,
+            outsideStartTime: 0,
+            lastFocusTime: Date.now(),
+
+            // Configuration
+            config: {
+                cooldownMs: 500, // Debounce time
+                updateIntervalMs: 1000
+            },
+
+            // Internal
+            _timer: null,
+            _lastSwitchTime: 0,
+            _cooldownActive: false,
+
+            callbacks: {
+                onTabSwitch: null,
+                onTimeUpdate: null
+            },
+
+            initialize: function (callbacks) {
+                this.callbacks = { ...this.callbacks, ...callbacks };
+                this.setupEventListeners();
+                console.log("[HPE-TAB] Initialized with advanced detection");
+            },
+
+            setupEventListeners: function () {
+                // Std Visibility API
+                document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
+
+                // Focus/Blur
+                window.addEventListener('blur', this.handleBlur.bind(this));
+                window.addEventListener('focus', this.handleFocus.bind(this));
+
+                // Keyboard Shortcuts (Alt+Tab, Win+Tab, Cmd+Tab)
+                document.addEventListener('keydown', this.handleKeydown.bind(this));
+            },
+
+            handleKeydown: function (e) {
+                // Detect Alt+Tab, Meta+Tab (Mac/Win), Ctrl+Tab
+                if ((e.altKey && e.key === 'Tab') ||
+                    (e.metaKey && e.key === 'Tab') ||
+                    (e.ctrlKey && e.key === 'Tab')) {
+
+                    this.handleAway("Keyboard Shortcut (" + (e.altKey ? "Alt" : e.metaKey ? "Meta" : "Ctrl") + "+Tab)");
+                }
+            },
+
+            handleVisibilityChange: function () {
+                if (document.hidden) {
+                    this.handleAway("Visibility State Hidden");
+                } else {
+                    this.handleBack();
+                }
+            },
+
+            handleBlur: function () {
+                // If document is hidden, it's definitely a switch
+                if (document.hidden) {
+                    this.handleAway("Window Blur + Hidden");
+                    return;
+                }
+
+                // Otherwise check focus state with slight delay to avoid false positives 
+                // (e.g. clicking iframe or UI elements that steal focus momentarily)
+                setTimeout(() => {
+                    if (!document.hasFocus()) {
+                        this.handleAway("Window Blur (Lost Focus)");
+                    }
+                }, 200);
+            },
+
+            handleFocus: function () {
+                this.handleBack();
+            },
+
+            handleAway: function (reason) {
+                const now = Date.now();
+
+                // 1. Check if already away
+                if (this.outsideStartTime > 0) return;
+
+                // 2. Cooldown check
+                if (this._cooldownActive || (now - this._lastSwitchTime < this.config.cooldownMs)) {
+                    // console.log(`[HPE-TAB] Ignored (${reason}) due to cooldown`);
+                    return;
+                }
+
+                console.log(`[HPE-TAB] Away detected: ${reason}`);
+
+                // 3. Register Switch
+                this.outsideStartTime = now;
+                this.tabSwitchCount++;
+                this._lastSwitchTime = now;
+                this._cooldownActive = true;
+
+                // 4. Trigger Callback
+                if (this.callbacks.onTabSwitch) {
+                    this.callbacks.onTabSwitch(this.tabSwitchCount, this.totalTimeOutside);
+                }
+
+                // 5. Start Duration Timer
+                this.startTimer();
+
+                // Reset cooldown after delay
+                setTimeout(() => { this._cooldownActive = false; }, this.config.cooldownMs);
+            },
+
+            handleBack: function () {
+                if (this.outsideStartTime === 0) return; // Wasn't away
+
+                this.stopTimer();
+                const timeAway = (Date.now() - this.outsideStartTime) / 1000;
+
+                // Only count significant time (ignore micro-switches if needed, but keeping it strict for now)
+                this.totalTimeOutside += timeAway;
+                this.outsideStartTime = 0;
+
+                console.log(`[HPE-TAB] Back detected. Time away: ${timeAway.toFixed(1)}s`);
+
+                if (this.callbacks.onTimeUpdate) {
+                    this.callbacks.onTimeUpdate(this.tabSwitchCount, this.totalTimeOutside);
+                }
+            },
+
+            startTimer: function () {
+                if (this._timer) clearInterval(this._timer);
+                this._timer = setInterval(() => {
+                    if (this.outsideStartTime > 0) {
+                        const currentSessionTime = (Date.now() - this.outsideStartTime) / 1000;
+                        if (this.callbacks.onTimeUpdate) {
+                            this.callbacks.onTimeUpdate(this.tabSwitchCount, this.totalTimeOutside + currentSessionTime);
+                        }
+                    }
+                }, this.config.updateIntervalMs);
+            },
+
+            stopTimer: function () {
+                if (this._timer) {
+                    clearInterval(this._timer);
+                    this._timer = null;
+                }
+            },
+
+            reset: function () {
+                this.stopTimer();
+                this.tabSwitchCount = 0;
+                this.totalTimeOutside = 0;
+                this.outsideStartTime = 0;
+            }
+        };
+    })();
+</script>
