@@ -510,6 +510,231 @@
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
+
+        /* Custom Confirmation Modal */
+        .confirm-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .confirm-modal-overlay.active {
+            display: flex;
+        }
+
+        .confirm-modal {
+            background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            border: 1px solid rgba(1, 169, 130, 0.3);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .confirm-modal-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 20px;
+            background: rgba(255, 193, 7, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+        }
+
+        .confirm-modal h3 {
+            color: #fff;
+            font-size: 1.5rem;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .confirm-modal p {
+            color: #9ca3af;
+            font-size: 0.95rem;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .confirm-modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .confirm-modal-btn {
+            padding: 12px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+        }
+
+        .confirm-modal-btn.cancel {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .confirm-modal-btn.cancel:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .confirm-modal-btn.confirm {
+            background: linear-gradient(135deg, #01a982 0%, #00875a 100%);
+            color: #fff;
+        }
+
+        .confirm-modal-btn.confirm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(1, 169, 130, 0.4);
+        }
+
+        .confirm-modal-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        /* Thank You Overlay */
+        .thank-you-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(145deg, #0d1117 0%, #161b22 100%);
+            z-index: 10001;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .thank-you-overlay.active {
+            display: flex;
+        }
+
+        .thank-you-content {
+            text-align: center;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .thank-you-icon {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 30px;
+            background: linear-gradient(135deg, #01a982 0%, #00875a 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            animation: checkmarkPop 0.5s ease-out 0.3s both;
+        }
+
+        @keyframes checkmarkPop {
+            0% {
+                transform: scale(0);
+            }
+
+            50% {
+                transform: scale(1.2);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .thank-you-content h1 {
+            color: #fff;
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+
+        .thank-you-content p {
+            color: #9ca3af;
+            font-size: 1.1rem;
+            margin-bottom: 40px;
+            max-width: 400px;
+        }
+
+        .thank-you-stats {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+
+        .thank-you-stat {
+            text-align: center;
+        }
+
+        .thank-you-stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #01a982;
+        }
+
+        .thank-you-stat-label {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .thank-you-btn {
+            padding: 14px 32px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .thank-you-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
     </style>
 </head>
 
@@ -676,11 +901,53 @@
         </div>
     </div>
 
+    <!-- Submit Confirmation Modal -->
+    <div class="confirm-modal-overlay" id="submitConfirmModal">
+        <div class="confirm-modal">
+            <div class="confirm-modal-icon">⚠️</div>
+            <h3>Submit Your Test?</h3>
+            <p>Are you sure you want to finish and submit your test? This action cannot be undone.</p>
+            <div class="confirm-modal-buttons">
+                <button class="confirm-modal-btn cancel" id="cancelSubmitBtn">Cancel</button>
+                <button class="confirm-modal-btn confirm" id="confirmSubmitBtn">Yes, Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Thank You Overlay -->
+    <div class="thank-you-overlay" id="thankYouOverlay">
+        <div class="thank-you-content">
+            <div class="thank-you-icon">✓</div>
+            <h1>Thank You!</h1>
+            <p>Your test has been successfully submitted. You can now close this window.</p>
+            <div class="thank-you-stats">
+                <div class="thank-you-stat">
+                    <div class="thank-you-stat-value" id="final-tab-count">0</div>
+                    <div class="thank-you-stat-label">Tab Switches</div>
+                </div>
+                <div class="thank-you-stat">
+                    <div class="thank-you-stat-value" id="final-time-away">0s</div>
+                    <div class="thank-you-stat-label">Time Away</div>
+                </div>
+            </div>
+            <button class="thank-you-btn" onclick="window.location.href='/'">Return to Home</button>
+        </div>
+    </div>
+
+    <!-- Tab Monitor Module - must be before main script -->
+    {% include "hpe_admin/proctor/tab_monitor.html" %}
+    {% include "hpe_admin/proctor/video_utils.html" %}
+
     <script>
         (function () {
             const slidesContainer = document.getElementById('slidesContainer');
             let currentStep = 1;
             let mediaStream = null;
+
+            // Proctoring session management
+            const PROCTOR_API_URL = "http://127.0.0.1:8001";
+            let proctoringSessionId = null;
+            let videoManager = null;
 
             // Permission check states
             const checks = {
@@ -850,10 +1117,38 @@
 
             startExamBtn.addEventListener('click', async () => {
                 startExamBtn.disabled = true;
-                startExamBtn.innerHTML = '<span class="spinner"></span> Loading exam...';
+                startExamBtn.innerHTML = '<span class="spinner"></span> Starting session...';
 
                 try {
-                    // Fetch exam content via AJAX
+                    // Step 1: Start proctoring session with backend
+                    const sessionFormData = new FormData();
+                    sessionFormData.append('dmoj_user_id', '{{ request.user.id }}');
+                    sessionFormData.append('dmoj_user_name', '{{ request.user.username }}');
+                    sessionFormData.append('dmoj_contest_name', '{{ contest.key }}');
+
+                    const sessionResponse = await fetch(`${PROCTOR_API_URL}/start-session`, {
+                        method: 'POST',
+                        body: sessionFormData,
+                        headers: {
+                            'ngrok-skip-browser-warning': 'true'
+                        }
+                    });
+
+                    if (!sessionResponse.ok) {
+                        throw new Error('Failed to start proctoring session');
+                    }
+
+                    const sessionData = await sessionResponse.json();
+                    if (sessionData.error) {
+                        throw new Error(sessionData.error);
+                    }
+
+                    proctoringSessionId = sessionData.session_id;
+                    console.log(`[HPE-PROCTOR] Session started: ${proctoringSessionId} (${sessionData.status})`);
+
+                    // Step 2: Load exam content
+                    startExamBtn.innerHTML = '<span class="spinner"></span> Loading exam...';
+
                     const response = await fetch("{{ url('hpe_exam_content', contest.key) }}", {
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest'
@@ -869,6 +1164,7 @@
                     if (data.success) {
                         // Store DMOJ data globally
                         window.dmojData = data.dmoj_data;
+                        window.dmojData.proctoringSessionId = proctoringSessionId;
 
                         // Hide the landing page container
                         document.querySelector('.container').style.display = 'none';
@@ -885,7 +1181,8 @@
                         throw new Error(data.error || 'Failed to load exam');
                     }
                 } catch (err) {
-                    alert('Error loading exam: ' + err.message);
+                    console.error('[HPE-PROCTOR] Error:', err);
+                    alert('Error: ' + err.message);
                     startExamBtn.disabled = false;
                     startExamBtn.innerHTML = 'Start Exam';
                 }
@@ -939,7 +1236,7 @@
             function initProctoringWithStream(stream) {
                 const video = document.getElementById('webcam');
                 const debugVideo = document.getElementById('debug-video-feed');
-                
+
                 if (video && stream) {
                     video.srcObject = stream;
                 }
@@ -947,8 +1244,8 @@
                     debugVideo.srcObject = stream;
                 }
 
-                // Setup WebSocket for proctoring
-                const WS_URL = "ws://127.0.0.1:8001/ws?session_id=hpe_" + window.dmojData.userId + "_" + Date.now();
+                // Setup WebSocket for proctoring - use actual session ID from database
+                const WS_URL = "ws://127.0.0.1:8001/ws?session_id=" + proctoringSessionId;
                 let socket;
                 let isConnected = false;
 
@@ -956,6 +1253,7 @@
                     socket = new WebSocket(WS_URL);
                     socket.onopen = () => {
                         isConnected = true;
+                        window.proctorSocket = socket; // Expose for confirmSubmit access
                         const status = document.getElementById('debug-status');
                         if (status) status.textContent = "Active";
                     };
@@ -987,18 +1285,56 @@
                     }, 1000);
                 }
 
-                // Tab switch detection
-                let tabSwitchCount = 0;
-                document.addEventListener("visibilitychange", () => {
-                    if (document.hidden) {
-                        tabSwitchCount++;
-                        const tabCountEl = document.getElementById('debug-tab-count');
-                        if (tabCountEl) tabCountEl.textContent = tabSwitchCount;
-                        if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
-                            socket.send(JSON.stringify({ type: "tab_switch", count: tabSwitchCount }));
+                // Tab switch detection using HPETabSwitchDetector
+                if (window.HPETabSwitchDetector) {
+                    window.HPETabSwitchDetector.initialize({
+                        onTabSwitch: (count, time) => {
+                            console.log(`[HPE-EXAM] Tab Switch: ${count}, Time: ${time}s`);
+                            const tabCountEl = document.getElementById('debug-tab-count');
+                            if (tabCountEl) tabCountEl.textContent = count;
+                            if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
+                                socket.send(JSON.stringify({ type: "tab_switch", count: count, time_outside: time }));
+                            }
+                        },
+                        onTimeUpdate: (count, time) => {
+                            const timeAwayEl = document.getElementById('debug-time-away');
+                            if (timeAwayEl) timeAwayEl.textContent = time.toFixed(1) + 's';
                         }
-                    }
-                });
+                    });
+                    console.log("[HPE-EXAM] HPETabSwitchDetector initialized");
+                } else {
+                    // Fallback to basic detection if module not loaded
+                    let tabSwitchCount = 0;
+                    document.addEventListener("visibilitychange", () => {
+                        if (document.hidden) {
+                            tabSwitchCount++;
+                            const tabCountEl = document.getElementById('debug-tab-count');
+                            if (tabCountEl) tabCountEl.textContent = tabSwitchCount;
+                            if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
+                                socket.send(JSON.stringify({ type: "tab_switch", count: tabSwitchCount }));
+                            }
+                        }
+                    });
+                    console.warn("[HPE-EXAM] HPETabSwitchDetector not available, using fallback");
+                }
+
+                // Initialize HPEProctoringVideoManager for continuous video recording
+                if (window.HPEProctoringVideoManager) {
+                    videoManager = new window.HPEProctoringVideoManager(null, null, {
+                        apiBaseUrl: PROCTOR_API_URL
+                    });
+
+                    // Initialize video manager with stream and user data
+                    videoManager.initialize(stream, {
+                        userId: window.dmojData?.userId || '{{ request.user.id }}',
+                        username: window.dmojData?.username || '{{ request.user.username }}',
+                        contestName: window.dmojData?.contestName || '{{ contest.key }}',
+                        proctoringSessionId: proctoringSessionId
+                    });
+                    console.log('[HPE-PROCTOR] Video manager initialized for continuous recording');
+                } else {
+                    console.warn('[HPE-PROCTOR] HPEProctoringVideoManager not available');
+                }
             }
 
             function setupFullscreenMonitor() {
@@ -1022,6 +1358,9 @@
                 }
 
                 function checkFullscreen() {
+                    // Skip fullscreen check if exam has been submitted
+                    if (window.examSubmitted) return;
+
                     const isViolation = !isFullscreen() || document.hidden;
                     if (fullscreenModal) {
                         fullscreenModal.style.display = isViolation ? 'flex' : 'none';
@@ -1105,7 +1444,7 @@
             }
 
             // ===== Exam Navigation Functions (Global) =====
-            window.showDashboard = function() {
+            window.showDashboard = function () {
                 document.getElementById('dashboard-view').style.display = 'block';
                 document.getElementById('editor-view').classList.remove('active');
                 const mcqView = document.getElementById('mcq-view');
@@ -1113,12 +1452,12 @@
                 document.getElementById('btn-dashboard').classList.add('active');
             };
 
-            window.toggleDebugPanel = function() {
+            window.toggleDebugPanel = function () {
                 const panel = document.getElementById('proctor-debug-panel');
                 if (panel) panel.classList.toggle('active');
             };
 
-            window.toggleResults = function(show) {
+            window.toggleResults = function (show) {
                 const panel = document.getElementById('results-panel');
                 if (!panel) return;
                 if (show === false) panel.classList.remove('open');
@@ -1126,293 +1465,385 @@
                 else panel.classList.toggle('open');
             };
 
-            window.confirmSubmit = function() {
-                if (confirm("Are you sure you want to finish the test?")) {
-                    window.location.href = "/";
-                }
+            window.confirmSubmit = function () {
+                // Show custom confirmation modal instead of browser dialog
+                const modal = document.getElementById('submitConfirmModal');
+                modal.classList.add('active');
             };
+
+            // Handle modal buttons (set up after DOM is ready)
+            document.addEventListener('DOMContentLoaded', function () {
+                const modal = document.getElementById('submitConfirmModal');
+                const cancelBtn = document.getElementById('cancelSubmitBtn');
+                const confirmBtn = document.getElementById('confirmSubmitBtn');
+
+                if (cancelBtn) {
+                    cancelBtn.addEventListener('click', function () {
+                        modal.classList.remove('active');
+                    });
+                }
+
+                if (confirmBtn) {
+                    confirmBtn.addEventListener('click', async function () {
+                        // IMMEDIATELY disable fullscreen warnings before any async operations
+                        window.examSubmitted = true;
+                        const fullscreenModal = document.getElementById('fullscreen-warning-modal');
+                        if (fullscreenModal) {
+                            fullscreenModal.style.display = 'none';
+                        }
+
+                        // Disable button to prevent double-click
+                        confirmBtn.disabled = true;
+                        confirmBtn.textContent = 'Submitting...';
+
+                        // Get tab switch data before any operations
+                        const savedCount = window.HPETabSwitchDetector ? window.HPETabSwitchDetector.tabSwitchCount : 0;
+                        const savedTime = window.HPETabSwitchDetector ? window.HPETabSwitchDetector.totalTimeOutside : 0;
+
+                        try {
+                            // Send final tab switch data to backend before stopping
+                            if (window.proctorSocket && window.proctorSocket.readyState === WebSocket.OPEN) {
+                                window.proctorSocket.send(JSON.stringify({
+                                    type: "tab_switch",
+                                    count: savedCount,
+                                    time_outside: savedTime
+                                }));
+                                console.log(`[HPE-PROCTOR] Final tab switch data sent: count=${savedCount}, time=${savedTime}s`);
+
+                                // Small delay to ensure message is sent before closing
+                                await new Promise(resolve => setTimeout(resolve, 200));
+
+                                // Close WebSocket connection
+                                window.proctorSocket.close();
+                            }
+
+                            // Stop proctoring session
+                            if (proctoringSessionId) {
+                                const stopFormData = new FormData();
+                                stopFormData.append('dmoj_user_id', '{{ request.user.id }}');
+
+                                const response = await fetch(`${PROCTOR_API_URL}/stop-session`, {
+                                    method: 'POST',
+                                    body: stopFormData,
+                                    headers: {
+                                        'ngrok-skip-browser-warning': 'true'
+                                    }
+                                });
+
+                                const data = await response.json();
+                                console.log(`[HPE-PROCTOR] Session stopped:`, data);
+                            }
+
+                            // Cleanup video manager if initialized
+                            if (videoManager) {
+                                videoManager.cleanup();
+                                console.log('[HPE-PROCTOR] Video manager cleaned up');
+                            }
+
+                        } catch (err) {
+                            console.error('[HPE-PROCTOR] Error stopping session:', err);
+                        }
+
+                        // Hide confirmation modal
+                        modal.classList.remove('active');
+
+                        // Show thank you overlay with stats
+                        const thankYouOverlay = document.getElementById('thankYouOverlay');
+                        document.getElementById('final-tab-count').textContent = savedCount;
+                        document.getElementById('final-time-away').textContent = Math.round(savedTime) + 's';
+                        thankYouOverlay.classList.add('active');
+
+                        // Exit fullscreen to show thank you page properly
+                        if (document.exitFullscreen) {
+                            document.exitFullscreen().catch(() => { });
+                        } else if (document.webkitExitFullscreen) {
+                            document.webkitExitFullscreen();
+                        }
+                    });
+                }
+            });
 
             // Problem loading
             const CONTEST_KEY = "{{ contest.key }}";
-            const PROBLEM_CODES = [{% for cp in contest.contest_problems.all() %}"{{ cp.problem.code }}"{% if not loop.last %}, {% endif %}{% endfor %}];
-            let currentProblemCode = null;
-            let currentProblemIndex = -1;
+            const PROBLEM_CODES = [{% for cp in contest.contest_problems.all() %}"{{ cp.problem.code }}"{% if not loop.last %}, {% endif %} {% endfor %}];
+        let currentProblemCode = null;
+        let currentProblemIndex = -1;
 
-            window.loadProblem = async function(problemCode) {
-                currentProblemCode = problemCode;
-                currentProblemIndex = PROBLEM_CODES.indexOf(problemCode);
+        window.loadProblem = async function (problemCode) {
+            currentProblemCode = problemCode;
+            currentProblemIndex = PROBLEM_CODES.indexOf(problemCode);
 
-                document.getElementById('dashboard-view').style.display = 'none';
-                document.getElementById('editor-view').classList.add('active');
-                document.getElementById('btn-dashboard').classList.remove('active');
+            document.getElementById('dashboard-view').style.display = 'none';
+            document.getElementById('editor-view').classList.add('active');
+            document.getElementById('btn-dashboard').classList.remove('active');
 
-                document.getElementById('problem-title').textContent = 'Loading...';
-                document.getElementById('problem-content').innerHTML = '<p style="text-align:center;padding:40px;"><span class="exam-spinner"></span> Loading...</p>';
+            document.getElementById('problem-title').textContent = 'Loading...';
+            document.getElementById('problem-content').innerHTML = '<p style="text-align:center;padding:40px;"><span class="exam-spinner"></span> Loading...</p>';
 
-                try {
-                    const response = await fetch(`/hpe/contest/${CONTEST_KEY}/problem/${problemCode}/content/`);
-                    if (!response.ok) throw new Error('Failed to load problem');
+            try {
+                const response = await fetch(`/hpe/contest/${CONTEST_KEY}/problem/${problemCode}/content/`);
+                if (!response.ok) throw new Error('Failed to load problem');
 
-                    const data = await response.json();
+                const data = await response.json();
 
-                    document.getElementById('problem-title').textContent = data.name;
-                    document.getElementById('problem-points').textContent = data.points + ' points' + (data.partial ? ' (partial)' : '');
-                    document.getElementById('problem-limits').textContent = 'Time: ' + data.time_limit + 's • Memory: ' + (data.memory_limit / 1024).toFixed(0) + 'MB';
-                    document.getElementById('problem-content').innerHTML = data.description_html;
-                    document.getElementById('problem-nav').textContent = 'Problem ' + (data.current_index + 1) + ' of ' + data.total_problems;
+                document.getElementById('problem-title').textContent = data.name;
+                document.getElementById('problem-points').textContent = data.points + ' points' + (data.partial ? ' (partial)' : '');
+                document.getElementById('problem-limits').textContent = 'Time: ' + data.time_limit + 's • Memory: ' + (data.memory_limit / 1024).toFixed(0) + 'MB';
+                document.getElementById('problem-content').innerHTML = data.description_html;
+                document.getElementById('problem-nav').textContent = 'Problem ' + (data.current_index + 1) + ' of ' + data.total_problems;
 
-                    // MathJax
-                    if (window.MathJax && MathJax.typesetPromise) {
-                        MathJax.typesetPromise([document.getElementById('problem-content')]);
-                    }
-
-                    // Update language selector
-                    const langSelect = document.getElementById('language-select');
-                    langSelect.innerHTML = '';
-                    data.languages.forEach((lang, idx) => {
-                        const opt = document.createElement('option');
-                        opt.value = lang.id;
-                        opt.textContent = lang.name;
-                        opt.dataset.aceMode = lang.ace_mode;
-                        opt.dataset.template = lang.template;
-                        if (idx === 0) opt.selected = true;
-                        langSelect.appendChild(opt);
-                    });
-
-                    if (data.languages.length > 0) {
-                        const firstLang = data.languages[0];
-                        window.editor.session.setMode('ace/mode/' + firstLang.ace_mode);
-                        window.editor.setValue(firstLang.template || '', -1);
-                    }
-
-                    langSelect.onchange = function() {
-                        const opt = this.options[this.selectedIndex];
-                        window.editor.session.setMode('ace/mode/' + opt.dataset.aceMode);
-                        if (opt.dataset.template) {
-                            window.editor.setValue(opt.dataset.template, -1);
-                        }
-                    };
-
-                    toggleResults(false);
-                } catch (err) {
-                    document.getElementById('problem-content').innerHTML = '<p style="color:#f44336;">Error: ' + err.message + '</p>';
-                }
-            };
-
-            // MCQ Functions
-            window.loadMCQ = async function(mcqId) {
-                document.getElementById('dashboard-view').style.display = 'none';
-                document.getElementById('editor-view').classList.remove('active');
-                document.getElementById('btn-dashboard').classList.remove('active');
-
-                let mcqView = document.getElementById('mcq-view');
-                if (!mcqView) {
-                    mcqView = document.createElement('div');
-                    mcqView.id = 'mcq-view';
-                    mcqView.className = 'mcq-view';
-                    document.querySelector('.content-area').appendChild(mcqView);
-                }
-                mcqView.classList.add('active');
-                mcqView.innerHTML = '<div style="text-align:center;padding:40px;"><span class="exam-spinner"></span> Loading MCQ...</div>';
-
-                try {
-                    const response = await fetch(`/hpe/contest/${CONTEST_KEY}/mcq/${mcqId}/content/`);
-                    if (!response.ok) throw new Error('Failed to load MCQ');
-
-                    const data = await response.json();
-                    const isMultiple = data.question_type === 'MULTIPLE';
-                    const inputType = isMultiple ? 'checkbox' : 'radio';
-
-                    let html = '<div class="mcq-container" data-question-type="' + data.question_type + '">';
-                    html += '<div class="mcq-header"><h2>' + (data.title || 'MCQ Question') + '</h2>';
-                    html += '<div class="mcq-meta">';
-                    html += isMultiple ? '<span class="mcq-type-badge multiple">Multi-Correct</span>' : '<span class="mcq-type-badge single">Single Choice</span>';
-                    html += '<span class="mcq-points">' + (data.points || '') + ' points</span></div></div>';
-                    if (isMultiple) html += '<div class="mcq-hint"><i class="fa fa-info-circle"></i> Select all correct answers</div>';
-                    html += '<div class="mcq-question">' + (data.question_text || data.question || '') + '</div>';
-                    html += '<div class="mcq-options">';
-
-                    if (data.options) {
-                        data.options.forEach((opt, idx) => {
-                            const optLabel = String.fromCharCode(65 + idx);
-                            html += '<label class="mcq-option"><input type="' + inputType + '" name="mcq_answer" value="' + (opt.id || idx) + '">';
-                            html += '<span class="option-label">' + optLabel + '</span>';
-                            html += '<span class="option-text">' + (opt.text || opt) + '</span></label>';
-                        });
-                    }
-
-                    html += '</div><div class="mcq-footer">';
-                    html += '<button class="btn btn-back" onclick="showDashboard()"><i class="fa fa-arrow-left"></i>&nbsp; Back</button>';
-                    html += '<button class="btn btn-submit" onclick="submitMCQ(' + mcqId + ')"><i class="fa fa-check"></i>&nbsp; Submit Answer</button>';
-                    html += '</div></div>';
-
-                    mcqView.innerHTML = html;
-                } catch (err) {
-                    mcqView.innerHTML = '<div style="color:#f44336;padding:40px;">Error loading MCQ: ' + err.message + '</div>';
-                }
-            };
-
-            window.submitMCQ = async function(mcqId) {
-                const container = document.querySelector('.mcq-container');
-                const questionType = container ? container.dataset.questionType : 'SINGLE';
-                const selectedInputs = document.querySelectorAll('input[name="mcq_answer"]:checked');
-
-                if (selectedInputs.length === 0) {
-                    alert('Please select an answer!');
-                    return;
+                // MathJax
+                if (window.MathJax && MathJax.typesetPromise) {
+                    MathJax.typesetPromise([document.getElementById('problem-content')]);
                 }
 
-                const answers = Array.from(selectedInputs).map(input => input.value);
-                const payload = questionType === 'MULTIPLE' ? { answers } : { answer: answers[0] };
+                // Update language selector
+                const langSelect = document.getElementById('language-select');
+                langSelect.innerHTML = '';
+                data.languages.forEach((lang, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = lang.id;
+                    opt.textContent = lang.name;
+                    opt.dataset.aceMode = lang.ace_mode;
+                    opt.dataset.template = lang.template;
+                    if (idx === 0) opt.selected = true;
+                    langSelect.appendChild(opt);
+                });
 
-                try {
-                    const response = await fetch(`/hpe/contest/${CONTEST_KEY}/mcq/${mcqId}/submit/`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': getCookie('csrftoken')
-                        },
-                        body: JSON.stringify(payload)
-                    });
-
-                    const data = await response.json();
-                    alert(data.correct ? '✓ Correct!' : '✗ Incorrect.');
-                    showDashboard();
-                } catch (err) {
-                    alert('Error submitting answer: ' + err.message);
-                }
-            };
-
-            // Code submission functions
-            window.runCode = async function() { await submitCodeInternal('sample'); };
-            window.runTest = async function() { await submitCodeInternal('test'); };
-            window.submitCode = async function() { await submitCodeInternal('submit'); };
-
-            async function submitCodeInternal(mode) {
-                const source = window.editor.getValue();
-                const langId = document.getElementById('language-select').value;
-
-                if (!source.trim()) {
-                    alert('Please write some code first!');
-                    return;
+                if (data.languages.length > 0) {
+                    const firstLang = data.languages[0];
+                    window.editor.session.setMode('ace/mode/' + firstLang.ace_mode);
+                    window.editor.setValue(firstLang.template || '', -1);
                 }
 
-                let loadingMessage = mode === 'test' ? 'Running all tests...' : mode === 'submit' ? 'Submitting...' : 'Running...';
-                showResults('<div class="result-item pending"><span class="exam-spinner"></span> ' + loadingMessage + '</div>');
-
-                try {
-                    const formData = new FormData();
-                    formData.append('language', langId);
-                    formData.append('source', source);
-
-                    const response = await fetch(`/problem/${currentProblemCode}/submit`, {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRFToken': getCookie('csrftoken')
-                        }
-                    });
-
-                    if (!response.ok) throw new Error('Server error: ' + response.status);
-
-                    const data = await response.json();
-                    if (data.error) {
-                        showResults('<div class="result-item fail">' + data.error + '</div>');
-                        return;
-                    }
-
-                    if (data.submission) {
-                        pollSubmissionStatus(data.submission, mode);
-                    } else {
-                        showResults('<div class="result-item fail">Submission failed</div>');
-                    }
-                } catch (err) {
-                    showResults('<div class="result-item fail">Error: ' + err.message + '</div>');
-                }
-            }
-
-            async function pollSubmissionStatus(submissionId, mode) {
-                let attempts = 0;
-                const maxAttempts = 60;
-
-                const poll = async () => {
-                    try {
-                        const response = await fetch(`/ajax/submission_status/?id=${submissionId}`);
-                        const data = await response.json();
-
-                        let html = '';
-                        if (!data.is_graded) {
-                            html = '<div class="result-item pending"><span class="exam-spinner"></span> Judging... (' + (data.status_display || data.status) + ')</div>';
-                        } else {
-                            const isAC = data.status === 'AC';
-                            html = '<div class="result-item ' + (isAC ? 'pass' : 'fail') + '"><strong>' + (data.status_display || data.status) + '</strong>';
-                            if (data.points != null) html += ' • ' + data.points + ' points';
-                            if (data.time) html += ' • ' + parseFloat(data.time).toFixed(3) + 's';
-                            if (data.memory) html += ' • ' + Math.round(parseFloat(data.memory)) + 'KB';
-                            html += '</div>';
-
-                            if (data.test_cases) {
-                                const maxCases = mode === 'sample' ? 2 : data.test_cases.length;
-                                data.test_cases.slice(0, maxCases).forEach((tc, idx) => {
-                                    html += '<div class="result-item ' + (tc.status === 'AC' ? 'pass' : 'fail') + '">Test ' + (idx + 1) + ': ' + tc.status + '</div>';
-                                });
-                                if (mode === 'sample' && data.test_cases.length > 2) {
-                                    html += '<div class="result-item" style="color:#888;">... and ' + (data.test_cases.length - 2) + ' more</div>';
-                                }
-                            }
-
-                            if (mode === 'submit' && isAC) {
-                                const nextIdx = currentProblemIndex + 1;
-                                if (nextIdx < PROBLEM_CODES.length) {
-                                    html += '<div class="result-item pass" style="margin-top:10px;">✓ Correct! Loading next problem...</div>';
-                                    setTimeout(() => loadProblem(PROBLEM_CODES[nextIdx]), 1500);
-                                } else {
-                                    html += '<div class="result-item pass" style="margin-top:10px;">✓ All problems completed!</div>';
-                                    setTimeout(() => showDashboard(), 1500);
-                                }
-                            }
-                        }
-
-                        showResults(html);
-
-                        if (!data.is_graded && attempts < maxAttempts) {
-                            attempts++;
-                            setTimeout(poll, 1000);
-                        }
-                    } catch (err) {
-                        showResults('<div class="result-item fail">Polling error: ' + err.message + '</div>');
+                langSelect.onchange = function () {
+                    const opt = this.options[this.selectedIndex];
+                    window.editor.session.setMode('ace/mode/' + opt.dataset.aceMode);
+                    if (opt.dataset.template) {
+                        window.editor.setValue(opt.dataset.template, -1);
                     }
                 };
 
-                poll();
+                toggleResults(false);
+            } catch (err) {
+                document.getElementById('problem-content').innerHTML = '<p style="color:#f44336;">Error: ' + err.message + '</p>';
+            }
+        };
+
+        // MCQ Functions
+        window.loadMCQ = async function (mcqId) {
+            document.getElementById('dashboard-view').style.display = 'none';
+            document.getElementById('editor-view').classList.remove('active');
+            document.getElementById('btn-dashboard').classList.remove('active');
+
+            let mcqView = document.getElementById('mcq-view');
+            if (!mcqView) {
+                mcqView = document.createElement('div');
+                mcqView.id = 'mcq-view';
+                mcqView.className = 'mcq-view';
+                document.querySelector('.content-area').appendChild(mcqView);
+            }
+            mcqView.classList.add('active');
+            mcqView.innerHTML = '<div style="text-align:center;padding:40px;"><span class="exam-spinner"></span> Loading MCQ...</div>';
+
+            try {
+                const response = await fetch(`/hpe/contest/${CONTEST_KEY}/mcq/${mcqId}/content/`);
+                if (!response.ok) throw new Error('Failed to load MCQ');
+
+                const data = await response.json();
+                const isMultiple = data.question_type === 'MULTIPLE';
+                const inputType = isMultiple ? 'checkbox' : 'radio';
+
+                let html = '<div class="mcq-container" data-question-type="' + data.question_type + '">';
+                html += '<div class="mcq-header"><h2>' + (data.title || 'MCQ Question') + '</h2>';
+                html += '<div class="mcq-meta">';
+                html += isMultiple ? '<span class="mcq-type-badge multiple">Multi-Correct</span>' : '<span class="mcq-type-badge single">Single Choice</span>';
+                html += '<span class="mcq-points">' + (data.points || '') + ' points</span></div></div>';
+                if (isMultiple) html += '<div class="mcq-hint"><i class="fa fa-info-circle"></i> Select all correct answers</div>';
+                html += '<div class="mcq-question">' + (data.question_text || data.question || '') + '</div>';
+                html += '<div class="mcq-options">';
+
+                if (data.options) {
+                    data.options.forEach((opt, idx) => {
+                        const optLabel = String.fromCharCode(65 + idx);
+                        html += '<label class="mcq-option"><input type="' + inputType + '" name="mcq_answer" value="' + (opt.id || idx) + '">';
+                        html += '<span class="option-label">' + optLabel + '</span>';
+                        html += '<span class="option-text">' + (opt.text || opt) + '</span></label>';
+                    });
+                }
+
+                html += '</div><div class="mcq-footer">';
+                html += '<button class="btn btn-back" onclick="showDashboard()"><i class="fa fa-arrow-left"></i>&nbsp; Back</button>';
+                html += '<button class="btn btn-submit" onclick="submitMCQ(' + mcqId + ')"><i class="fa fa-check"></i>&nbsp; Submit Answer</button>';
+                html += '</div></div>';
+
+                mcqView.innerHTML = html;
+            } catch (err) {
+                mcqView.innerHTML = '<div style="color:#f44336;padding:40px;">Error loading MCQ: ' + err.message + '</div>';
+            }
+        };
+
+        window.submitMCQ = async function (mcqId) {
+            const container = document.querySelector('.mcq-container');
+            const questionType = container ? container.dataset.questionType : 'SINGLE';
+            const selectedInputs = document.querySelectorAll('input[name="mcq_answer"]:checked');
+
+            if (selectedInputs.length === 0) {
+                alert('Please select an answer!');
+                return;
             }
 
-            function showResults(html) {
-                document.getElementById('results-content').innerHTML = html;
-                document.getElementById('results-panel').classList.add('open');
+            const answers = Array.from(selectedInputs).map(input => input.value);
+            const payload = questionType === 'MULTIPLE' ? { answers } : { answer: answers[0] };
+
+            try {
+                const response = await fetch(`/hpe/contest/${CONTEST_KEY}/mcq/${mcqId}/submit/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                alert(data.correct ? '✓ Correct!' : '✗ Incorrect.');
+                showDashboard();
+            } catch (err) {
+                alert('Error submitting answer: ' + err.message);
+            }
+        };
+
+        // Code submission functions
+        window.runCode = async function () { await submitCodeInternal('sample'); };
+        window.runTest = async function () { await submitCodeInternal('test'); };
+        window.submitCode = async function () { await submitCodeInternal('submit'); };
+
+        async function submitCodeInternal(mode) {
+            const source = window.editor.getValue();
+            const langId = document.getElementById('language-select').value;
+
+            if (!source.trim()) {
+                alert('Please write some code first!');
+                return;
             }
 
-            function getCookie(name) {
-                let cookieValue = null;
-                if (document.cookie && document.cookie !== '') {
-                    const cookies = document.cookie.split(';');
-                    for (let i = 0; i < cookies.length; i++) {
-                        const cookie = cookies[i].trim();
-                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                            break;
+            let loadingMessage = mode === 'test' ? 'Running all tests...' : mode === 'submit' ? 'Submitting...' : 'Running...';
+            showResults('<div class="result-item pending"><span class="exam-spinner"></span> ' + loadingMessage + '</div>');
+
+            try {
+                const formData = new FormData();
+                formData.append('language', langId);
+                formData.append('source', source);
+
+                const response = await fetch(`/problem/${currentProblemCode}/submit`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                if (!response.ok) throw new Error('Server error: ' + response.status);
+
+                const data = await response.json();
+                if (data.error) {
+                    showResults('<div class="result-item fail">' + data.error + '</div>');
+                    return;
+                }
+
+                if (data.submission) {
+                    pollSubmissionStatus(data.submission, mode);
+                } else {
+                    showResults('<div class="result-item fail">Submission failed</div>');
+                }
+            } catch (err) {
+                showResults('<div class="result-item fail">Error: ' + err.message + '</div>');
+            }
+        }
+
+        async function pollSubmissionStatus(submissionId, mode) {
+            let attempts = 0;
+            const maxAttempts = 60;
+
+            const poll = async () => {
+                try {
+                    const response = await fetch(`/ajax/submission_status/?id=${submissionId}`);
+                    const data = await response.json();
+
+                    let html = '';
+                    if (!data.is_graded) {
+                        html = '<div class="result-item pending"><span class="exam-spinner"></span> Judging... (' + (data.status_display || data.status) + ')</div>';
+                    } else {
+                        const isAC = data.status === 'AC';
+                        html = '<div class="result-item ' + (isAC ? 'pass' : 'fail') + '"><strong>' + (data.status_display || data.status) + '</strong>';
+                        if (data.points != null) html += ' • ' + data.points + ' points';
+                        if (data.time) html += ' • ' + parseFloat(data.time).toFixed(3) + 's';
+                        if (data.memory) html += ' • ' + Math.round(parseFloat(data.memory)) + 'KB';
+                        html += '</div>';
+
+                        if (data.test_cases) {
+                            const maxCases = mode === 'sample' ? 2 : data.test_cases.length;
+                            data.test_cases.slice(0, maxCases).forEach((tc, idx) => {
+                                html += '<div class="result-item ' + (tc.status === 'AC' ? 'pass' : 'fail') + '">Test ' + (idx + 1) + ': ' + tc.status + '</div>';
+                            });
+                            if (mode === 'sample' && data.test_cases.length > 2) {
+                                html += '<div class="result-item" style="color:#888;">... and ' + (data.test_cases.length - 2) + ' more</div>';
+                            }
+                        }
+
+                        if (mode === 'submit' && isAC) {
+                            const nextIdx = currentProblemIndex + 1;
+                            if (nextIdx < PROBLEM_CODES.length) {
+                                html += '<div class="result-item pass" style="margin-top:10px;">✓ Correct! Loading next problem...</div>';
+                                setTimeout(() => loadProblem(PROBLEM_CODES[nextIdx]), 1500);
+                            } else {
+                                html += '<div class="result-item pass" style="margin-top:10px;">✓ All problems completed!</div>';
+                                setTimeout(() => showDashboard(), 1500);
+                            }
                         }
                     }
-                }
-                return cookieValue;
-            }
 
-            // Handle already logged in user
-            {% if request.user.is_authenticated and not error %}
-            goToStep(2);
-            {% endif %}
-        })();
+                    showResults(html);
+
+                    if (!data.is_graded && attempts < maxAttempts) {
+                        attempts++;
+                        setTimeout(poll, 1000);
+                    }
+                } catch (err) {
+                    showResults('<div class="result-item fail">Polling error: ' + err.message + '</div>');
+                }
+            };
+
+            poll();
+        }
+
+        function showResults(html) {
+            document.getElementById('results-content').innerHTML = html;
+            document.getElementById('results-panel').classList.add('open');
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Handle already logged in user
+        {% if request.user.is_authenticated and not error %}
+        goToStep(2);
+        {% endif %}
+        }) ();
     </script>
 </body>
 
