@@ -15,5 +15,8 @@ urlpatterns = [
     path('contest/<str:contest_key>/problem/<str:problem_code>/submit/', views.HPECodeSubmitView.as_view(), name='hpe_code_submit'),
     # Submission Status Polling
     path('contest/<str:contest_key>/submission/<int:submission_id>/status/', views.HPESubmissionStatusView.as_view(), name='hpe_submission_status'),
+    # MCQ AJAX
+    path('contest/<str:contest_key>/mcq/<int:mcq_id>/content/', views.HPEMCQContentView.as_view(), name='hpe_mcq_content'),
+    path('contest/<str:contest_key>/mcq/<int:mcq_id>/submit/', views.HPEMCQSubmitView.as_view(), name='hpe_mcq_submit'),
 ]
 

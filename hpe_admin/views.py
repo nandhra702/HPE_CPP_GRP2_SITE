@@ -254,3 +254,135 @@ class HPESubmissionStatusView(HPEContestAccessMixin, View):
             'memory': f"{submission.memory}KB" if submission.memory else None,
             'test_cases': test_cases,
         })
+
+
+class HPEMCQContentView(HPEContestAccessMixin, View):
+    """Return MCQ content as JSON for AJAX loading."""
+    
+    def get(self, request, *args, **kwargs):
+        from judge.models.mcq import MCQQuestion
+        from judge.models.contest import ContestMCQ
+        
+        mcq_id = self.kwargs.get('mcq_id')
+        
+        try:
+            mcq = MCQQuestion.objects.get(id=mcq_id)
+        except MCQQuestion.DoesNotExist:
+            return JsonResponse({'error': 'MCQ not found'}, status=404)
+        
+        # Check this MCQ is part of the contest
+        try:
+            contest_mcq = ContestMCQ.objects.get(contest=self.contest, mcq_question=mcq)
+        except ContestMCQ.DoesNotExist:
+            return JsonResponse({'error': 'MCQ not found in this contest'}, status=404)
+        
+        # Get options (shuffled for fairness - use same seed per user)
+        import random
+        options = list(mcq.options.all().order_by('order', 'id'))
+        seed = f"mcq:{mcq.id}:user:{request.user.id}"
+        shuffler = random.Random(seed)
+        shuffler.shuffle(options)
+        
+        options_data = []
+        for opt in options:
+            options_data.append({
+                'id': opt.id,
+                'text': opt.option_text,
+            })
+        
+        return JsonResponse({
+            'id': mcq.id,
+            'title': mcq.code,
+            'question_text': mcq.description,
+            'question_type': mcq.question_type,  # 'SINGLE' or 'MULTIPLE'
+            'points': contest_mcq.points,
+            'options': options_data,
+        })
+
+
+class HPEMCQSubmitView(HPEContestAccessMixin, View):
+    """Submit MCQ answer - supports both single-correct and multi-correct questions."""
+    
+    def post(self, request, *args, **kwargs):
+        from judge.models.mcq import MCQQuestion, MCQOption, MCQSubmission
+        from judge.models.contest import ContestMCQ
+        import json
+        
+        mcq_id = self.kwargs.get('mcq_id')
+        
+        try:
+            mcq = MCQQuestion.objects.get(id=mcq_id)
+        except MCQQuestion.DoesNotExist:
+            return JsonResponse({'error': 'MCQ not found'}, status=404)
+        
+        # Check MCQ is in contest
+        try:
+            contest_mcq = ContestMCQ.objects.get(contest=self.contest, mcq_question=mcq)
+        except ContestMCQ.DoesNotExist:
+            return JsonResponse({'error': 'MCQ not found in this contest'}, status=404)
+        
+        # Parse answer(s)
+        try:
+            data = json.loads(request.body)
+            # Support both 'answer' (single) and 'answers' (array)
+            answer_ids = data.get('answers') or ([data.get('answer')] if data.get('answer') else [])
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid request'}, status=400)
+        
+        if not answer_ids:
+            return JsonResponse({'error': 'No answer provided'}, status=400)
+        
+        # Get selected options
+        selected_options = []
+        for answer_id in answer_ids:
+            try:
+                option = MCQOption.objects.get(id=answer_id, question=mcq)
+                selected_options.append(option)
+            except MCQOption.DoesNotExist:
+                return JsonResponse({'error': f'Invalid answer option: {answer_id}'}, status=400)
+        
+        # Get participation
+        from judge.models.contest import ContestParticipation
+        try:
+            participation = ContestParticipation.objects.get(
+                contest=self.contest,
+                user=request.user.profile,
+                virtual=ContestParticipation.LIVE
+            )
+        except ContestParticipation.DoesNotExist:
+            participation = None
+        
+        # Calculate correctness for multi-correct
+        # For MULTIPLE: all selected must be correct AND all correct options must be selected
+        if mcq.question_type == 'MULTIPLE':
+            correct_option_ids = set(mcq.options.filter(is_correct=True).values_list('id', flat=True))
+            selected_ids = set(o.id for o in selected_options)
+            is_correct = correct_option_ids == selected_ids
+        else:
+            # For SINGLE: the one selected option must be correct
+            is_correct = len(selected_options) == 1 and selected_options[0].is_correct
+        
+        # Create or update submission
+        submission, created = MCQSubmission.objects.get_or_create(
+            question=mcq,
+            user=request.user.profile,
+            participation=participation,
+            defaults={'is_correct': is_correct}
+        )
+        
+        if not created:
+            # Update existing submission
+            submission.selected_options.clear()
+        
+        # Add all selected options
+        for option in selected_options:
+            submission.selected_options.add(option)
+        
+        submission.is_correct = is_correct
+        submission.save()
+        
+        return JsonResponse({
+            'success': True,
+            'correct': is_correct,
+            'message': 'Answer saved'
+        })

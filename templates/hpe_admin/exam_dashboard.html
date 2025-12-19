@@ -193,6 +193,201 @@
         .q-meta {
             font-size: 13px;
             color: #888;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge {
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-code {
+            background: #3794ff;
+            color: white;
+        }
+
+        .badge-mcq {
+            background: #9c27b0;
+            color: white;
+        }
+
+        .btn-mcq {
+            background: #9c27b0 !important;
+        }
+
+        .btn-mcq:hover {
+            background: #7b1fa2 !important;
+        }
+
+        /* MCQ View Styles */
+        .mcq-view {
+            display: none;
+            padding: 30px;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .mcq-view.active {
+            display: block;
+        }
+
+        .mcq-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #2d2d2d;
+            border-radius: 8px;
+            padding: 30px;
+        }
+
+        .mcq-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #404040;
+        }
+
+        .mcq-header h2 {
+            margin: 0;
+            color: #fff;
+            font-size: 18px;
+        }
+
+        .mcq-points {
+            background: #9c27b0;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .mcq-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .mcq-type-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .mcq-type-badge.single {
+            background: #2196f3;
+            color: white;
+        }
+
+        .mcq-type-badge.multiple {
+            background: #ff9800;
+            color: white;
+        }
+
+        .mcq-hint {
+            background: rgba(255, 152, 0, 0.15);
+            color: #ff9800;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .mcq-hint i {
+            margin-right: 8px;
+        }
+
+        /* Checkbox styling for multi-correct */
+        .mcq-option input[type="checkbox"] {
+            display: none;
+        }
+
+        .mcq-option input[type="checkbox"]:checked+.option-label {
+            background: #ff9800;
+            color: white;
+        }
+
+        .mcq-option input[type="checkbox"]:checked~.option-text {
+            color: #fff;
+        }
+
+        .mcq-question {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #e0e0e0;
+            margin-bottom: 25px;
+            padding: 15px;
+            background: #333;
+            border-radius: 6px;
+        }
+
+        .mcq-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        .mcq-option {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: #333;
+            border: 2px solid #404040;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mcq-option:hover {
+            border-color: #9c27b0;
+            background: #3a3a3a;
+        }
+
+        .mcq-option input[type="radio"] {
+            display: none;
+        }
+
+        .mcq-option input[type="radio"]:checked+.option-label {
+            background: #9c27b0;
+            color: white;
+        }
+
+        .mcq-option input[type="radio"]:checked~.option-text {
+            color: #fff;
+        }
+
+        .option-label {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #555;
+            color: #fff;
+            border-radius: 50%;
+            font-weight: 600;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .option-text {
+            color: #ccc;
+            font-size: 15px;
+        }
+
+        .mcq-footer {
+            display: flex;
+            justify-content: space-between;
+            padding-top: 20px;
+            border-top: 1px solid #404040;
         }
 
         .solve-btn {
@@ -653,14 +848,30 @@
                 <div class="dashboard-title">Problems</div>
 
                 {% for cp in contest.contest_problems.all() %}
-                <div class="question-card" data-code="{{ cp.problem.code }}">
+                <div class="question-card" data-code="{{ cp.problem.code }}" data-type="problem">
                     <div class="q-info">
                         <div class="q-title">{{ loop.index }}. {{ cp.problem.name }}</div>
-                        <div class="q-meta">{{ cp.points }} points • Time: {{ cp.problem.time_limit }}s</div>
+                        <div class="q-meta"><span class="badge badge-code">Coding</span> {{ cp.points }} points • Time:
+                            {{ cp.problem.time_limit }}s</div>
                     </div>
                     <button class="solve-btn" onclick="loadProblem('{{ cp.problem.code }}')">Solve</button>
                 </div>
                 {% endfor %}
+
+                {% if contest.contest_mcqs.all()|list|length > 0 %}
+                <div class="dashboard-title" style="margin-top: 30px;">MCQ Questions</div>
+
+                {% for cm in contest.contest_mcqs.all() %}
+                <div class="question-card" data-mcq-id="{{ cm.mcq_question.id }}" data-type="mcq">
+                    <div class="q-info">
+                        <div class="q-title">MCQ {{ loop.index }}. {{ cm.mcq_question.title or 'Question ' ~ loop.index
+                            }}</div>
+                        <div class="q-meta"><span class="badge badge-mcq">MCQ</span> {{ cm.points }} points</div>
+                    </div>
+                    <button class="solve-btn btn-mcq" onclick="loadMCQ({{ cm.mcq_question.id }})">Answer</button>
+                </div>
+                {% endfor %}
+                {% endif %}
 
                 <div class="submit-test-container">
                     <button class="submit-test-btn" onclick="confirmSubmit()">
@@ -777,9 +988,129 @@
         function showDashboard() {
             document.getElementById('dashboard-view').style.display = 'block';
             document.getElementById('editor-view').classList.remove('active');
+            if (document.getElementById('mcq-view')) {
+                document.getElementById('mcq-view').classList.remove('active');
+            }
             document.getElementById('btn-dashboard').classList.add('active');
             currentProblemCode = null;
             currentProblemIndex = -1;
+        }
+
+        // MCQ Loading Function
+        async function loadMCQ(mcqId) {
+            // Hide dashboard and problem editor
+            document.getElementById('dashboard-view').style.display = 'none';
+            document.getElementById('editor-view').classList.remove('active');
+            document.getElementById('btn-dashboard').classList.remove('active');
+
+            // Show MCQ view (we'll create this dynamically)
+            let mcqView = document.getElementById('mcq-view');
+            if (!mcqView) {
+                mcqView = document.createElement('div');
+                mcqView.id = 'mcq-view';
+                mcqView.className = 'mcq-view';
+                document.querySelector('.content-area').appendChild(mcqView);
+            }
+            mcqView.classList.add('active');
+            mcqView.innerHTML = '<div style="text-align:center;padding:40px;"><span class="spinner"></span> Loading MCQ...</div>';
+
+            try {
+                // Fetch MCQ content from HPE endpoint
+                const response = await fetch(`/hpe/contest/${CONTEST_KEY}/mcq/${mcqId}/content/`);
+                if (!response.ok) throw new Error('Failed to load MCQ');
+
+                const data = await response.json();
+
+                // Determine input type based on question type
+                const isMultiple = data.question_type === 'MULTIPLE';
+                const inputType = isMultiple ? 'checkbox' : 'radio';
+
+                // Render MCQ question
+                let html = '<div class="mcq-container" data-question-type="' + data.question_type + '">';
+                html += '<div class="mcq-header">';
+                html += '<h2>' + (data.title || 'MCQ Question') + '</h2>';
+                html += '<div class="mcq-meta">';
+                if (isMultiple) {
+                    html += '<span class="mcq-type-badge multiple">Multi-Correct</span>';
+                } else {
+                    html += '<span class="mcq-type-badge single">Single Choice</span>';
+                }
+                html += '<span class="mcq-points">' + (data.points || '') + ' points</span>';
+                html += '</div>';
+                html += '</div>';
+                if (isMultiple) {
+                    html += '<div class="mcq-hint"><i class="fa fa-info-circle"></i> Select all correct answers</div>';
+                }
+                html += '<div class="mcq-question">' + (data.question_text || data.question || '') + '</div>';
+                html += '<div class="mcq-options">';
+
+                if (data.options && data.options.length > 0) {
+                    data.options.forEach((opt, idx) => {
+                        const optLabel = String.fromCharCode(65 + idx); // A, B, C, D...
+                        html += '<label class="mcq-option">';
+                        html += '<input type="' + inputType + '" name="mcq_answer" value="' + (opt.id || idx) + '">';
+                        html += '<span class="option-label">' + optLabel + '</span>';
+                        html += '<span class="option-text">' + (opt.text || opt) + '</span>';
+                        html += '</label>';
+                    });
+                }
+
+                html += '</div>';
+                html += '<div class="mcq-footer">';
+                html += '<button class="btn btn-back" onclick="showDashboard()"><i class="fa fa-arrow-left"></i>&nbsp; Back</button>';
+                html += '<button class="btn btn-submit" onclick="submitMCQ(' + mcqId + ')"><i class="fa fa-check"></i>&nbsp; Submit Answer</button>';
+                html += '</div>';
+                html += '</div>';
+
+                mcqView.innerHTML = html;
+
+            } catch (err) {
+                mcqView.innerHTML = '<div style="color:#f44336;padding:40px;">Error loading MCQ: ' + err.message + '</div>';
+            }
+        }
+
+        async function submitMCQ(mcqId) {
+            // Get the question type from the container
+            const container = document.querySelector('.mcq-container');
+            const questionType = container ? container.dataset.questionType : 'SINGLE';
+
+            // Collect selected answers
+            const selectedInputs = document.querySelectorAll('input[name="mcq_answer"]:checked');
+
+            if (selectedInputs.length === 0) {
+                alert('Please select an answer!');
+                return;
+            }
+
+            // For multi-correct, send array of answers; for single, send single answer
+            const answers = Array.from(selectedInputs).map(input => input.value);
+            const payloadBody = questionType === 'MULTIPLE'
+                ? { answers: answers }  // Array for multi-correct
+                : { answer: answers[0] };  // Single value for single-correct
+
+            try {
+                const response = await fetch(`/hpe/contest/${CONTEST_KEY}/mcq/${mcqId}/submit/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(payloadBody)
+                });
+
+                const data = await response.json();
+
+                if (data.correct) {
+                    alert('✓ Correct!');
+                } else {
+                    alert('✗ Incorrect. The correct answer was: ' + (data.correct_answer || 'N/A'));
+                }
+
+                showDashboard();
+
+            } catch (err) {
+                alert('Error submitting answer: ' + err.message);
+            }
         }
 
         async function loadProblem(problemCode) {
