@@ -17,8 +17,8 @@ from judge.models.profile import Class, Organization, Profile
 from judge.models.submission import Submission
 from judge.ratings import rate_contest
 
-__all__ = ['Contest', 'ContestTag', 'ContestParticipation', 'ContestProblem', 'ContestSubmission', 'Rating', 
-           'ContestMCQ', 'ContestMCQResult']
+__all__ = ['Contest', 'ContestTag', 'ContestParticipation', 'ContestProblem', 'ContestSubmission', 
+           'ContestMCQSubmission', 'Rating', 'ContestMCQ', 'ContestMCQResult']
 
 
 class MinValueOrNoneValidator(MinValueValidator):
@@ -653,6 +653,7 @@ class ContestSubmission(models.Model):
         verbose_name_plural = _('contest submissions')
 
 
+
 class Rating(models.Model):
     user = models.ForeignKey(Profile, verbose_name=_('user'), related_name='ratings', on_delete=CASCADE)
     contest = models.ForeignKey(Contest, verbose_name=_('contest'), related_name='ratings', on_delete=CASCADE)
@@ -707,6 +708,30 @@ class ContestMCQ(models.Model):
         ordering = ('order',)
 
 
+class ContestMCQSubmission(models.Model):
+    """
+    Links ONE MCQSubmission to a contest per user+question+participation.
+    Similar to ContestSubmission for code problems.
+    
+    - MCQSubmission stores all attempts (history)
+    - ContestMCQSubmission points to the latest/relevant one for scoring
+    """
+    submission = models.ForeignKey('MCQSubmission', verbose_name=_('MCQ submission'),
+                                   related_name='contest_entry', on_delete=CASCADE)
+    mcq = models.ForeignKey(ContestMCQ, verbose_name=_('contest MCQ'), on_delete=CASCADE,
+                            related_name='contest_submissions', related_query_name='contest_submission')
+    participation = models.ForeignKey(ContestParticipation, verbose_name=_('participation'), on_delete=CASCADE,
+                                      related_name='contest_mcq_submissions', related_query_name='contest_mcq_submission')
+    points = models.FloatField(default=0.0, verbose_name=_('points earned'))
+    is_correct = models.BooleanField(default=False, verbose_name=_('is correct'))
+
+    class Meta:
+        verbose_name = _('contest MCQ submission')
+        verbose_name_plural = _('contest MCQ submissions')
+        # Only ONE entry per user+question+participation
+        unique_together = ('mcq', 'participation')
+
+
 class ContestMCQResult(models.Model):
     """
     Stores the final calculated result for a user's MCQ performance in a contest.
@@ -752,7 +777,7 @@ class ContestMCQResult(models.Model):
         submissions = MCQSubmission.objects.filter(
             user=self.user,
             participation=self.participation,
-            contest_object__contest=self.contest
+            contest_object=self.contest
         ).select_related('question', 'contest_object').prefetch_related('selected_options')
         
         self.attempted = submissions.count()

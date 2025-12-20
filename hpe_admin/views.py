@@ -9,6 +9,7 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404
 
 from judge.models import Contest
+from judge.debug import get_hpe_contest_backend_connect
 
 
 class HPEContestLandingView(View):
@@ -73,6 +74,7 @@ class HPEContestLandingView(View):
             'mcq_count': len(mcqs),
             'questions': all_questions,
             'total_points': total_points,
+            'hpe_backend_connect': get_hpe_contest_backend_connect(),
         }
 
     
@@ -249,6 +251,7 @@ class HPEExamContentView(HPEContestAccessMixin, View):
             'contest': self.contest,
             'dmoj_data': dmoj_data,
             'request': request,
+            'hpe_backend_connect': get_hpe_contest_backend_connect(),
         }
         
         html = render_to_string('hpe_admin/exam_content.html', context, request=request)
@@ -524,16 +527,19 @@ class HPEMCQSubmitView(HPEContestAccessMixin, View):
             except MCQOption.DoesNotExist:
                 return JsonResponse({'error': f'Invalid answer option: {answer_id}'}, status=400)
         
-        # Get participation
+        # Get or create participation (matches HPECodeSubmitView behavior)
         from judge.models.contest import ContestParticipation
-        try:
-            participation = ContestParticipation.objects.get(
-                contest=self.contest,
-                user=request.user.profile,
-                virtual=ContestParticipation.LIVE
-            )
-        except ContestParticipation.DoesNotExist:
-            participation = None
+        participation, _ = ContestParticipation.objects.get_or_create(
+            contest=self.contest,
+            user=request.user.profile,
+            virtual=ContestParticipation.LIVE,
+            defaults={'virtual': 0}
+        )
+        
+        # Auto-heal: If profile.current_contest is missing, restore it
+        if request.user.profile.current_contest is None and not participation.ended:
+            request.user.profile.current_contest = participation
+            request.user.profile.save(update_fields=['current_contest'])
         
         # Calculate correctness for multi-correct
         # For MULTIPLE: all selected must be correct AND all correct options must be selected
@@ -545,27 +551,152 @@ class HPEMCQSubmitView(HPEContestAccessMixin, View):
             # For SINGLE: the one selected option must be correct
             is_correct = len(selected_options) == 1 and selected_options[0].is_correct
         
-        # Create or update submission
-        submission, created = MCQSubmission.objects.get_or_create(
+        # Calculate points earned
+        points_earned = contest_mcq.points if is_correct else 0.0
+        
+        # Create a NEW submission for each attempt (separate entry for each submission - history)
+        submission = MCQSubmission.objects.create(
             question=mcq,
             user=request.user.profile,
             participation=participation,
-            defaults={'is_correct': is_correct}
+            contest_object=self.contest,  # Set the Contest link directly
+            is_correct=is_correct,  # Store in DB for later scoring, but don't reveal to user
+            points_earned=points_earned  # Store the points from ContestMCQ
         )
-        
-        if not created:
-            # Update existing submission
-            submission.selected_options.clear()
         
         # Add all selected options
         for option in selected_options:
             submission.selected_options.add(option)
         
-        submission.is_correct = is_correct
         submission.save()
+        
+        # Update ContestMCQSubmission - only ONE entry per user+question+contest
+        # This points to the latest submission for scoring purposes
+        if participation:
+            from judge.models.contest import ContestMCQSubmission
+            
+            ContestMCQSubmission.objects.update_or_create(
+                mcq=contest_mcq,
+                participation=participation,
+                defaults={
+                    'submission': submission,  # Update to point to latest MCQSubmission
+                    'points': contest_mcq.points if is_correct else 0.0,
+                    'is_correct': is_correct
+                }
+            )
+        
+        # Return success WITHOUT revealing correctness (contest mode - silent save)
+        # Frontend will keep the selected options intact without showing any message
+        return JsonResponse({
+            'success': True,
+            'saved_options': answer_ids  # Return which options were saved so UI can keep them selected
+        })
+
+
+class HPEContestJoinView(HPEContestAccessMixin, View):
+    """Join contest - creates ContestParticipation and sets current_contest.
+    Called when user clicks 'Start Exam'.
+    """
+    
+    def post(self, request, *args, **kwargs):
+        from django.http import JsonResponse
+        from django.utils import timezone
+        from judge.models import ContestParticipation
+        from judge.debug import get_contest_rejoin_debug
+        
+        contest = self.contest
+        profile = request.user.profile
+        
+        # Check if contest is ongoing
+        if not contest.started:
+            return JsonResponse({
+                'success': False,
+                'error': 'Contest has not started yet.'
+            }, status=400)
+        
+        # Check if banned
+        if contest.banned_users.filter(id=profile.id).exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'You are banned from this contest.'
+            }, status=403)
+        
+        # Check if already exited (unless debug mode)
+        if not get_contest_rejoin_debug():
+            if ContestParticipation.objects.filter(contest=contest, user=profile, has_exited=True).exists():
+                return JsonResponse({
+                    'success': False,
+                    'error': 'You have already submitted this contest and cannot rejoin.'
+                }, status=403)
+        
+        # Get or create participation
+        LIVE = ContestParticipation.LIVE
+        try:
+            participation = ContestParticipation.objects.get(
+                contest=contest, user=profile, virtual=LIVE
+            )
+            created = False
+            # Update real_start on rejoin (for debug/testing mode)
+            participation.real_start = timezone.now()
+            participation.has_exited = False  # Reset exit status
+            participation.save(update_fields=['real_start', 'has_exited'])
+        except ContestParticipation.DoesNotExist:
+            participation = ContestParticipation.objects.create(
+                contest=contest, user=profile, virtual=LIVE,
+                real_start=timezone.now()
+            )
+            created = True
+        
+        # Set as current contest - use update_fields to ensure it's saved properly
+        profile.current_contest = participation
+        profile.save(update_fields=['current_contest'])
+        
+        # Update contest user count
+        contest._updating_stats_only = True
+        contest.update_user_count()
         
         return JsonResponse({
             'success': True,
-            'correct': is_correct,
-            'message': 'Answer saved'
+            'message': 'Joined contest successfully.',
+            'already_joined': not created,
+            'participation_id': participation.id
+        })
+
+
+class HPEContestLeaveView(HPEContestAccessMixin, View):
+    """Leave contest - sets has_exited=True and removes current_contest.
+    Called when user clicks 'Submit Test'.
+    """
+    
+    def post(self, request, *args, **kwargs):
+        from django.http import JsonResponse
+        from judge.models import ContestParticipation
+        
+        contest = self.contest
+        profile = request.user.profile
+        
+        # Find participation directly (more robust than relying on current_contest)
+        try:
+            participation = ContestParticipation.objects.get(
+                contest=contest,
+                user=profile,
+                virtual=ContestParticipation.LIVE
+            )
+        except ContestParticipation.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'No participation found for this contest.'
+            }, status=400)
+        
+        # Mark as exited (prevents rejoining)
+        participation.has_exited = True
+        participation.save(update_fields=['has_exited'])
+        
+        # Remove from contest if this is the current one
+        if profile.current_contest and profile.current_contest.id == participation.id:
+            profile.remove_contest()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Contest submitted successfully.'
         })

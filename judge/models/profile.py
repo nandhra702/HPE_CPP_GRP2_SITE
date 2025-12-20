@@ -291,6 +291,8 @@ class Profile(models.Model):
     remove_contest.alters_data = True
 
     def update_contest(self):
+        # Refresh current_contest from DB to get latest value (may have been set in another request)
+        self.refresh_from_db(fields=['current_contest'])
         contest = self.current_contest
         if contest is not None and (contest.ended or not contest.contest.is_accessible_by(self.user)):
             self.remove_contest()

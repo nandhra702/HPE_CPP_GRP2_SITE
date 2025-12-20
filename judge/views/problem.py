@@ -622,9 +622,35 @@ class ProblemSubmit(LoginRequiredMixin, ProblemMixin, TitleMixin, SingleObjectFo
 
     @cached_property
     def contest_problem(self):
-        if self.request.profile.current_contest is None:
+        profile = self.request.profile
+        
+        # Auto-heal: If current_contest is missing, check if user has a valid live participation
+        # that includes this problem. This fixes issues where current_contest gets cleared or not set.
+        if profile.current_contest is None:
+            try:
+                from judge.models import ContestParticipation
+                # Get IDs of contests that contain this problem
+                problem_contest_ids = self.object.contests.values_list('contest_id', flat=True)
+                
+                # Find a LIVE, non-exited participation for this user in one of those contests
+                participation = ContestParticipation.objects.filter(
+                    user=profile,
+                    virtual=ContestParticipation.LIVE,
+                    has_exited=False,
+                    contest_id__in=problem_contest_ids
+                ).select_related('contest').first()
+                
+                if participation and not participation.ended:
+                    # Restore the current_contest link
+                    profile.current_contest = participation
+                    profile.save(update_fields=['current_contest'])
+            except Exception as e:
+                # Be safe, don't crash if something goes wrong in auto-heal
+                pass
+
+        if profile.current_contest is None:
             return None
-        return get_contest_problem(self.object, self.request.profile)
+        return get_contest_problem(self.object, profile)
 
     @cached_property
     def remaining_submission_count(self):
@@ -719,59 +745,8 @@ class ProblemSubmit(LoginRequiredMixin, ProblemMixin, TitleMixin, SingleObjectFo
             # Check if this is a test run or official submission
             is_test_run = self.request.POST.get('is_test_run', 'false') == 'true'
             
-            # Find existing submission for this user and problem
-            existing_submission = Submission.objects.filter(
-                user=self.request.profile,
-                problem=self.object
-            ).order_by('-date').first()
-            
-            # Determine if we should create a new submission or update existing
-            should_create_new = False
-            
-            if existing_submission:
-                # If it's a test run AND the existing submission has contest_object
-                # (meaning it's a contest submission), create a new test submission
-                if is_test_run and existing_submission.contest_object is not None:
-                    should_create_new = True
-                # If it's an official submit, always update the existing submission
-                elif not is_test_run:
-                    should_create_new = False
-                # If it's a test run and no contest_object, update existing
-                else:
-                    should_create_new = False
-            else:
-                # No existing submission, create new one
-                should_create_new = True
-            
-            # Update existing submission or create new one
-            if not should_create_new and existing_submission:
-                # Update the existing submission
-                self.new_submission = existing_submission
-                self.new_submission.language = form.cleaned_data['language']
-                self.new_submission.date = timezone.now()
-                self.new_submission.time = None
-                self.new_submission.memory = None
-                self.new_submission.points = None
-                self.new_submission.result = None
-                self.new_submission.error = None
-                self.new_submission.status = 'QU'  # Queued
-                self.new_submission.judged_date = None
-                self.new_submission.was_rejudged = False
-                self.new_submission.is_pretested = False
-                
-                # Update the source code
-                if hasattr(self.new_submission, 'source') and self.new_submission.source:
-                    self.new_submission.source.source = form.cleaned_data['source']
-                    self.new_submission.source.save()
-                    source = self.new_submission.source
-                else:
-                    source = SubmissionSource(submission=self.new_submission, source=form.cleaned_data['source'])
-                    source.save()
-                    self.new_submission.source = source
-            else:
-                # Create new submission
-                self.new_submission = form.save(commit=False)
-                source = None  # Will be created below
+            # ALWAYS create a new submission (separate entry for each submit)
+            self.new_submission = form.save(commit=False)
 
             # Handle contest submission ONLY for official submissions (not test runs)
             contest_problem = self.contest_problem
@@ -783,22 +758,18 @@ class ProblemSubmit(LoginRequiredMixin, ProblemMixin, TitleMixin, SingleObjectFo
                     self.new_submission.locked_after = self.new_submission.contest_object.locked_after
                 self.new_submission.save()
                 
-                # Check if ContestSubmission already exists, update or create
-                contest_submission, created = ContestSubmission.objects.get_or_create(
+                # ALWAYS create a new ContestSubmission entry
+                ContestSubmission.objects.create(
                     submission=self.new_submission,
                     problem=contest_problem,
-                    defaults={'participation': self.request.profile.current_contest}
+                    participation=self.request.profile.current_contest
                 )
-                if not created:
-                    # Update the participation if it already exists
-                    contest_submission.participation = self.request.profile.current_contest
-                    contest_submission.save()
             else:
                 self.new_submission.save()
 
-            if should_create_new:
-                source = SubmissionSource(submission=self.new_submission, source=form.cleaned_data['source'])
-                source.save()
+            # ALWAYS create new SubmissionSource
+            source = SubmissionSource(submission=self.new_submission, source=form.cleaned_data['source'])
+            source.save()
 
         # Save a query.
         self.new_submission.source = source
