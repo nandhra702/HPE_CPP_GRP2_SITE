@@ -914,6 +914,18 @@
         </div>
     </div>
 
+    <!-- Error Modal (for rejoin errors, etc.) -->
+    <div class="confirm-modal-overlay" id="errorModal">
+        <div class="confirm-modal">
+            <div class="confirm-modal-icon">🚫</div>
+            <h3 id="errorModalTitle">Cannot Join</h3>
+            <p id="errorModalMessage">You have already submitted this contest and cannot rejoin.</p>
+            <div class="confirm-modal-buttons">
+                <button class="confirm-modal-btn confirm" id="errorModalOkBtn">OK</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Thank You Overlay -->
     <div class="thank-you-overlay" id="thankYouOverlay">
         <div class="thank-you-content">
@@ -1268,6 +1280,22 @@
             startExamBtn.innerHTML = '<span class="spinner"></span> Starting session...';
 
             try {
+                // Step 0: Join the contest (creates ContestParticipation)
+                const joinResponse = await fetch(`/hpe/contest/{{ contest.key }}/join/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const joinData = await joinResponse.json();
+                if (!joinData.success) {
+                    throw new Error(joinData.error || 'Failed to join contest');
+                }
+                console.log('[HPE-CONTEST] Joined contest:', joinData);
+
                 // Only connect to backend if toggle is enabled
                 if (HPE_BACKEND_CONNECT) {
                     // Step 1: Start proctoring session with backend (persists to DB)
@@ -1340,11 +1368,24 @@
                     throw new Error(data.error || 'Failed to load exam');
                 }
             } catch (err) {
-                console.error('[HPE-PROCTOR] Error:', err);
-                alert('Error: ' + err.message);
+                console.error('[HPE-CONTEST] Error:', err);
+                // Show custom error modal
+                showErrorModal('Cannot Join', err.message);
                 startExamBtn.disabled = false;
                 startExamBtn.innerHTML = 'Start Exam';
             }
+        });
+
+        // Helper function to show error modal
+        function showErrorModal(title, message) {
+            document.getElementById('errorModalTitle').textContent = title;
+            document.getElementById('errorModalMessage').textContent = message;
+            document.getElementById('errorModal').classList.add('active');
+        }
+
+        // Error modal OK button handler
+        document.getElementById('errorModalOkBtn').addEventListener('click', function () {
+            document.getElementById('errorModal').classList.remove('active');
         });
 
         // ===== Exam Initialization =====
@@ -1872,6 +1913,22 @@
 
                     // Hide confirmation modal
                     modal.classList.remove('active');
+
+                    // Leave the contest (sets has_exited=True, prevents rejoining)
+                    try {
+                        const leaveResponse = await fetch(`/hpe/contest/{{ contest.key }}/leave/`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCookie('csrftoken'),
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+                        const leaveData = await leaveResponse.json();
+                        console.log('[HPE-CONTEST] Left contest:', leaveData);
+                    } catch (err) {
+                        console.error('[HPE-CONTEST] Error leaving contest:', err);
+                    }
 
                     // Show thank you overlay with stats
                     const thankYouOverlay = document.getElementById('thankYouOverlay');

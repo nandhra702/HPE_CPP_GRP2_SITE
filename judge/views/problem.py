@@ -622,9 +622,35 @@ class ProblemSubmit(LoginRequiredMixin, ProblemMixin, TitleMixin, SingleObjectFo
 
     @cached_property
     def contest_problem(self):
-        if self.request.profile.current_contest is None:
+        profile = self.request.profile
+        
+        # Auto-heal: If current_contest is missing, check if user has a valid live participation
+        # that includes this problem. This fixes issues where current_contest gets cleared or not set.
+        if profile.current_contest is None:
+            try:
+                from judge.models import ContestParticipation
+                # Get IDs of contests that contain this problem
+                problem_contest_ids = self.object.contests.values_list('contest_id', flat=True)
+                
+                # Find a LIVE, non-exited participation for this user in one of those contests
+                participation = ContestParticipation.objects.filter(
+                    user=profile,
+                    virtual=ContestParticipation.LIVE,
+                    has_exited=False,
+                    contest_id__in=problem_contest_ids
+                ).select_related('contest').first()
+                
+                if participation and not participation.ended:
+                    # Restore the current_contest link
+                    profile.current_contest = participation
+                    profile.save(update_fields=['current_contest'])
+            except Exception as e:
+                # Be safe, don't crash if something goes wrong in auto-heal
+                pass
+
+        if profile.current_contest is None:
             return None
-        return get_contest_problem(self.object, self.request.profile)
+        return get_contest_problem(self.object, profile)
 
     @cached_property
     def remaining_submission_count(self):

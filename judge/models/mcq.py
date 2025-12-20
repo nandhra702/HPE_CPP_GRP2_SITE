@@ -257,13 +257,13 @@ class MCQSubmission(models.Model):
         verbose_name=_('submission time')
     )
     contest_object = models.ForeignKey(
-        'ContestMCQ',
-        verbose_name=_('contest MCQ'),
+        'judge.Contest',  # Changed to point directly to Contest
+        verbose_name=_('contest'),
         null=True,
         blank=True,
         on_delete=CASCADE,
-        related_name='submissions',
-        help_text=_('Contest MCQ this submission belongs to (if in contest)')
+        related_name='mcq_submissions',
+        help_text=_('Contest this submission belongs to')
     )
     participation = models.ForeignKey(
         'ContestParticipation',

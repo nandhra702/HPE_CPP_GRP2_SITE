@@ -777,7 +777,7 @@ class ContestMCQResult(models.Model):
         submissions = MCQSubmission.objects.filter(
             user=self.user,
             participation=self.participation,
-            contest_object__contest=self.contest
+            contest_object=self.contest
         ).select_related('question', 'contest_object').prefetch_related('selected_options')
         
         self.attempted = submissions.count()
