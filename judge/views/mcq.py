@@ -375,18 +375,18 @@ class MCQSubmitView(LoginRequiredMixin, MCQMixin, SolvedMCQMixin, SingleObjectMi
                     'error': _('This MCQ is not part of the current contest.')
                 })
         
-        # Create or update submission based on context
+        # ALWAYS create a new submission for each attempt
         with transaction.atomic():
             if in_contest and contest_mcq:
-                # Contest mode: Use get_or_create to allow answer updates
-                submission, created = MCQSubmission.objects.get_or_create(
+                # Contest mode: ALWAYS create a new submission entry
+                submission = MCQSubmission.objects.create(
                     question=self.object,
                     user=request.profile,
                     participation=participation,
                     contest_object=contest_mcq
                 )
                 
-                # Update selected options (allows changing answer)
+                # Set selected options
                 submission.selected_options.set(selected_options)
                 
                 # Use contest points for scoring
@@ -394,20 +394,7 @@ class MCQSubmitView(LoginRequiredMixin, MCQMixin, SolvedMCQMixin, SingleObjectMi
                 submission.calculate_score()
                 
             else:
-                # Normal mode: Check if already submitted
-                existing_submission = MCQSubmission.objects.filter(
-                    question=self.object,
-                    user=request.profile,
-                    participation__isnull=True
-                ).first()
-                
-                if existing_submission:
-                    return JsonResponse({
-                        'success': False,
-                        'error': _('You have already submitted an answer for this question.')
-                    })
-                
-                # Create new submission
+                # Normal mode: ALWAYS create a new submission entry
                 submission = MCQSubmission.objects.create(
                     question=self.object,
                     user=request.profile

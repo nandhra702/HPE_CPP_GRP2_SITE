@@ -9,6 +9,7 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404
 
 from judge.models import Contest
+from judge.debug import get_hpe_contest_backend_connect
 
 
 class HPEContestLandingView(View):
@@ -73,6 +74,7 @@ class HPEContestLandingView(View):
             'mcq_count': len(mcqs),
             'questions': all_questions,
             'total_points': total_points,
+            'hpe_backend_connect': get_hpe_contest_backend_connect(),
         }
 
     
@@ -249,6 +251,7 @@ class HPEExamContentView(HPEContestAccessMixin, View):
             'contest': self.contest,
             'dmoj_data': dmoj_data,
             'request': request,
+            'hpe_backend_connect': get_hpe_contest_backend_connect(),
         }
         
         html = render_to_string('hpe_admin/exam_content.html', context, request=request)
@@ -545,27 +548,42 @@ class HPEMCQSubmitView(HPEContestAccessMixin, View):
             # For SINGLE: the one selected option must be correct
             is_correct = len(selected_options) == 1 and selected_options[0].is_correct
         
-        # Create or update submission
-        submission, created = MCQSubmission.objects.get_or_create(
+        # Calculate points earned
+        points_earned = contest_mcq.points if is_correct else 0.0
+        
+        # Create a NEW submission for each attempt (separate entry for each submission - history)
+        submission = MCQSubmission.objects.create(
             question=mcq,
             user=request.user.profile,
             participation=participation,
-            defaults={'is_correct': is_correct}
+            is_correct=is_correct,  # Store in DB for later scoring, but don't reveal to user
+            points_earned=points_earned  # Store the points from ContestMCQ
         )
-        
-        if not created:
-            # Update existing submission
-            submission.selected_options.clear()
         
         # Add all selected options
         for option in selected_options:
             submission.selected_options.add(option)
         
-        submission.is_correct = is_correct
         submission.save()
         
+        # Update ContestMCQSubmission - only ONE entry per user+question+contest
+        # This points to the latest submission for scoring purposes
+        if participation:
+            from judge.models.contest import ContestMCQSubmission
+            
+            ContestMCQSubmission.objects.update_or_create(
+                mcq=contest_mcq,
+                participation=participation,
+                defaults={
+                    'submission': submission,  # Update to point to latest MCQSubmission
+                    'points': contest_mcq.points if is_correct else 0.0,
+                    'is_correct': is_correct
+                }
+            )
+        
+        # Return success WITHOUT revealing correctness (contest mode - silent save)
+        # Frontend will keep the selected options intact without showing any message
         return JsonResponse({
             'success': True,
-            'correct': is_correct,
-            'message': 'Answer saved'
+            'saved_options': answer_ids  # Return which options were saved so UI can keep them selected
         })

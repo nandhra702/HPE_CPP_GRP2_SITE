@@ -959,291 +959,317 @@
 
             // Proctoring session management
             const PROCTOR_API_URL = "http://127.0.0.1:8001";
-            let proctoringSessionId = null;
-            let validatedSessionId = null;  // Stores session ID from connection validation
-            let videoManager = null;
+            const HPE_BACKEND_CONNECT = {{ hpe_backend_connect| lower
+        }};  // Toggle from debug.py
+        let proctoringSessionId = null;
+        let validatedSessionId = null;  // Stores session ID from connection validation
+        let videoManager = null;
 
-            // Permission check states
-            const checks = {
-                camera: false,
-                fullscreen: false,
-                internet: false
-            };
+        // Permission check states
+        const checks = {
+            camera: false,
+            fullscreen: false,
+            internet: false
+        };
 
-            function goToStep(step) {
-                currentStep = step;
-                slidesContainer.setAttribute('data-step', step);
-            }
+        function goToStep(step) {
+            currentStep = step;
+            slidesContainer.setAttribute('data-step', step);
+        }
 
-            // ===== Step 1: Login =====
-            const loginForm = document.getElementById('loginForm');
-            const loginBtn = document.getElementById('loginBtn');
-            const loginError = document.getElementById('loginError');
+        // ===== Step 1: Login =====
+        const loginForm = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginError = document.getElementById('loginError');
 
-            loginForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                loginBtn.disabled = true;
-                loginBtn.innerHTML = '<span class="spinner"></span> Signing in...';
-                loginError.style.display = 'none';
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<span class="spinner"></span> Signing in...';
+            loginError.style.display = 'none';
 
-                const formData = new FormData(loginForm);
+            const formData = new FormData(loginForm);
 
-                try {
-                    const response = await fetch(window.location.href, {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-
-                    const data = await response.json();
-
-                    if (data.success) {
-                        goToStep(2);
-                    } else {
-                        loginError.textContent = data.error || 'Login failed. Please try again.';
-                        loginError.style.display = 'block';
+            try {
+                const response = await fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
                     }
-                } catch (err) {
-                    loginError.textContent = 'An error occurred. Please try again.';
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    goToStep(2);
+                } else {
+                    loginError.textContent = data.error || 'Login failed. Please try again.';
                     loginError.style.display = 'block';
                 }
+            } catch (err) {
+                loginError.textContent = 'An error occurred. Please try again.';
+                loginError.style.display = 'block';
+            }
 
-                loginBtn.disabled = false;
-                loginBtn.innerHTML = 'Continue';
-            });
+            loginBtn.disabled = false;
+            loginBtn.innerHTML = 'Continue';
+        });
 
-            // ===== Step 2: Permission Checks =====
-            const btnCamera = document.getElementById('btn-camera');
-            const btnFullscreen = document.getElementById('btn-fullscreen');
-            const btnInternet = document.getElementById('btn-internet');
-            const continueToInfoBtn = document.getElementById('continueToInfoBtn');
-            const videoPreview = document.getElementById('videoPreview');
-            const cameraPreview = document.getElementById('cameraPreview');
+        // ===== Step 2: Permission Checks =====
+        const btnCamera = document.getElementById('btn-camera');
+        const btnFullscreen = document.getElementById('btn-fullscreen');
+        const btnInternet = document.getElementById('btn-internet');
+        const continueToInfoBtn = document.getElementById('continueToInfoBtn');
+        const videoPreview = document.getElementById('videoPreview');
+        const cameraPreview = document.getElementById('cameraPreview');
 
-            function updateButtonState(btn, status, text) {
-                btn.classList.remove('success', 'error');
-                if (status === 'success') {
-                    btn.classList.add('success');
-                    btn.textContent = text || '✓ Done';
-                    btn.disabled = true;
-                } else if (status === 'error') {
-                    btn.classList.add('error');
-                    btn.textContent = text || 'Retry';
+        function updateButtonState(btn, status, text) {
+            btn.classList.remove('success', 'error');
+            if (status === 'success') {
+                btn.classList.add('success');
+                btn.textContent = text || '✓ Done';
+                btn.disabled = true;
+            } else if (status === 'error') {
+                btn.classList.add('error');
+                btn.textContent = text || 'Retry';
+            } else {
+                btn.textContent = text || 'Enable';
+            }
+        }
+
+        function updateCheckItem(id, status) {
+            const item = document.getElementById(id);
+            item.classList.remove('checking', 'success', 'error');
+            item.classList.add(status);
+        }
+
+        function checkAllPassed() {
+            if (checks.camera && checks.fullscreen && checks.internet) {
+                continueToInfoBtn.disabled = false;
+            }
+        }
+
+        // Camera Check
+        btnCamera.addEventListener('click', async () => {
+            btnCamera.textContent = 'Checking...';
+            btnCamera.disabled = true;
+            updateCheckItem('check-camera', 'checking');
+
+            // Skip actual camera access in offline mode
+            if (!HPE_BACKEND_CONNECT) {
+                console.log('[HPE-PROCTOR] Offline mode - skipping camera access');
+                checks.camera = true;
+                updateCheckItem('check-camera', 'success');
+                updateButtonState(btnCamera, 'success', '✓ Skipped (Offline)');
+                checkAllPassed();
+                return;
+            }
+
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                cameraPreview.srcObject = mediaStream;
+                videoPreview.classList.add('show');
+                checks.camera = true;
+                updateCheckItem('check-camera', 'success');
+                updateButtonState(btnCamera, 'success', '✓ Enabled');
+            } catch (err) {
+                checks.camera = false;
+                updateCheckItem('check-camera', 'error');
+                updateButtonState(btnCamera, 'error', 'Retry');
+                btnCamera.disabled = false;
+            }
+            checkAllPassed();
+        });
+
+        // Fullscreen Check - Actually enters fullscreen
+        btnFullscreen.addEventListener('click', async () => {
+            btnFullscreen.textContent = 'Enabling...';
+            btnFullscreen.disabled = true;
+            updateCheckItem('check-fullscreen', 'checking');
+
+            try {
+                const docEl = document.documentElement;
+                if (docEl.requestFullscreen) {
+                    await docEl.requestFullscreen();
+                } else if (docEl.webkitRequestFullscreen) {
+                    await docEl.webkitRequestFullscreen();
+                } else if (docEl.mozRequestFullScreen) {
+                    await docEl.mozRequestFullScreen();
                 } else {
-                    btn.textContent = text || 'Enable';
+                    throw new Error('Fullscreen not supported');
                 }
+                checks.fullscreen = true;
+                updateCheckItem('check-fullscreen', 'success');
+                updateButtonState(btnFullscreen, 'success', '✓ Enabled');
+            } catch (err) {
+                checks.fullscreen = false;
+                updateCheckItem('check-fullscreen', 'error');
+                updateButtonState(btnFullscreen, 'error', 'Retry');
+                btnFullscreen.disabled = false;
             }
+            checkAllPassed();
+        });
 
-            function updateCheckItem(id, status) {
-                const item = document.getElementById(id);
-                item.classList.remove('checking', 'success', 'error');
-                item.classList.add(status);
-            }
+        // Internet Check - Full backend validation
+        btnInternet.addEventListener('click', () => {
+            btnInternet.textContent = 'Checking...';
+            btnInternet.disabled = true;
+            updateCheckItem('check-internet', 'checking');
+            validateBackendConnection();
+        });
 
-            function checkAllPassed() {
-                if (checks.camera && checks.fullscreen && checks.internet) {
-                    continueToInfoBtn.disabled = false;
-                }
-            }
-
-            // Camera Check
-            btnCamera.addEventListener('click', async () => {
-                btnCamera.textContent = 'Checking...';
-                btnCamera.disabled = true;
-                updateCheckItem('check-camera', 'checking');
-
-                try {
-                    mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                    cameraPreview.srcObject = mediaStream;
-                    videoPreview.classList.add('show');
-                    checks.camera = true;
-                    updateCheckItem('check-camera', 'success');
-                    updateButtonState(btnCamera, 'success', '✓ Enabled');
-                } catch (err) {
-                    checks.camera = false;
-                    updateCheckItem('check-camera', 'error');
-                    updateButtonState(btnCamera, 'error', 'Retry');
-                    btnCamera.disabled = false;
-                }
+        async function validateBackendConnection() {
+            // Skip backend connection if toggle is disabled (frontend-only mode)
+            if (!HPE_BACKEND_CONNECT) {
+                console.log('[HPE-PROCTOR] Backend connection disabled - running in frontend-only mode');
+                // Simulate successful connection for frontend-only mode
+                validatedSessionId = 'frontend-only-' + Date.now();
+                checks.internet = true;
+                updateCheckItem('check-internet', 'success');
+                updateButtonState(btnInternet, 'success', '✓ Offline Mode');
                 checkAllPassed();
-            });
+                return;
+            }
 
-            // Fullscreen Check - Actually enters fullscreen
-            btnFullscreen.addEventListener('click', async () => {
-                btnFullscreen.textContent = 'Enabling...';
-                btnFullscreen.disabled = true;
-                updateCheckItem('check-fullscreen', 'checking');
+            try {
+                // Step 1: Create temp session in DB with user info
+                const tempFormData = new FormData();
+                tempFormData.append('dmoj_user_id', '{{ request.user.id }}');
+                tempFormData.append('dmoj_user_name', '{{ request.user.username }}');
 
-                try {
-                    const docEl = document.documentElement;
-                    if (docEl.requestFullscreen) {
-                        await docEl.requestFullscreen();
-                    } else if (docEl.webkitRequestFullscreen) {
-                        await docEl.webkitRequestFullscreen();
-                    } else if (docEl.mozRequestFullScreen) {
-                        await docEl.mozRequestFullScreen();
+                const tempResponse = await fetch(`${PROCTOR_API_URL}/generate-temp-session`, {
+                    method: 'POST',
+                    body: tempFormData,
+                    headers: { 'ngrok-skip-browser-warning': 'true' }
+                });
+
+                if (!tempResponse.ok) {
+                    throw new Error('Failed to connect to proctoring server');
+                }
+
+                const tempData = await tempResponse.json();
+                if (tempData.error) {
+                    throw new Error(tempData.error);
+                }
+                const sessionId = tempData.session_id;
+                console.log('[HPE-PROCTOR] Temp session created:', sessionId);
+
+
+                // Step 2: Establish WebSocket connection (keep open for exam)
+                const wsUrl = PROCTOR_API_URL.replace('http', 'ws') + `/ws?session_id=${sessionId}`;
+                const socket = new WebSocket(wsUrl);
+                let testComplete = false;
+
+                socket.onopen = () => {
+                    console.log('[HPE-PROCTOR] WebSocket connected - keeping open for exam');
+                    // Step 3: Capture and send one test frame
+                    const video = document.getElementById('cameraPreview');
+                    if (video && video.readyState >= 2) {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth || 320;
+                        canvas.height = video.videoHeight || 240;
+                        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const base64Data = canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
+                        socket.send(base64Data);
+                        console.log('[HPE-PROCTOR] Test frame sent for analysis');
                     } else {
-                        throw new Error('Fullscreen not supported');
+                        console.warn('[HPE-PROCTOR] Camera not ready, sending test ping');
+                        socket.send('test_connection');
                     }
-                    checks.fullscreen = true;
-                    updateCheckItem('check-fullscreen', 'success');
-                    updateButtonState(btnFullscreen, 'success', '✓ Enabled');
-                } catch (err) {
-                    checks.fullscreen = false;
-                    updateCheckItem('check-fullscreen', 'error');
-                    updateButtonState(btnFullscreen, 'error', 'Retry');
-                    btnFullscreen.disabled = false;
-                }
-                checkAllPassed();
-            });
+                };
 
-            // Internet Check - Full backend validation
-            btnInternet.addEventListener('click', () => {
-                btnInternet.textContent = 'Checking...';
-                btnInternet.disabled = true;
-                updateCheckItem('check-internet', 'checking');
-                validateBackendConnection();
-            });
+                socket.onmessage = (event) => {
+                    try {
+                        const response = JSON.parse(event.data);
+                        console.log('[HPE-PROCTOR] Server response:', response);
 
-            async function validateBackendConnection() {
-                try {
-                    // Step 1: Create temp session in DB with user info
-                    const tempFormData = new FormData();
-                    tempFormData.append('dmoj_user_id', '{{ request.user.id }}');
-                    tempFormData.append('dmoj_user_name', '{{ request.user.username }}');
-
-                    const tempResponse = await fetch(`${PROCTOR_API_URL}/generate-temp-session`, {
-                        method: 'POST',
-                        body: tempFormData,
-                        headers: { 'ngrok-skip-browser-warning': 'true' }
-                    });
-
-                    if (!tempResponse.ok) {
-                        throw new Error('Failed to connect to proctoring server');
-                    }
-
-                    const tempData = await tempResponse.json();
-                    if (tempData.error) {
-                        throw new Error(tempData.error);
-                    }
-                    const sessionId = tempData.session_id;
-                    console.log('[HPE-PROCTOR] Temp session created:', sessionId);
-
-
-                    // Step 2: Establish WebSocket connection (keep open for exam)
-                    const wsUrl = PROCTOR_API_URL.replace('http', 'ws') + `/ws?session_id=${sessionId}`;
-                    const socket = new WebSocket(wsUrl);
-                    let testComplete = false;
-
-                    socket.onopen = () => {
-                        console.log('[HPE-PROCTOR] WebSocket connected - keeping open for exam');
-                        // Step 3: Capture and send one test frame
-                        const video = document.getElementById('cameraPreview');
-                        if (video && video.readyState >= 2) {
-                            const canvas = document.createElement('canvas');
-                            canvas.width = video.videoWidth || 320;
-                            canvas.height = video.videoHeight || 240;
-                            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                            const base64Data = canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
-                            socket.send(base64Data);
-                            console.log('[HPE-PROCTOR] Test frame sent for analysis');
-                        } else {
-                            console.warn('[HPE-PROCTOR] Camera not ready, sending test ping');
-                            socket.send('test_connection');
-                        }
-                    };
-
-                    socket.onmessage = (event) => {
-                        try {
-                            const response = JSON.parse(event.data);
-                            console.log('[HPE-PROCTOR] Server response:', response);
-
-                            // Check for valid response (has timestamp or is_compliant field)
-                            if (response.timestamp !== undefined || response.is_compliant !== undefined) {
-                                testComplete = true;
-                                validatedSessionId = sessionId;  // Store session ID
-                                window.proctorSocket = socket;   // Store WebSocket globally (keep open!)
-                                checks.internet = true;
-                                updateCheckItem('check-internet', 'success');
-                                updateButtonState(btnInternet, 'success', '✓ Connected');
-                                console.log('[HPE-PROCTOR] ✅ Backend validation successful');
-                                console.log('[HPE-PROCTOR] 📡 WebSocket kept open - session:', validatedSessionId);
-                            }
-                        } catch (e) {
-                            // Non-JSON response, might still be valid
+                        // Check for valid response (has timestamp or is_compliant field)
+                        if (response.timestamp !== undefined || response.is_compliant !== undefined) {
                             testComplete = true;
-                            validatedSessionId = sessionId;
-                            window.proctorSocket = socket;
+                            validatedSessionId = sessionId;  // Store session ID
+                            window.proctorSocket = socket;   // Store WebSocket globally (keep open!)
                             checks.internet = true;
                             updateCheckItem('check-internet', 'success');
                             updateButtonState(btnInternet, 'success', '✓ Connected');
+                            console.log('[HPE-PROCTOR] ✅ Backend validation successful');
+                            console.log('[HPE-PROCTOR] 📡 WebSocket kept open - session:', validatedSessionId);
                         }
-                        // DO NOT close the WebSocket - keep it open for the exam!
-                        checkAllPassed();
-                    };
+                    } catch (e) {
+                        // Non-JSON response, might still be valid
+                        testComplete = true;
+                        validatedSessionId = sessionId;
+                        window.proctorSocket = socket;
+                        checks.internet = true;
+                        updateCheckItem('check-internet', 'success');
+                        updateButtonState(btnInternet, 'success', '✓ Connected');
+                    }
+                    // DO NOT close the WebSocket - keep it open for the exam!
+                    checkAllPassed();
+                };
 
-                    socket.onerror = (error) => {
-                        console.error('[HPE-PROCTOR] WebSocket error:', error);
-                        if (!testComplete) {
-                            handleConnectionError();
-                        }
-                    };
+                socket.onerror = (error) => {
+                    console.error('[HPE-PROCTOR] WebSocket error:', error);
+                    if (!testComplete) {
+                        handleConnectionError();
+                    }
+                };
 
-                    socket.onclose = () => {
-                        console.log('[HPE-PROCTOR] WebSocket closed');
-                        // If closed unexpectedly before exam starts, allow retry
-                        if (!testComplete && !checks.internet) {
-                            handleConnectionError();
-                        }
-                    };
+                socket.onclose = () => {
+                    console.log('[HPE-PROCTOR] WebSocket closed');
+                    // If closed unexpectedly before exam starts, allow retry
+                    if (!testComplete && !checks.internet) {
+                        handleConnectionError();
+                    }
+                };
 
-                    // Timeout after 10 seconds
-                    setTimeout(() => {
-                        if (!testComplete && !checks.internet) {
-                            console.error('[HPE-PROCTOR] Connection validation timeout');
-                            socket.close();
-                            handleConnectionError();
-                        }
-                    }, 10000);
+                // Timeout after 10 seconds
+                setTimeout(() => {
+                    if (!testComplete && !checks.internet) {
+                        console.error('[HPE-PROCTOR] Connection validation timeout');
+                        socket.close();
+                        handleConnectionError();
+                    }
+                }, 10000);
 
-                } catch (err) {
-                    console.error('[HPE-PROCTOR] Connection validation error:', err);
-                    handleConnectionError();
-                }
+            } catch (err) {
+                console.error('[HPE-PROCTOR] Connection validation error:', err);
+                handleConnectionError();
+            }
+        }
+
+
+        function handleConnectionError() {
+            checks.internet = false;
+            validatedSessionId = null;
+            updateCheckItem('check-internet', 'error');
+            updateButtonState(btnInternet, 'error', 'Retry');
+            btnInternet.disabled = false;
+            checkAllPassed();
+        }
+
+
+        continueToInfoBtn.addEventListener('click', () => {
+            goToStep(3);
+        });
+
+
+        // ===== Step 3: Start Exam =====
+        const startExamBtn = document.getElementById('startExamBtn');
+
+        startExamBtn.addEventListener('click', async () => {
+            // Check if connection was validated
+            if (!validatedSessionId) {
+                document.getElementById('connectionErrorModal').classList.add('active');
+                return;
             }
 
+            startExamBtn.disabled = true;
+            startExamBtn.innerHTML = '<span class="spinner"></span> Starting session...';
 
-            function handleConnectionError() {
-                checks.internet = false;
-                validatedSessionId = null;
-                updateCheckItem('check-internet', 'error');
-                updateButtonState(btnInternet, 'error', 'Retry');
-                btnInternet.disabled = false;
-                checkAllPassed();
-            }
-
-
-            continueToInfoBtn.addEventListener('click', () => {
-                goToStep(3);
-            });
-
-
-            // ===== Step 3: Start Exam =====
-            const startExamBtn = document.getElementById('startExamBtn');
-
-            startExamBtn.addEventListener('click', async () => {
-                // Check if connection was validated
-                if (!validatedSessionId) {
-                    document.getElementById('connectionErrorModal').classList.add('active');
-                    return;
-                }
-
-                startExamBtn.disabled = true;
-                startExamBtn.innerHTML = '<span class="spinner"></span> Starting session...';
-
-                try {
+            try {
+                // Only connect to backend if toggle is enabled
+                if (HPE_BACKEND_CONNECT) {
                     // Step 1: Start proctoring session with backend (persists to DB)
                     const sessionFormData = new FormData();
                     sessionFormData.append('dmoj_user_id', '{{ request.user.id }}');
@@ -1272,580 +1298,600 @@
                     // Use the VALIDATED session ID (same as WebSocket), not the DB ID
                     proctoringSessionId = validatedSessionId;
                     console.log(`[HPE-PROCTOR] Session persisted to DB. Using session: ${proctoringSessionId}`);
-
-
-                    // Step 2: Load exam content
-                    startExamBtn.innerHTML = '<span class="spinner"></span> Loading exam...';
-
-                    const response = await fetch("{{ url('hpe_exam_content', contest.key) }}", {
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Failed to load exam content');
-                    }
-
-                    const data = await response.json();
-
-                    if (data.success) {
-                        // Store DMOJ data globally
-                        window.dmojData = data.dmoj_data;
-                        window.dmojData.proctoringSessionId = proctoringSessionId;
-
-                        // Hide the landing page container
-                        document.querySelector('.container').style.display = 'none';
-
-                        // Create exam container
-                        const examContainer = document.createElement('div');
-                        examContainer.id = 'exam-container';
-                        examContainer.innerHTML = data.html;
-                        document.body.appendChild(examContainer);
-
-                        // Initialize the exam (proctoring, editor, etc.)
-                        initializeExam(mediaStream);
-                    } else {
-                        throw new Error(data.error || 'Failed to load exam');
-                    }
-                } catch (err) {
-                    console.error('[HPE-PROCTOR] Error:', err);
-                    alert('Error: ' + err.message);
-                    startExamBtn.disabled = false;
-                    startExamBtn.innerHTML = 'Start Exam';
+                } else {
+                    // Frontend-only mode: use the fake session ID
+                    proctoringSessionId = validatedSessionId;
+                    console.log('[HPE-PROCTOR] Frontend-only mode - skipping backend session creation');
                 }
+
+
+                // Step 2: Load exam content
+                startExamBtn.innerHTML = '<span class="spinner"></span> Loading exam...';
+
+                const response = await fetch("{{ url('hpe_exam_content', contest.key) }}", {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load exam content');
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Store DMOJ data globally
+                    window.dmojData = data.dmoj_data;
+                    window.dmojData.proctoringSessionId = proctoringSessionId;
+
+                    // Hide the landing page container
+                    document.querySelector('.container').style.display = 'none';
+
+                    // Create exam container
+                    const examContainer = document.createElement('div');
+                    examContainer.id = 'exam-container';
+                    examContainer.innerHTML = data.html;
+                    document.body.appendChild(examContainer);
+
+                    // Initialize the exam (proctoring, editor, etc.)
+                    initializeExam(mediaStream);
+                } else {
+                    throw new Error(data.error || 'Failed to load exam');
+                }
+            } catch (err) {
+                console.error('[HPE-PROCTOR] Error:', err);
+                alert('Error: ' + err.message);
+                startExamBtn.disabled = false;
+                startExamBtn.innerHTML = 'Start Exam';
+            }
+        });
+
+        // ===== Exam Initialization =====
+        async function initializeExam(stream) {
+            // Load required scripts dynamically
+            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.4/ace.js');
+
+            // Initialize ACE Editor
+            window.editor = ace.edit("ace-editor");
+            window.editor.setTheme("ace/theme/monokai");
+            window.editor.session.setMode("ace/mode/python");
+            window.editor.setOptions({
+                fontSize: "14px",
+                showPrintMargin: false,
+                highlightActiveLine: true
             });
 
-            // ===== Exam Initialization =====
-            async function initializeExam(stream) {
-                // Load required scripts dynamically
-                await loadScript('https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.4/ace.js');
+            // Initialize proctoring with existing stream
+            initProctoringWithStream(stream);
 
-                // Initialize ACE Editor
-                window.editor = ace.edit("ace-editor");
-                window.editor.setTheme("ace/theme/monokai");
-                window.editor.session.setMode("ace/mode/python");
-                window.editor.setOptions({
-                    fontSize: "14px",
-                    showPrintMargin: false,
-                    highlightActiveLine: true
+            // Initialize timer
+            initTimer();
+
+            // Initialize resize handle
+            initResize();
+
+            // Show proctoring status
+            document.getElementById('proctor-status').style.display = 'flex';
+
+            // Setup fullscreen monitoring
+            setupFullscreenMonitor();
+        }
+
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                if (document.querySelector(`script[src="${src}"]`)) {
+                    resolve();
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        function initProctoringWithStream(stream) {
+            console.log("[HPE-PROCTOR] Initializing proctoring with stream");
+
+            const video = document.getElementById('webcam');
+            const debugVideo = document.getElementById('debug-video-feed');
+
+            if (video && stream) {
+                video.srcObject = stream;
+                // IMPORTANT: Explicitly play video like old working code
+                video.play().then(() => {
+                    console.log("[HPE-PROCTOR] ✅ Video element playing");
+                }).catch(err => {
+                    console.error("[HPE-PROCTOR] Video play error:", err);
                 });
-
-                // Initialize proctoring with existing stream
-                initProctoringWithStream(stream);
-
-                // Initialize timer
-                initTimer();
-
-                // Initialize resize handle
-                initResize();
-
-                // Show proctoring status
-                document.getElementById('proctor-status').style.display = 'flex';
-
-                // Setup fullscreen monitoring
-                setupFullscreenMonitor();
+                console.log("[HPE-PROCTOR] Video element connected to stream");
+            } else {
+                console.error("[HPE-PROCTOR] ❌ Video element not found or no stream!");
+            }
+            if (debugVideo && stream) {
+                debugVideo.srcObject = stream;
             }
 
-            function loadScript(src) {
-                return new Promise((resolve, reject) => {
-                    if (document.querySelector(`script[src="${src}"]`)) {
-                        resolve();
-                        return;
-                    }
-                    const script = document.createElement('script');
-                    script.src = src;
-                    script.onload = resolve;
-                    script.onerror = reject;
-                    document.head.appendChild(script);
-                });
-            }
+            // Setup WebSocket for proctoring - reuse connection from validation
+            let socket = window.proctorSocket;  // Get existing WebSocket from validation
+            let isConnected = socket && socket.readyState === WebSocket.OPEN;
+            let frameCount = 0;
+            const FRAME_INTERVAL_MS = 500; // 500ms = 2fps
 
-            function initProctoringWithStream(stream) {
-                console.log("[HPE-PROCTOR] Initializing proctoring with stream");
+            // Enhanced message handler for exam proctoring
+            function setupExamMessageHandler(ws) {
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log('[HPE-PROCTOR] Server response:', data);
 
-                const video = document.getElementById('webcam');
-                const debugVideo = document.getElementById('debug-video-feed');
-
-                if (video && stream) {
-                    video.srcObject = stream;
-                    // IMPORTANT: Explicitly play video like old working code
-                    video.play().then(() => {
-                        console.log("[HPE-PROCTOR] ✅ Video element playing");
-                    }).catch(err => {
-                        console.error("[HPE-PROCTOR] Video play error:", err);
-                    });
-                    console.log("[HPE-PROCTOR] Video element connected to stream");
-                } else {
-                    console.error("[HPE-PROCTOR] ❌ Video element not found or no stream!");
-                }
-                if (debugVideo && stream) {
-                    debugVideo.srcObject = stream;
-                }
-
-                // Setup WebSocket for proctoring - reuse connection from validation
-                let socket = window.proctorSocket;  // Get existing WebSocket from validation
-                let isConnected = socket && socket.readyState === WebSocket.OPEN;
-                let frameCount = 0;
-                const FRAME_INTERVAL_MS = 500; // 500ms = 2fps
-
-                // Enhanced message handler for exam proctoring
-                function setupExamMessageHandler(ws) {
-                    ws.onmessage = (event) => {
-                        try {
-                            const data = JSON.parse(event.data);
-                            console.log('[HPE-PROCTOR] Server response:', data);
-
-                            // Handle tab switch acknowledgment
-                            if (data.type === 'tab_switch_ack') {
-                                console.log('[HPE-PROCTOR] Tab switch acknowledged:', data);
-                                return;
-                            }
-
-                            // Handle violation detection
-                            let violationMessage = 'Pattern detected';
-                            if (Array.isArray(data.violations) && data.violations.length > 0) {
-                                violationMessage = data.violations[0]?.message || 'Pattern detected';
-                                console.log('[HPE-PROCTOR] 🚨 VIOLATION:', violationMessage);
-                            }
-
-                            const statusEl = document.getElementById('debug-status');
-                            if (statusEl) {
-                                statusEl.textContent = data.is_compliant ? 'Compliant' : 'VIOLATION';
-                            }
-
-                            // Trigger video upload if violation detected
-                            if (data.trigger_pattern_upload && videoManager) {
-                                console.log('[HPE-PROCTOR] 📹 Triggering violation video upload');
-                                videoManager.triggerViolationUpload();
-                            }
-                        } catch (e) {
-                            // Non-JSON message, ignore
-                        }
-                    };
-
-                    ws.onclose = (event) => {
-                        isConnected = false;
-                        console.log("[HPE-PROCTOR] WebSocket closed:", event.code, event.reason);
-                        // Only reconnect if exam is NOT submitted
-                        if (!window.examSubmitted) {
-                            const status = document.getElementById('debug-status');
-                            if (status) status.textContent = "Reconnecting...";
-                            setTimeout(() => initWebSocket(), 3000);
-                        } else {
-                            console.log("[HPE-PROCTOR] Exam submitted - not reconnecting");
-                        }
-                    };
-
-                    ws.onerror = (error) => {
-                        console.error("[HPE-PROCTOR] WebSocket error:", error);
-                    };
-                }
-
-                function initWebSocket() {
-                    // Block all WebSocket connections if exam is submitted
-                    if (window.examSubmitted) {
-                        console.log("[HPE-PROCTOR] Exam submitted - blocking WebSocket connection");
-                        return;
-                    }
-
-                    // Check if we already have an open WebSocket from validation
-                    if (window.proctorSocket && window.proctorSocket.readyState === WebSocket.OPEN) {
-                        console.log("[HPE-PROCTOR] ✅ Reusing existing WebSocket from validation");
-                        socket = window.proctorSocket;
-                        isConnected = true;
-                        setupExamMessageHandler(socket);
-                        const status = document.getElementById('debug-status');
-                        if (status) status.textContent = "Active";
-                        return;
-                    }
-
-                    // If no existing socket, create new one (fallback)
-                    console.log("[HPE-PROCTOR] Creating new WebSocket connection...");
-                    const WS_URL = PROCTOR_API_URL.replace('http', 'ws') + `/ws?session_id=${proctoringSessionId}`;
-                    socket = new WebSocket(WS_URL);
-
-                    socket.onopen = () => {
-                        isConnected = true;
-                        window.proctorSocket = socket;
-                        console.log("[HPE-PROCTOR] ✅ New WebSocket connected");
-                        setupExamMessageHandler(socket);
-                        const status = document.getElementById('debug-status');
-                        if (status) status.textContent = "Active";
-                    };
-
-                    socket.onerror = (error) => {
-                        console.error("[HPE-PROCTOR] WebSocket error:", error);
-                        socket.close();
-                    };
-                }
-
-                initWebSocket();
-
-
-                // Capture and send frames periodically (1fps)
-                const canvas = document.getElementById('canvas');
-                if (canvas && video) {
-                    console.log(`[HPE-PROCTOR] Starting frame capture at ${1000 / FRAME_INTERVAL_MS}fps`);
-
-                    window.frameIntervalId = setInterval(() => {
-                        // Stop if exam is submitted
-                        if (window.examSubmitted) {
-                            clearInterval(window.frameIntervalId);
-                            console.log("[HPE-PROCTOR] Frame sending stopped - exam submitted");
+                        // Handle tab switch acknowledgment
+                        if (data.type === 'tab_switch_ack') {
+                            console.log('[HPE-PROCTOR] Tab switch acknowledged:', data);
                             return;
                         }
-                        if (video.readyState !== 4) return;
 
-                        canvas.width = video.videoWidth || 320;
-                        canvas.height = video.videoHeight || 240;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-                        // Send Base64 encoded JPEG (same format as old working code)
-                        const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
-                        const base64Data = dataUrl.split(',')[1];  // Remove "data:image/jpeg;base64," prefix
-
-                        if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
-                            socket.send(base64Data);
-                            frameCount++;
-
-                            // Log every 30 frames (every 30 seconds at 1fps)
-                            if (frameCount % 30 === 0) {
-                                console.log(`[HPE-PROCTOR] Frames sent: ${frameCount}, Size: ${(base64Data.length / 1024).toFixed(1)}KB`);
-                            }
+                        // Handle violation detection
+                        let violationMessage = 'Pattern detected';
+                        if (Array.isArray(data.violations) && data.violations.length > 0) {
+                            violationMessage = data.violations[0]?.message || 'Pattern detected';
+                            console.log('[HPE-PROCTOR] 🚨 VIOLATION:', violationMessage);
                         }
-                    }, FRAME_INTERVAL_MS);
 
-                }
-
-                // Tab switch detection using HPETabSwitchDetector
-                if (window.HPETabSwitchDetector) {
-                    window.HPETabSwitchDetector.initialize({
-                        onTabSwitch: (count, time) => {
-                            console.log(`[HPE-PROCTOR] Tab Switch: ${count}, Time: ${time}s`);
-                            const tabCountEl = document.getElementById('debug-tab-count');
-                            if (tabCountEl) tabCountEl.textContent = count;
-                            if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
-                                socket.send(JSON.stringify({ type: "tab_switch", count: count, time_outside: time }));
-                            }
-                        },
-                        onTimeUpdate: (count, time) => {
-                            const timeAwayEl = document.getElementById('debug-time-away');
-                            if (timeAwayEl) timeAwayEl.textContent = time.toFixed(1) + 's';
-                        },
-                        onBackendUpdate: (count, time) => {
-                            console.log(`[HPE-PROCTOR] Backend update: count=${count}, time=${time}s`);
-                            if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
-                                socket.send(JSON.stringify({ type: "tab_switch", count: count, time_outside: time }));
-                            }
+                        const statusEl = document.getElementById('debug-status');
+                        if (statusEl) {
+                            statusEl.textContent = data.is_compliant ? 'Compliant' : 'VIOLATION';
                         }
-                    });
-                    console.log("[HPE-PROCTOR] HPETabSwitchDetector initialized");
-                } else {
-                    // Fallback to basic detection if module not loaded
-                    console.warn("[HPE-PROCTOR] HPETabSwitchDetector not available, using fallback");
-                    let tabSwitchCount = 0;
-                    document.addEventListener("visibilitychange", () => {
-                        if (document.hidden) {
-                            tabSwitchCount++;
-                            console.log(`[HPE-PROCTOR] Fallback tab switch: ${tabSwitchCount}`);
-                            const tabCountEl = document.getElementById('debug-tab-count');
-                            if (tabCountEl) tabCountEl.textContent = tabSwitchCount;
-                            if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
-                                socket.send(JSON.stringify({ type: "tab_switch", count: tabSwitchCount }));
-                            }
+
+                        // Trigger video upload if violation detected
+                        if (data.trigger_pattern_upload && videoManager) {
+                            console.log('[HPE-PROCTOR] 📹 Triggering violation video upload');
+                            videoManager.triggerViolationUpload();
                         }
-                    });
-                }
-
-                // Initialize HPEProctoringVideoManager for continuous video recording
-                if (window.HPEProctoringVideoManager) {
-                    videoManager = new window.HPEProctoringVideoManager(null, null, {
-                        apiBaseUrl: PROCTOR_API_URL,
-                        bufferDuration: 20,  // 20 second rolling buffer
-                        chunkInterval: 1000  // 1 second chunks
-                    });
-
-                    // Initialize video manager with stream and user data
-                    videoManager.initialize(stream, {
-                        userId: window.dmojData?.userId || '{{ request.user.id }}',
-                        username: window.dmojData?.username || '{{ request.user.username }}',
-                        contestName: window.dmojData?.contestName || '{{ contest.key }}',
-                        proctoringSessionId: proctoringSessionId
-                    });
-                    console.log('[HPE-PROCTOR] ✅ Video manager initialized - 20s buffer, continuous recording');
-                } else {
-                    console.warn('[HPE-PROCTOR] HPEProctoringVideoManager not available');
-                }
-            }
-
-
-            function setupFullscreenMonitor() {
-                const fullscreenModal = document.getElementById('fullscreen-warning-modal');
-                const btnReturnFullscreen = document.getElementById('btn-return-fullscreen');
-
-                function isFullscreen() {
-                    return !!(document.fullscreenElement ||
-                        document.webkitFullscreenElement ||
-                        document.mozFullScreenElement ||
-                        document.msFullscreenElement);
-                }
-
-                async function requestFullscreen() {
-                    const element = document.documentElement;
-                    const rfs = element.requestFullscreen ||
-                        element.webkitRequestFullscreen ||
-                        element.mozRequestFullScreen ||
-                        element.msRequestFullscreen;
-                    if (rfs) return rfs.call(element);
-                }
-
-                function checkFullscreen() {
-                    // Skip fullscreen check if exam has been submitted
-                    if (window.examSubmitted) return;
-
-                    const isViolation = !isFullscreen() || document.hidden;
-                    if (fullscreenModal) {
-                        fullscreenModal.style.display = isViolation ? 'flex' : 'none';
+                    } catch (e) {
+                        // Non-JSON message, ignore
                     }
-                }
+                };
 
-                document.addEventListener('fullscreenchange', checkFullscreen);
-                document.addEventListener('webkitfullscreenchange', checkFullscreen);
-                document.addEventListener('visibilitychange', checkFullscreen);
+                ws.onclose = (event) => {
+                    isConnected = false;
+                    console.log("[HPE-PROCTOR] WebSocket closed:", event.code, event.reason);
+                    // Only reconnect if exam is NOT submitted
+                    if (!window.examSubmitted) {
+                        const status = document.getElementById('debug-status');
+                        if (status) status.textContent = "Reconnecting...";
+                        setTimeout(() => initWebSocket(), 3000);
+                    } else {
+                        console.log("[HPE-PROCTOR] Exam submitted - not reconnecting");
+                    }
+                };
 
-                if (btnReturnFullscreen) {
-                    btnReturnFullscreen.addEventListener('click', async () => {
-                        try {
-                            await requestFullscreen();
-                        } catch (e) {
-                            console.error("Fullscreen request failed:", e);
-                        }
-                    });
-                }
-
-                // Initial check
-                checkFullscreen();
+                ws.onerror = (error) => {
+                    console.error("[HPE-PROCTOR] WebSocket error:", error);
+                };
             }
 
-            function initTimer() {
-                const endTime = new Date("{{ contest.end_time.isoformat() }}");
+            function initWebSocket() {
+                // Skip WebSocket if backend is disabled (frontend-only mode)
+                if (!HPE_BACKEND_CONNECT) {
+                    console.log("[HPE-PROCTOR] Frontend-only mode - skipping WebSocket connection");
+                    const status = document.getElementById('debug-status');
+                    if (status) status.textContent = "Offline Mode";
+                    return;
+                }
 
-                function updateTimer() {
-                    const now = new Date();
-                    const diff = endTime - now;
+                // Block all WebSocket connections if exam is submitted
+                if (window.examSubmitted) {
+                    console.log("[HPE-PROCTOR] Exam submitted - blocking WebSocket connection");
+                    return;
+                }
 
-                    if (diff <= 0) {
-                        document.getElementById('countdown').textContent = 'Time Up!';
+                // Check if we already have an open WebSocket from validation
+                if (window.proctorSocket && window.proctorSocket.readyState === WebSocket.OPEN) {
+                    console.log("[HPE-PROCTOR] ✅ Reusing existing WebSocket from validation");
+                    socket = window.proctorSocket;
+                    isConnected = true;
+                    setupExamMessageHandler(socket);
+                    const status = document.getElementById('debug-status');
+                    if (status) status.textContent = "Active";
+                    return;
+                }
+
+                // If no existing socket, create new one (fallback)
+                console.log("[HPE-PROCTOR] Creating new WebSocket connection...");
+                const WS_URL = PROCTOR_API_URL.replace('http', 'ws') + `/ws?session_id=${proctoringSessionId}`;
+                socket = new WebSocket(WS_URL);
+
+                socket.onopen = () => {
+                    isConnected = true;
+                    window.proctorSocket = socket;
+                    console.log("[HPE-PROCTOR] ✅ New WebSocket connected");
+                    setupExamMessageHandler(socket);
+                    const status = document.getElementById('debug-status');
+                    if (status) status.textContent = "Active";
+                };
+
+                socket.onerror = (error) => {
+                    console.error("[HPE-PROCTOR] WebSocket error:", error);
+                    socket.close();
+                };
+            }
+
+            initWebSocket();
+
+
+            // Capture and send frames periodically (1fps) - only if backend is enabled
+            const canvas = document.getElementById('canvas');
+            if (canvas && video && HPE_BACKEND_CONNECT) {
+                console.log(`[HPE-PROCTOR] Starting frame capture at ${1000 / FRAME_INTERVAL_MS}fps`);
+            } else if (!HPE_BACKEND_CONNECT) {
+                console.log("[HPE-PROCTOR] Frontend-only mode - skipping frame capture");
+            }
+
+            if (canvas && video && HPE_BACKEND_CONNECT) {
+
+                window.frameIntervalId = setInterval(() => {
+                    // Stop if exam is submitted
+                    if (window.examSubmitted) {
+                        clearInterval(window.frameIntervalId);
+                        console.log("[HPE-PROCTOR] Frame sending stopped - exam submitted");
                         return;
                     }
+                    if (video.readyState !== 4) return;
 
-                    const hours = Math.floor(diff / 3600000);
-                    const mins = Math.floor((diff % 3600000) / 60000);
-                    const secs = Math.floor((diff % 60000) / 1000);
+                    canvas.width = video.videoWidth || 320;
+                    canvas.height = video.videoHeight || 240;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                    document.getElementById('countdown').textContent =
-                        String(hours).padStart(2, '0') + ':' +
-                        String(mins).padStart(2, '0') + ':' +
-                        String(secs).padStart(2, '0');
-                }
+                    // Send Base64 encoded JPEG (same format as old working code)
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+                    const base64Data = dataUrl.split(',')[1];  // Remove "data:image/jpeg;base64," prefix
 
-                updateTimer();
-                setInterval(updateTimer, 1000);
+                    if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(base64Data);
+                        frameCount++;
+
+                        // Log every 30 frames (every 30 seconds at 1fps)
+                        if (frameCount % 30 === 0) {
+                            console.log(`[HPE-PROCTOR] Frames sent: ${frameCount}, Size: ${(base64Data.length / 1024).toFixed(1)}KB`);
+                        }
+                    }
+                }, FRAME_INTERVAL_MS);
+
             }
 
-            function initResize() {
-                const handle = document.getElementById('resize-handle');
-                const problemPanel = document.getElementById('problem-panel');
-                if (!handle || !problemPanel) return;
-
-                let isResizing = false;
-
-                handle.addEventListener('mousedown', () => {
-                    isResizing = true;
-                    document.body.style.cursor = 'col-resize';
-                    document.body.style.userSelect = 'none';
-                });
-
-                document.addEventListener('mousemove', (e) => {
-                    if (!isResizing) return;
-                    const editorView = document.getElementById('editor-view');
-                    if (!editorView) return;
-                    const rect = editorView.getBoundingClientRect();
-                    const newWidth = ((e.clientX - rect.left) / rect.width) * 100;
-                    if (newWidth >= 25 && newWidth <= 75) {
-                        problemPanel.style.width = newWidth + '%';
+            // Tab switch detection using HPETabSwitchDetector
+            if (window.HPETabSwitchDetector) {
+                window.HPETabSwitchDetector.initialize({
+                    onTabSwitch: (count, time) => {
+                        console.log(`[HPE-PROCTOR] Tab Switch: ${count}, Time: ${time}s`);
+                        const tabCountEl = document.getElementById('debug-tab-count');
+                        if (tabCountEl) tabCountEl.textContent = count;
+                        if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
+                            socket.send(JSON.stringify({ type: "tab_switch", count: count, time_outside: time }));
+                        }
+                    },
+                    onTimeUpdate: (count, time) => {
+                        const timeAwayEl = document.getElementById('debug-time-away');
+                        if (timeAwayEl) timeAwayEl.textContent = time.toFixed(1) + 's';
+                    },
+                    onBackendUpdate: (count, time) => {
+                        console.log(`[HPE-PROCTOR] Backend update: count=${count}, time=${time}s`);
+                        if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
+                            socket.send(JSON.stringify({ type: "tab_switch", count: count, time_outside: time }));
+                        }
                     }
                 });
-
-                document.addEventListener('mouseup', () => {
-                    isResizing = false;
-                    document.body.style.cursor = '';
-                    document.body.style.userSelect = '';
-                    if (window.editor) window.editor.resize();
+                console.log("[HPE-PROCTOR] HPETabSwitchDetector initialized");
+            } else {
+                // Fallback to basic detection if module not loaded
+                console.warn("[HPE-PROCTOR] HPETabSwitchDetector not available, using fallback");
+                let tabSwitchCount = 0;
+                document.addEventListener("visibilitychange", () => {
+                    if (document.hidden) {
+                        tabSwitchCount++;
+                        console.log(`[HPE-PROCTOR] Fallback tab switch: ${tabSwitchCount}`);
+                        const tabCountEl = document.getElementById('debug-tab-count');
+                        if (tabCountEl) tabCountEl.textContent = tabSwitchCount;
+                        if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
+                            socket.send(JSON.stringify({ type: "tab_switch", count: tabSwitchCount }));
+                        }
+                    }
                 });
             }
 
-            // ===== Exam Navigation Functions (Global) =====
-            window.showDashboard = function () {
-                document.getElementById('dashboard-view').style.display = 'block';
-                document.getElementById('editor-view').classList.remove('active');
-                const mcqView = document.getElementById('mcq-view');
-                if (mcqView) mcqView.classList.remove('active');
-                document.getElementById('btn-dashboard').classList.add('active');
-            };
+            // Initialize HPEProctoringVideoManager for continuous video recording - only if backend is enabled
+            if (window.HPEProctoringVideoManager && HPE_BACKEND_CONNECT) {
+                videoManager = new window.HPEProctoringVideoManager(null, null, {
+                    apiBaseUrl: PROCTOR_API_URL,
+                    bufferDuration: 20,  // 20 second rolling buffer
+                    chunkInterval: 1000  // 1 second chunks
+                });
 
-            window.toggleDebugPanel = function () {
-                const panel = document.getElementById('proctor-debug-panel');
-                if (panel) panel.classList.toggle('active');
-            };
+                // Initialize video manager with stream and user data
+                videoManager.initialize(stream, {
+                    userId: window.dmojData?.userId || '{{ request.user.id }}',
+                    username: window.dmojData?.username || '{{ request.user.username }}',
+                    contestName: window.dmojData?.contestName || '{{ contest.key }}',
+                    proctoringSessionId: proctoringSessionId
+                });
+                console.log('[HPE-PROCTOR] ✅ Video manager initialized - 20s buffer, continuous recording');
+            } else if (!HPE_BACKEND_CONNECT) {
+                console.log('[HPE-PROCTOR] Frontend-only mode - video recording disabled');
+            } else {
+                console.warn('[HPE-PROCTOR] HPEProctoringVideoManager not available');
+            }
+        }
 
-            window.toggleResults = function (show) {
-                const panel = document.getElementById('results-panel');
-                if (!panel) return;
-                if (show === false) panel.classList.remove('open');
-                else if (show === true) panel.classList.add('open');
-                else panel.classList.toggle('open');
-            };
 
-            window.confirmSubmit = function () {
-                // Show custom confirmation modal instead of browser dialog
-                const modal = document.getElementById('submitConfirmModal');
-                modal.classList.add('active');
-            };
+        function setupFullscreenMonitor() {
+            const fullscreenModal = document.getElementById('fullscreen-warning-modal');
+            const btnReturnFullscreen = document.getElementById('btn-return-fullscreen');
 
-            // Handle modal buttons (set up after DOM is ready)
-            document.addEventListener('DOMContentLoaded', function () {
-                const modal = document.getElementById('submitConfirmModal');
-                const cancelBtn = document.getElementById('cancelSubmitBtn');
-                const confirmBtn = document.getElementById('confirmSubmitBtn');
+            function isFullscreen() {
+                return !!(document.fullscreenElement ||
+                    document.webkitFullscreenElement ||
+                    document.mozFullScreenElement ||
+                    document.msFullscreenElement);
+            }
 
-                if (cancelBtn) {
-                    cancelBtn.addEventListener('click', function () {
-                        modal.classList.remove('active');
-                    });
+            async function requestFullscreen() {
+                const element = document.documentElement;
+                const rfs = element.requestFullscreen ||
+                    element.webkitRequestFullscreen ||
+                    element.mozRequestFullScreen ||
+                    element.msRequestFullscreen;
+                if (rfs) return rfs.call(element);
+            }
+
+            function checkFullscreen() {
+                // Skip fullscreen check if exam has been submitted
+                if (window.examSubmitted) return;
+
+                const isViolation = !isFullscreen() || document.hidden;
+                if (fullscreenModal) {
+                    fullscreenModal.style.display = isViolation ? 'flex' : 'none';
+                }
+            }
+
+            document.addEventListener('fullscreenchange', checkFullscreen);
+            document.addEventListener('webkitfullscreenchange', checkFullscreen);
+            document.addEventListener('visibilitychange', checkFullscreen);
+
+            if (btnReturnFullscreen) {
+                btnReturnFullscreen.addEventListener('click', async () => {
+                    try {
+                        await requestFullscreen();
+                    } catch (e) {
+                        console.error("Fullscreen request failed:", e);
+                    }
+                });
+            }
+
+            // Initial check
+            checkFullscreen();
+        }
+
+        function initTimer() {
+            const endTime = new Date("{{ contest.end_time.isoformat() }}");
+
+            function updateTimer() {
+                const now = new Date();
+                const diff = endTime - now;
+
+                if (diff <= 0) {
+                    document.getElementById('countdown').textContent = 'Time Up!';
+                    return;
                 }
 
-                // Connection Error Modal - Go Back button
-                const goBackBtn = document.getElementById('goBackBtn');
-                const connectionErrorModal = document.getElementById('connectionErrorModal');
-                if (goBackBtn) {
-                    goBackBtn.addEventListener('click', function () {
-                        connectionErrorModal.classList.remove('active');
-                        goToStep(2);  // Return to permissions step
-                    });
-                }
+                const hours = Math.floor(diff / 3600000);
+                const mins = Math.floor((diff % 3600000) / 60000);
+                const secs = Math.floor((diff % 60000) / 1000);
 
+                document.getElementById('countdown').textContent =
+                    String(hours).padStart(2, '0') + ':' +
+                    String(mins).padStart(2, '0') + ':' +
+                    String(secs).padStart(2, '0');
+            }
 
-                if (confirmBtn) {
-                    confirmBtn.addEventListener('click', async function () {
-                        // IMMEDIATELY disable fullscreen warnings before any async operations
-                        window.examSubmitted = true;
-                        const fullscreenModal = document.getElementById('fullscreen-warning-modal');
-                        if (fullscreenModal) {
-                            fullscreenModal.style.display = 'none';
-                        }
+            updateTimer();
+            setInterval(updateTimer, 1000);
+        }
 
-                        // Disable button to prevent double-click
-                        confirmBtn.disabled = true;
-                        confirmBtn.textContent = 'Submitting...';
+        function initResize() {
+            const handle = document.getElementById('resize-handle');
+            const problemPanel = document.getElementById('problem-panel');
+            if (!handle || !problemPanel) return;
 
-                        // Get tab switch data before any operations
-                        const savedCount = window.HPETabSwitchDetector ? window.HPETabSwitchDetector.tabSwitchCount : 0;
-                        const savedTime = window.HPETabSwitchDetector ? window.HPETabSwitchDetector.totalTimeOutside : 0;
+            let isResizing = false;
 
-                        try {
-                            // Clear frame sending interval immediately
-                            if (window.frameIntervalId) {
-                                clearInterval(window.frameIntervalId);
-                                console.log('[HPE-PROCTOR] Frame interval cleared');
-                            }
+            handle.addEventListener('mousedown', () => {
+                isResizing = true;
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+            });
 
-                            // Send final tab switch data to backend before stopping
-                            if (window.proctorSocket && window.proctorSocket.readyState === WebSocket.OPEN) {
-                                window.proctorSocket.send(JSON.stringify({
-                                    type: "tab_switch",
-                                    count: savedCount,
-                                    time_outside: savedTime
-                                }));
-                                console.log(`[HPE-PROCTOR] Final tab switch data sent: count=${savedCount}, time=${savedTime}s`);
-
-                                // Small delay to ensure message is sent before closing
-                                await new Promise(resolve => setTimeout(resolve, 200));
-
-                                // Close WebSocket connection
-                                window.proctorSocket.close();
-                            }
-
-                            // Stop proctoring session
-                            if (proctoringSessionId) {
-                                const stopFormData = new FormData();
-                                stopFormData.append('dmoj_user_id', '{{ request.user.id }}');
-
-                                const response = await fetch(`${PROCTOR_API_URL}/stop-session`, {
-                                    method: 'POST',
-                                    body: stopFormData,
-                                    headers: {
-                                        'ngrok-skip-browser-warning': 'true'
-                                    }
-                                });
-
-                                const data = await response.json();
-                                console.log(`[HPE-PROCTOR] Session stopped:`, data);
-                            }
-
-                            // Cleanup video manager if initialized
-                            if (videoManager) {
-                                videoManager.cleanup();
-                                console.log('[HPE-PROCTOR] Video manager cleaned up');
-                            }
-
-                            // Stop the media stream (camera)
-                            if (mediaStream) {
-                                mediaStream.getTracks().forEach(track => {
-                                    track.stop();
-                                    console.log(`[HPE-PROCTOR] Stopped track: ${track.kind}`);
-                                });
-                                mediaStream = null;
-                                console.log('[HPE-PROCTOR] Media stream stopped');
-                            }
-
-                            // Stop tab switch detector
-                            if (window.HPETabSwitchDetector && window.HPETabSwitchDetector.cleanup) {
-                                window.HPETabSwitchDetector.cleanup();
-                                console.log('[HPE-PROCTOR] Tab switch detector stopped');
-                            }
-
-                            console.log('[HPE-PROCTOR] ✅ All proctoring services stopped');
-
-                        } catch (err) {
-                            console.error('[HPE-PROCTOR] Error stopping session:', err);
-                        }
-
-
-                        // Hide confirmation modal
-                        modal.classList.remove('active');
-
-                        // Show thank you overlay with stats
-                        const thankYouOverlay = document.getElementById('thankYouOverlay');
-                        document.getElementById('final-tab-count').textContent = savedCount;
-                        document.getElementById('final-time-away').textContent = Math.round(savedTime) + 's';
-                        thankYouOverlay.classList.add('active');
-
-                        // Exit fullscreen to show thank you page properly
-                        if (document.exitFullscreen) {
-                            document.exitFullscreen().catch(() => { });
-                        } else if (document.webkitExitFullscreen) {
-                            document.webkitExitFullscreen();
-                        }
-                    });
+            document.addEventListener('mousemove', (e) => {
+                if (!isResizing) return;
+                const editorView = document.getElementById('editor-view');
+                if (!editorView) return;
+                const rect = editorView.getBoundingClientRect();
+                const newWidth = ((e.clientX - rect.left) / rect.width) * 100;
+                if (newWidth >= 25 && newWidth <= 75) {
+                    problemPanel.style.width = newWidth + '%';
                 }
             });
 
-            // Problem loading
-            const CONTEST_KEY = "{{ contest.key }}";
-            const PROBLEM_CODES = [{% for cp in contest.contest_problems.all() %}"{{ cp.problem.code }}"{% if not loop.last %}, {% endif %} {% endfor %}];
+            document.addEventListener('mouseup', () => {
+                isResizing = false;
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                if (window.editor) window.editor.resize();
+            });
+        }
+
+        // ===== Exam Navigation Functions (Global) =====
+        window.showDashboard = function () {
+            document.getElementById('dashboard-view').style.display = 'block';
+            document.getElementById('editor-view').classList.remove('active');
+            const mcqView = document.getElementById('mcq-view');
+            if (mcqView) mcqView.classList.remove('active');
+            document.getElementById('btn-dashboard').classList.add('active');
+        };
+
+        window.toggleDebugPanel = function () {
+            const panel = document.getElementById('proctor-debug-panel');
+            if (panel) panel.classList.toggle('active');
+        };
+
+        window.toggleResults = function (show) {
+            const panel = document.getElementById('results-panel');
+            if (!panel) return;
+            if (show === false) panel.classList.remove('open');
+            else if (show === true) panel.classList.add('open');
+            else panel.classList.toggle('open');
+        };
+
+        window.confirmSubmit = function () {
+            // Show custom confirmation modal instead of browser dialog
+            const modal = document.getElementById('submitConfirmModal');
+            modal.classList.add('active');
+        };
+
+        // Handle modal buttons (set up after DOM is ready)
+        document.addEventListener('DOMContentLoaded', function () {
+            const modal = document.getElementById('submitConfirmModal');
+            const cancelBtn = document.getElementById('cancelSubmitBtn');
+            const confirmBtn = document.getElementById('confirmSubmitBtn');
+
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function () {
+                    modal.classList.remove('active');
+                });
+            }
+
+            // Connection Error Modal - Go Back button
+            const goBackBtn = document.getElementById('goBackBtn');
+            const connectionErrorModal = document.getElementById('connectionErrorModal');
+            if (goBackBtn) {
+                goBackBtn.addEventListener('click', function () {
+                    connectionErrorModal.classList.remove('active');
+                    goToStep(2);  // Return to permissions step
+                });
+            }
+
+
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', async function () {
+                    // IMMEDIATELY disable fullscreen warnings before any async operations
+                    window.examSubmitted = true;
+                    const fullscreenModal = document.getElementById('fullscreen-warning-modal');
+                    if (fullscreenModal) {
+                        fullscreenModal.style.display = 'none';
+                    }
+
+                    // Disable button to prevent double-click
+                    confirmBtn.disabled = true;
+                    confirmBtn.textContent = 'Submitting...';
+
+                    // Get tab switch data before any operations
+                    const savedCount = window.HPETabSwitchDetector ? window.HPETabSwitchDetector.tabSwitchCount : 0;
+                    const savedTime = window.HPETabSwitchDetector ? window.HPETabSwitchDetector.totalTimeOutside : 0;
+
+                    try {
+                        // Clear frame sending interval immediately
+                        if (window.frameIntervalId) {
+                            clearInterval(window.frameIntervalId);
+                            console.log('[HPE-PROCTOR] Frame interval cleared');
+                        }
+
+                        // Send final tab switch data to backend before stopping
+                        if (window.proctorSocket && window.proctorSocket.readyState === WebSocket.OPEN) {
+                            window.proctorSocket.send(JSON.stringify({
+                                type: "tab_switch",
+                                count: savedCount,
+                                time_outside: savedTime
+                            }));
+                            console.log(`[HPE-PROCTOR] Final tab switch data sent: count=${savedCount}, time=${savedTime}s`);
+
+                            // Small delay to ensure message is sent before closing
+                            await new Promise(resolve => setTimeout(resolve, 200));
+
+                            // Close WebSocket connection
+                            window.proctorSocket.close();
+                        }
+
+                        // Stop proctoring session
+                        if (proctoringSessionId) {
+                            const stopFormData = new FormData();
+                            stopFormData.append('dmoj_user_id', '{{ request.user.id }}');
+
+                            const response = await fetch(`${PROCTOR_API_URL}/stop-session`, {
+                                method: 'POST',
+                                body: stopFormData,
+                                headers: {
+                                    'ngrok-skip-browser-warning': 'true'
+                                }
+                            });
+
+                            const data = await response.json();
+                            console.log(`[HPE-PROCTOR] Session stopped:`, data);
+                        }
+
+                        // Cleanup video manager if initialized
+                        if (videoManager) {
+                            videoManager.cleanup();
+                            console.log('[HPE-PROCTOR] Video manager cleaned up');
+                        }
+
+                        // Stop the media stream (camera)
+                        if (mediaStream) {
+                            mediaStream.getTracks().forEach(track => {
+                                track.stop();
+                                console.log(`[HPE-PROCTOR] Stopped track: ${track.kind}`);
+                            });
+                            mediaStream = null;
+                            console.log('[HPE-PROCTOR] Media stream stopped');
+                        }
+
+                        // Stop tab switch detector
+                        if (window.HPETabSwitchDetector && window.HPETabSwitchDetector.cleanup) {
+                            window.HPETabSwitchDetector.cleanup();
+                            console.log('[HPE-PROCTOR] Tab switch detector stopped');
+                        }
+
+                        console.log('[HPE-PROCTOR] ✅ All proctoring services stopped');
+
+                    } catch (err) {
+                        console.error('[HPE-PROCTOR] Error stopping session:', err);
+                    }
+
+
+                    // Hide confirmation modal
+                    modal.classList.remove('active');
+
+                    // Show thank you overlay with stats
+                    const thankYouOverlay = document.getElementById('thankYouOverlay');
+                    document.getElementById('final-tab-count').textContent = savedCount;
+                    document.getElementById('final-time-away').textContent = Math.round(savedTime) + 's';
+                    thankYouOverlay.classList.add('active');
+
+                    // Exit fullscreen to show thank you page properly
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen().catch(() => { });
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    }
+                });
+            }
+        });
+
+        // Problem loading
+        const CONTEST_KEY = "{{ contest.key }}";
+        const PROBLEM_CODES = [{% for cp in contest.contest_problems.all() %}"{{ cp.problem.code }}"{% if not loop.last %}, {% endif %} {% endfor %}];
         let currentProblemCode = null;
         let currentProblemIndex = -1;
 
@@ -1987,8 +2033,13 @@
                 });
 
                 const data = await response.json();
-                alert(data.correct ? '✓ Correct!' : '✗ Incorrect.');
-                showDashboard();
+                // Silent save - don't show correct/incorrect during contest
+                // Just go back to dashboard, the selected options are already saved
+                if (data.success) {
+                    showDashboard();
+                } else if (data.error) {
+                    alert('Error: ' + data.error);
+                }
             } catch (err) {
                 alert('Error submitting answer: ' + err.message);
             }
@@ -2015,6 +2066,10 @@
                 const formData = new FormData();
                 formData.append('language', langId);
                 formData.append('source', source);
+
+                // Add is_test_run parameter - only 'submit' mode is official submission
+                // 'sample' and 'test' modes are test runs and won't update contest table
+                formData.append('is_test_run', mode === 'submit' ? 'false' : 'true');
 
                 const response = await fetch(`/problem/${currentProblemCode}/submit`, {
                     method: 'POST',
