@@ -1,0 +1,161 @@
+<style>
+    #startup-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #1e1e1e;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-family: 'Segoe UI', sans-serif;
+    }
+
+    .startup-card {
+        background: #252526;
+        padding: 40px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        max-width: 500px;
+        width: 90%;
+        text-align: center;
+        border: 1px solid #404040;
+    }
+
+    .startup-title {
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: var(--hpe-green, #01a982);
+    }
+
+    .startup-message {
+        font-size: 16px;
+        color: #ccc;
+        margin-bottom: 30px;
+    }
+
+    .startup-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid #404040;
+        border-top-color: var(--hpe-green, #01a982);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .startup-error {
+        color: #ff5252;
+        margin-top: 20px;
+        padding: 15px;
+        background: rgba(255, 82, 82, 0.1);
+        border-radius: 6px;
+        display: none;
+    }
+
+    .retry-btn {
+        background: var(--hpe-green, #01a982);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        margin-top: 15px;
+        transition: background 0.2s;
+    }
+
+    .retry-btn:hover {
+        background: #008f6d;
+    }
+</style>
+
+<div id="startup-overlay">
+    <div class="startup-card">
+        <div class="startup-title">Preparing Exam</div>
+        <div class="startup-spinner" id="startup-spinner"></div>
+        <div class="startup-message" id="startup-message">Initializing proctoring...</div>
+        <div class="startup-error" id="startup-error"></div>
+        <button class="retry-btn" id="startup-retry" style="display: none;">Retry</button>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const overlay = document.getElementById('startup-overlay');
+        const spinner = document.getElementById('startup-spinner');
+        const message = document.getElementById('startup-message');
+        const errorDiv = document.getElementById('startup-error');
+        const retryBtn = document.getElementById('startup-retry');
+
+        let mediaStream = null;
+
+        function showError(msg) {
+            spinner.style.display = 'none';
+            message.textContent = 'Setup failed';
+            errorDiv.textContent = msg;
+            errorDiv.style.display = 'block';
+            retryBtn.style.display = 'inline-block';
+        }
+
+        async function initializeExam() {
+            try {
+                // Step 1: Get camera/audio (permissions already granted from landing page)
+                message.textContent = 'Accessing camera...';
+                mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+
+                // Step 2: Enter fullscreen
+                message.textContent = 'Entering fullscreen...';
+                try {
+                    const docEl = document.documentElement;
+                    if (docEl.requestFullscreen) {
+                        await docEl.requestFullscreen();
+                    } else if (docEl.webkitRequestFullscreen) {
+                        await docEl.webkitRequestFullscreen();
+                    } else if (docEl.mozRequestFullScreen) {
+                        await docEl.mozRequestFullScreen();
+                    }
+                } catch (fsErr) {
+                    console.warn('Fullscreen request failed, continuing anyway:', fsErr);
+                }
+
+                // Step 3: Start proctoring
+                message.textContent = 'Starting exam...';
+                if (window.handleProctoringStart) {
+                    window.handleProctoringStart({
+                        stream: mediaStream
+                    });
+                } else {
+                    throw new Error('Proctoring handler not initialized');
+                }
+
+            } catch (err) {
+                console.error('Exam initialization failed:', err);
+                showError(err.message || 'Failed to initialize exam. Please ensure camera permissions are granted.');
+            }
+        }
+
+        // Retry button handler
+        retryBtn.addEventListener('click', () => {
+            spinner.style.display = 'block';
+            errorDiv.style.display = 'none';
+            retryBtn.style.display = 'none';
+            initializeExam();
+        });
+
+        // Auto-start after a brief delay to let the page fully load
+        setTimeout(initializeExam, 500);
+
+    })();
+</script>

@@ -245,7 +245,8 @@
             <h3 style="text-align: center; margin-top: 0; margin-bottom: 15px">
                 Proctoring
             </h3>
-            <div style="text-align: center; margin-bottom: 15px; padding: 8px; background-color: #f8f9fa; border-radius: 5px; border: 1px solid #dee2e6;">
+            <div
+                style="text-align: center; margin-bottom: 15px; padding: 8px; background-color: #f8f9fa; border-radius: 5px; border: 1px solid #dee2e6;">
                 <strong>Contest:</strong> {{ contest.name }}
             </div>
             <video id="webcam" autoplay muted playsinline
@@ -335,18 +336,18 @@
         // Initialize Tab Switch Detector
         console.log("[MAIN] Initializing Tab Switch Detector");
         window.TabSwitchDetector.initialize({
-            onTabSwitch: function(count, timeOutside) {
+            onTabSwitch: function (count, timeOutside) {
                 console.log("[MAIN] Tab switch callback - Count:", count, "Time:", timeOutside);
                 sendTabSwitchUpdate(count, timeOutside);
                 if (statusDiv) {
                     statusDiv.textContent = 'WARNING: Tab switches detected: ' + count;
                 }
             },
-            onTimeUpdate: function(count, timeOutside) {
+            onTimeUpdate: function (count, timeOutside) {
                 console.log("[MAIN] Time update callback - Time:", timeOutside);
                 sendTabSwitchUpdate(count, timeOutside);
             },
-            onBackendUpdate: function(count, timeOutside) {
+            onBackendUpdate: function (count, timeOutside) {
                 console.log("[MAIN] Backend update callback");
                 sendTabSwitchUpdate(count, timeOutside);
             }
@@ -388,7 +389,7 @@
         if (modalLeaveBtn) modalLeaveBtn.addEventListener("click", handleModalLeave);
 
         // Main proctoring start handler
-        window.handleStartProctoring = async function(data) {
+        window.handleStartProctoring = async function (data) {
             console.log("[MAIN] Starting proctoring");
 
             if (isProctoring) {
@@ -435,7 +436,7 @@
 
                 // Enable security measures
                 enableProctoringLock();
-                
+
                 // Setup iframe monitoring for tab switch detector
                 window.TabSwitchDetector.setupIframeMonitoring(iframe);
 
@@ -465,7 +466,7 @@
         async function initializeProctoringBackend() {
             try {
                 console.log("[MAIN] Initializing backend proctoring");
-                
+
                 const sessionResult = await startProctoringSession();
                 if (!sessionResult.success) throw new Error('Failed to start session');
 
@@ -474,7 +475,7 @@
 
                 // Initialize WebSocket
                 initWebSocket();
-                
+
                 // Initialize Video Manager
                 console.log("[MAIN] Initializing Video Manager");
                 videoManager = new window.ProctoringVideoManager(video, statusDiv, {
@@ -491,12 +492,12 @@
                     username: window.dmojData.username,
                     contestName: window.dmojData.contestName
                 });
-                
+
                 console.log("[MAIN] Video Manager initialized successfully");
-                
+
                 // Start frame analysis
                 setInterval(sendFrameForAnalysis, ANALYSIS_INTERVAL_MS);
-                
+
                 console.log("[MAIN] Backend proctoring initialized successfully");
             } catch (error) {
                 console.error("[MAIN] Backend init error:", error);
@@ -618,26 +619,26 @@
                 formData.append('dmoj_user_id', parseInt(window.dmojData.userId));
                 formData.append('dmoj_user_name', window.dmojData.username || '');
                 formData.append('dmoj_contest_name', window.dmojData.contestName || '');
-                
-                const response = await fetch(API_BASE_URL + '/start-session', { 
-                    method: 'POST', 
-                    body: formData 
+
+                const response = await fetch(API_BASE_URL + '/start-session', {
+                    method: 'POST',
+                    body: formData
                 });
-                
+
                 if (!response.ok) throw new Error('HTTP ' + response.status);
-                
+
                 const result = await response.json();
-                return { 
-                    success: true, 
-                    session_id: result.session_id, 
-                    status: result.status 
+                return {
+                    success: true,
+                    session_id: result.session_id,
+                    status: result.status
                 };
             } catch (error) {
                 console.warn("[MAIN] Backend unavailable - using local mode");
-                return { 
-                    success: true, 
-                    session_id: 'local_' + Date.now(), 
-                    status: 'local_only' 
+                return {
+                    success: true,
+                    session_id: 'local_' + Date.now(),
+                    status: 'local_only'
                 };
             }
         }
@@ -659,7 +660,7 @@
 
         function sendTabSwitchUpdate(count, timeOutside) {
             if (DISABLE_BACKEND || !socket || socket.readyState !== WebSocket.OPEN || !currentSessionId) return;
-            
+
             const message = {
                 type: 'tab_switch',
                 session_id: currentSessionId,
@@ -667,7 +668,7 @@
                 time_outside: timeOutside,
                 timestamp: new Date().toISOString()
             };
-            
+
             socket.send(JSON.stringify(message));
         }
 
@@ -677,45 +678,45 @@
                 statusDiv.textContent = 'Proctoring active (local mode)';
                 return;
             }
-            
+
             const wsUrl = API_BASE_URL.replace('http', 'ws') + `/ws?session_id=${currentSessionId}`;
             console.log("[MAIN] Connecting to WebSocket:", wsUrl);
             socket = new WebSocket(wsUrl);
-            
-            socket.onopen = () => { 
+
+            socket.onopen = () => {
                 console.log('[MAIN] WebSocket connected');
-                statusDiv.textContent = 'Connected. Proctoring started.'; 
+                statusDiv.textContent = 'Connected. Proctoring started.';
             };
-            
-            socket.onclose = () => { 
+
+            socket.onclose = () => {
                 console.log('[MAIN] WebSocket closed');
-                statusDiv.textContent = 'Proctoring active (offline)'; 
+                statusDiv.textContent = 'Proctoring active (offline)';
             };
-            
-            socket.onerror = (error) => { 
+
+            socket.onerror = (error) => {
                 console.error('[MAIN] WebSocket error:', error);
-                statusDiv.textContent = 'Proctoring active (offline)'; 
+                statusDiv.textContent = 'Proctoring active (offline)';
             };
-            
+
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 console.log('[MAIN] Server response:', data);
-                
+
                 // Handle tab switch acknowledgment
                 if (data.type === 'tab_switch_ack') {
                     console.log('[MAIN] Tab switch acknowledged:', data);
                     return;
                 }
-                
+
                 // Handle violation detection
                 let violationMessage = 'Pattern detected';
                 if (Array.isArray(data.violations) && data.violations.length > 0) {
                     violationMessage = data.violations[0]?.message || 'Pattern detected';
                     console.log('[MAIN] 🚨 VIOLATION:', violationMessage);
                 }
-                
+
                 statusDiv.textContent = data.is_compliant ? 'Status: Compliant' : `VIOLATION: ${violationMessage}`;
-                
+
                 // Trigger video upload if violation detected
                 if (data.trigger_pattern_upload && videoManager) {
                     console.log('[MAIN] 📹 Triggering violation video upload');
@@ -735,7 +736,7 @@
 
         function stopProctoring() {
             if (!isProctoring) return;
-            
+
             console.log("[MAIN] Stopping proctoring");
             isProctoring = false;
 
@@ -751,10 +752,10 @@
 
             // Close WebSocket
             if (socket) socket.close();
-            
+
             // Stop backend session
             stopProctoringSession();
-            
+
             // Disable security measures
             disableProctoringLock();
 
@@ -770,7 +771,7 @@
             proctoringLayout.style.display = "none";
             // Don't show startup container when stopping - user is leaving
             // startupContainer.style.display = "block";
-            
+
             console.log("[MAIN] Proctoring stopped successfully");
         }
 

@@ -1,0 +1,225 @@
+{% extends "hpe_admin/logo_base.html" %}
+
+{% block title %}System Check - {{ contest.name }}{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <h2 class="auth-title">System Compatibility Check</h2>
+        <p class="auth-subtitle">Before we begin, we need to verify your system readiness for the proctored exam.</p>
+
+        <div class="check-list">
+            <div class="check-item" id="check-camera">
+                <div class="check-icon"><i class="fa fa-video-camera"></i></div>
+                <div class="check-info">
+                    <h4>Camera Access</h4>
+                    <p>We need access to your webcam for proctoring.</p>
+                </div>
+                <div class="check-status pending"><i class="fa fa-circle-o-notch fa-spin"></i> Checking...</div>
+            </div>
+
+            <div class="check-item" id="check-fullscreen">
+                <div class="check-icon"><i class="fa fa-arrows-alt"></i></div>
+                <div class="check-info">
+                    <h4>Fullscreen Support</h4>
+                    <p>The exam must be taken in fullscreen mode.</p>
+                </div>
+                <div class="check-status pending"><i class="fa fa-circle-o-notch fa-spin"></i> Checking...</div>
+            </div>
+
+            <div class="check-item" id="check-connection">
+                <div class="check-icon"><i class="fa fa-wifi"></i></div>
+                <div class="check-info">
+                    <h4>Network Connection</h4>
+                    <p>Stable internet connection required.</p>
+                </div>
+                <div class="check-status pending"><i class="fa fa-circle-o-notch fa-spin"></i> Checking...</div>
+            </div>
+        </div>
+
+        <div class="video-preview-container" style="display: none; margin-top: 20px; text-align: center;">
+            <video id="preview-video" autoplay muted playsinline
+                style="width: 100%; max-width: 320px; border-radius: 8px; border: 2px solid #ddd;"></video>
+            <p style="font-size: 0.9em; color: #666; margin-top: 5px;">This is how you appear to the proctor.</p>
+        </div>
+
+        <div class="auth-actions" style="margin-top: 30px;">
+            <button id="start-check-btn" class="auth-btn">Start System Check</button>
+            <a href="{{ url('hpe_contest_intro', contest.key) }}" id="continue-btn" class="auth-btn"
+                style="display: none;">Continue to Instructions</a>
+        </div>
+
+        <p id="error-message" style="color: #dc3545; display: none; margin-top: 15px; text-align: center;"></p>
+    </div>
+</div>
+
+<style>
+    .check-list {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        margin-top: 30px;
+    }
+
+    .check-item {
+        display: flex;
+        align-items: center;
+        padding: 15px;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        background: #f9f9f9;
+        transition: all 0.3s ease;
+    }
+
+    .check-item.success {
+        border-color: #28a745;
+        background: #e8f5e9;
+    }
+
+    .check-item.error {
+        border-color: #dc3545;
+        background: #f8d7da;
+    }
+
+    .check-icon {
+        font-size: 24px;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        border-radius: 50%;
+        color: #555;
+        margin-right: 15px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    .check-info {
+        flex-grow: 1;
+    }
+
+    .check-info h4 {
+        margin: 0 0 5px 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .check-info p {
+        margin: 0;
+        font-size: 13px;
+        color: #666;
+    }
+
+    .check-status {
+        font-size: 14px;
+        font-weight: 600;
+        color: #777;
+    }
+
+    .check-item.success .check-status {
+        color: #28a745;
+    }
+
+    .check-item.error .check-status {
+        color: #dc3545;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const startBtn = document.getElementById('start-check-btn');
+        const continueBtn = document.getElementById('continue-btn');
+        const previewVideo = document.getElementById('preview-video');
+        const videoContainer = document.querySelector('.video-preview-container');
+        const errorMsg = document.getElementById('error-message');
+
+        let checksPassed = {
+            camera: false,
+            fullscreen: false,
+            connection: false
+        };
+
+        function updateStatus(id, status, msg) {
+            const item = document.getElementById(id);
+            const statusEl = item.querySelector('.check-status');
+
+            item.classList.remove('pending', 'success', 'error');
+
+            if (status === 'success') {
+                item.classList.add('success');
+                statusEl.innerHTML = '<i class="fa fa-check-circle"></i> OK';
+            } else if (status === 'error') {
+                item.classList.add('error');
+                statusEl.innerHTML = '<i class="fa fa-times-circle"></i> Failed';
+                showError(msg);
+            } else {
+                item.classList.add('pending');
+                statusEl.innerHTML = '<i class="fa fa-circle-o-notch fa-spin"></i> Checking...';
+            }
+        }
+
+        function showError(msg) {
+            errorMsg.textContent = msg;
+            errorMsg.style.display = 'block';
+        }
+
+        async function checkCamera() {
+            updateStatus('check-camera', 'pending');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); // Audio not required usually, maybe later
+                previewVideo.srcObject = stream;
+                videoContainer.style.display = 'block';
+                checksPassed.camera = true;
+                updateStatus('check-camera', 'success');
+            } catch (err) {
+                console.error("Camera error:", err);
+                checksPassed.camera = false;
+                updateStatus('check-camera', 'error', 'Could not access camera. Please allow permissions.');
+            }
+        }
+
+        function checkFullscreen() {
+            updateStatus('check-fullscreen', 'pending');
+            const doc = window.document;
+            const docEl = doc.documentElement;
+            const requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
+
+            if (requestFullScreen) {
+                checksPassed.fullscreen = true;
+                updateStatus('check-fullscreen', 'success');
+            } else {
+                checksPassed.fullscreen = false;
+                updateStatus('check-fullscreen', 'error', 'Your browser does not support fullscreen mode.');
+            }
+        }
+
+        function checkConnection() {
+            updateStatus('check-connection', 'pending');
+            if (navigator.onLine) {
+                // Should ideally ping server, but navigator.onLine is a good first step
+                checksPassed.connection = true;
+                updateStatus('check-connection', 'success');
+            } else {
+                checksPassed.connection = false;
+                updateStatus('check-connection', 'error', 'No internet connection detected.');
+            }
+        }
+
+        function checkAll() {
+            errorMsg.style.display = 'none';
+            checkConnection();
+            checkFullscreen(); // Just checks support, doesn't trigger it yet
+            checkCamera().then(() => {
+                if (checksPassed.camera && checksPassed.fullscreen && checksPassed.connection) {
+                    startBtn.style.display = 'none';
+                    continueBtn.style.display = 'inline-block';
+                }
+            });
+        }
+
+        startBtn.addEventListener('click', checkAll);
+    });
+</script>
+{% endblock %}

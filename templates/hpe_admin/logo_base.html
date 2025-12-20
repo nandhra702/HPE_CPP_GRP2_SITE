@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}HPE Contest{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f8;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .header-logo {
+            background: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+        }
+
+        .header-logo img {
+            height: 40px;
+            /* Adjust based on actual logo */
+        }
+
+        .header-logo span {
+            font-size: 20px;
+            font-weight: bold;
+            color: #01a982;
+            /* HPE Green */
+            margin-left: 10px;
+        }
+
+        .auth-wrapper {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .auth-card {
+            background: white;
+            width: 100%;
+            max-width: 500px;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .auth-title {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 24px;
+        }
+
+        .auth-subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .auth-btn {
+            display: inline-block;
+            background-color: #01a982;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .auth-btn:hover {
+            background-color: #008c6b;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header-logo">
+        <div
+            style="background: #01a982; width: 40px; height: 40px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+            H</div>
+        <span>Sample Test</span>
+    </header>
+
+    {% block content %}{% endblock %}
+
+</body>
+
+</html>
