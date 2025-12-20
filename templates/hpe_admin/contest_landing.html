@@ -934,7 +934,20 @@
         </div>
     </div>
 
+    <!-- Connection Error Modal -->
+    <div class="confirm-modal-overlay" id="connectionErrorModal">
+        <div class="confirm-modal">
+            <div class="confirm-modal-icon">⚠️</div>
+            <h3>Connection Error</h3>
+            <p>There was a problem connecting to the proctoring server. Please go back and try again.</p>
+            <div class="confirm-modal-buttons">
+                <button class="confirm-modal-btn confirm" id="goBackBtn">Go Back</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Tab Monitor Module - must be before main script -->
+
     {% include "hpe_admin/proctor/tab_monitor.html" %}
     {% include "hpe_admin/proctor/video_utils.html" %}
 
@@ -947,6 +960,7 @@
             // Proctoring session management
             const PROCTOR_API_URL = "http://127.0.0.1:8001";
             let proctoringSessionId = null;
+            let validatedSessionId = null;  // Stores session ID from connection validation
             let videoManager = null;
 
             // Permission check states
@@ -1085,27 +1099,131 @@
                 checkAllPassed();
             });
 
-            // Internet Check
+            // Internet Check - Full backend validation
             btnInternet.addEventListener('click', () => {
                 btnInternet.textContent = 'Checking...';
                 btnInternet.disabled = true;
                 updateCheckItem('check-internet', 'checking');
-
-                // Small delay to show checking state
-                setTimeout(() => {
-                    if (navigator.onLine) {
-                        checks.internet = true;
-                        updateCheckItem('check-internet', 'success');
-                        updateButtonState(btnInternet, 'success', '✓ Connected');
-                    } else {
-                        checks.internet = false;
-                        updateCheckItem('check-internet', 'error');
-                        updateButtonState(btnInternet, 'error', 'Offline');
-                        btnInternet.disabled = false;
-                    }
-                    checkAllPassed();
-                }, 500);
+                validateBackendConnection();
             });
+
+            async function validateBackendConnection() {
+                try {
+                    // Step 1: Create temp session in DB with user info
+                    const tempFormData = new FormData();
+                    tempFormData.append('dmoj_user_id', '{{ request.user.id }}');
+                    tempFormData.append('dmoj_user_name', '{{ request.user.username }}');
+
+                    const tempResponse = await fetch(`${PROCTOR_API_URL}/generate-temp-session`, {
+                        method: 'POST',
+                        body: tempFormData,
+                        headers: { 'ngrok-skip-browser-warning': 'true' }
+                    });
+
+                    if (!tempResponse.ok) {
+                        throw new Error('Failed to connect to proctoring server');
+                    }
+
+                    const tempData = await tempResponse.json();
+                    if (tempData.error) {
+                        throw new Error(tempData.error);
+                    }
+                    const sessionId = tempData.session_id;
+                    console.log('[HPE-PROCTOR] Temp session created:', sessionId);
+
+
+                    // Step 2: Establish WebSocket connection (keep open for exam)
+                    const wsUrl = PROCTOR_API_URL.replace('http', 'ws') + `/ws?session_id=${sessionId}`;
+                    const socket = new WebSocket(wsUrl);
+                    let testComplete = false;
+
+                    socket.onopen = () => {
+                        console.log('[HPE-PROCTOR] WebSocket connected - keeping open for exam');
+                        // Step 3: Capture and send one test frame
+                        const video = document.getElementById('cameraPreview');
+                        if (video && video.readyState >= 2) {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = video.videoWidth || 320;
+                            canvas.height = video.videoHeight || 240;
+                            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                            const base64Data = canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
+                            socket.send(base64Data);
+                            console.log('[HPE-PROCTOR] Test frame sent for analysis');
+                        } else {
+                            console.warn('[HPE-PROCTOR] Camera not ready, sending test ping');
+                            socket.send('test_connection');
+                        }
+                    };
+
+                    socket.onmessage = (event) => {
+                        try {
+                            const response = JSON.parse(event.data);
+                            console.log('[HPE-PROCTOR] Server response:', response);
+
+                            // Check for valid response (has timestamp or is_compliant field)
+                            if (response.timestamp !== undefined || response.is_compliant !== undefined) {
+                                testComplete = true;
+                                validatedSessionId = sessionId;  // Store session ID
+                                window.proctorSocket = socket;   // Store WebSocket globally (keep open!)
+                                checks.internet = true;
+                                updateCheckItem('check-internet', 'success');
+                                updateButtonState(btnInternet, 'success', '✓ Connected');
+                                console.log('[HPE-PROCTOR] ✅ Backend validation successful');
+                                console.log('[HPE-PROCTOR] 📡 WebSocket kept open - session:', validatedSessionId);
+                            }
+                        } catch (e) {
+                            // Non-JSON response, might still be valid
+                            testComplete = true;
+                            validatedSessionId = sessionId;
+                            window.proctorSocket = socket;
+                            checks.internet = true;
+                            updateCheckItem('check-internet', 'success');
+                            updateButtonState(btnInternet, 'success', '✓ Connected');
+                        }
+                        // DO NOT close the WebSocket - keep it open for the exam!
+                        checkAllPassed();
+                    };
+
+                    socket.onerror = (error) => {
+                        console.error('[HPE-PROCTOR] WebSocket error:', error);
+                        if (!testComplete) {
+                            handleConnectionError();
+                        }
+                    };
+
+                    socket.onclose = () => {
+                        console.log('[HPE-PROCTOR] WebSocket closed');
+                        // If closed unexpectedly before exam starts, allow retry
+                        if (!testComplete && !checks.internet) {
+                            handleConnectionError();
+                        }
+                    };
+
+                    // Timeout after 10 seconds
+                    setTimeout(() => {
+                        if (!testComplete && !checks.internet) {
+                            console.error('[HPE-PROCTOR] Connection validation timeout');
+                            socket.close();
+                            handleConnectionError();
+                        }
+                    }, 10000);
+
+                } catch (err) {
+                    console.error('[HPE-PROCTOR] Connection validation error:', err);
+                    handleConnectionError();
+                }
+            }
+
+
+            function handleConnectionError() {
+                checks.internet = false;
+                validatedSessionId = null;
+                updateCheckItem('check-internet', 'error');
+                updateButtonState(btnInternet, 'error', 'Retry');
+                btnInternet.disabled = false;
+                checkAllPassed();
+            }
+
 
             continueToInfoBtn.addEventListener('click', () => {
                 goToStep(3);
@@ -1116,15 +1234,23 @@
             const startExamBtn = document.getElementById('startExamBtn');
 
             startExamBtn.addEventListener('click', async () => {
+                // Check if connection was validated
+                if (!validatedSessionId) {
+                    document.getElementById('connectionErrorModal').classList.add('active');
+                    return;
+                }
+
                 startExamBtn.disabled = true;
                 startExamBtn.innerHTML = '<span class="spinner"></span> Starting session...';
 
                 try {
-                    // Step 1: Start proctoring session with backend
+                    // Step 1: Start proctoring session with backend (persists to DB)
                     const sessionFormData = new FormData();
                     sessionFormData.append('dmoj_user_id', '{{ request.user.id }}');
                     sessionFormData.append('dmoj_user_name', '{{ request.user.username }}');
                     sessionFormData.append('dmoj_contest_name', '{{ contest.key }}');
+                    sessionFormData.append('validated_session_id', validatedSessionId);  // Pass validated ID
+
 
                     const sessionResponse = await fetch(`${PROCTOR_API_URL}/start-session`, {
                         method: 'POST',
@@ -1143,8 +1269,10 @@
                         throw new Error(sessionData.error);
                     }
 
-                    proctoringSessionId = sessionData.session_id;
-                    console.log(`[HPE-PROCTOR] Session started: ${proctoringSessionId} (${sessionData.status})`);
+                    // Use the VALIDATED session ID (same as WebSocket), not the DB ID
+                    proctoringSessionId = validatedSessionId;
+                    console.log(`[HPE-PROCTOR] Session persisted to DB. Using session: ${proctoringSessionId}`);
+
 
                     // Step 2: Load exam content
                     startExamBtn.innerHTML = '<span class="spinner"></span> Loading exam...';
@@ -1255,46 +1383,17 @@
                     debugVideo.srcObject = stream;
                 }
 
-                // Setup WebSocket for proctoring - use actual session ID from database
-                const WS_URL = "ws://127.0.0.1:8001/ws?session_id=" + proctoringSessionId;
-                let socket;
-                let isConnected = false;
+                // Setup WebSocket for proctoring - reuse connection from validation
+                let socket = window.proctorSocket;  // Get existing WebSocket from validation
+                let isConnected = socket && socket.readyState === WebSocket.OPEN;
                 let frameCount = 0;
-                const FRAME_INTERVAL_MS = 500; // Match old working code (500ms = 2fps)
+                const FRAME_INTERVAL_MS = 500; // 500ms = 2fps
 
-                console.log("[HPE-PROCTOR] WebSocket URL:", WS_URL);
-
-
-                function initWebSocket() {
-                    console.log("[HPE-PROCTOR] Connecting to WebSocket...");
-                    socket = new WebSocket(WS_URL);
-
-                    socket.onopen = () => {
-                        isConnected = true;
-                        window.proctorSocket = socket; // Expose for confirmSubmit access
-                        console.log("[HPE-PROCTOR] ✅ WebSocket connected");
-                        const status = document.getElementById('debug-status');
-                        if (status) status.textContent = "Active";
-                    };
-
-                    socket.onclose = (event) => {
-                        isConnected = false;
-                        console.log("[HPE-PROCTOR] WebSocket closed:", event.code, event.reason);
-                        const status = document.getElementById('debug-status');
-                        if (status) status.textContent = "Reconnecting...";
-                        setTimeout(initWebSocket, 3000);
-                    };
-
-                    socket.onerror = (error) => {
-                        console.error("[HPE-PROCTOR] WebSocket error:", error);
-                        socket.close();
-                    };
-
-                    socket.onmessage = (event) => {
+                // Enhanced message handler for exam proctoring
+                function setupExamMessageHandler(ws) {
+                    ws.onmessage = (event) => {
                         try {
                             const data = JSON.parse(event.data);
-
-                            // Log full server response like old working code
                             console.log('[HPE-PROCTOR] Server response:', data);
 
                             // Handle tab switch acknowledgment
@@ -1325,16 +1424,77 @@
                         }
                     };
 
+                    ws.onclose = (event) => {
+                        isConnected = false;
+                        console.log("[HPE-PROCTOR] WebSocket closed:", event.code, event.reason);
+                        // Only reconnect if exam is NOT submitted
+                        if (!window.examSubmitted) {
+                            const status = document.getElementById('debug-status');
+                            if (status) status.textContent = "Reconnecting...";
+                            setTimeout(() => initWebSocket(), 3000);
+                        } else {
+                            console.log("[HPE-PROCTOR] Exam submitted - not reconnecting");
+                        }
+                    };
+
+                    ws.onerror = (error) => {
+                        console.error("[HPE-PROCTOR] WebSocket error:", error);
+                    };
+                }
+
+                function initWebSocket() {
+                    // Block all WebSocket connections if exam is submitted
+                    if (window.examSubmitted) {
+                        console.log("[HPE-PROCTOR] Exam submitted - blocking WebSocket connection");
+                        return;
+                    }
+
+                    // Check if we already have an open WebSocket from validation
+                    if (window.proctorSocket && window.proctorSocket.readyState === WebSocket.OPEN) {
+                        console.log("[HPE-PROCTOR] ✅ Reusing existing WebSocket from validation");
+                        socket = window.proctorSocket;
+                        isConnected = true;
+                        setupExamMessageHandler(socket);
+                        const status = document.getElementById('debug-status');
+                        if (status) status.textContent = "Active";
+                        return;
+                    }
+
+                    // If no existing socket, create new one (fallback)
+                    console.log("[HPE-PROCTOR] Creating new WebSocket connection...");
+                    const WS_URL = PROCTOR_API_URL.replace('http', 'ws') + `/ws?session_id=${proctoringSessionId}`;
+                    socket = new WebSocket(WS_URL);
+
+                    socket.onopen = () => {
+                        isConnected = true;
+                        window.proctorSocket = socket;
+                        console.log("[HPE-PROCTOR] ✅ New WebSocket connected");
+                        setupExamMessageHandler(socket);
+                        const status = document.getElementById('debug-status');
+                        if (status) status.textContent = "Active";
+                    };
+
+                    socket.onerror = (error) => {
+                        console.error("[HPE-PROCTOR] WebSocket error:", error);
+                        socket.close();
+                    };
                 }
 
                 initWebSocket();
+
 
                 // Capture and send frames periodically (1fps)
                 const canvas = document.getElementById('canvas');
                 if (canvas && video) {
                     console.log(`[HPE-PROCTOR] Starting frame capture at ${1000 / FRAME_INTERVAL_MS}fps`);
 
-                    setInterval(() => {
+                    window.frameIntervalId = setInterval(() => {
+                        // Stop if exam is submitted
+                        if (window.examSubmitted) {
+                            clearInterval(window.frameIntervalId);
+                            console.log("[HPE-PROCTOR] Frame sending stopped - exam submitted");
+                            return;
+                        }
                         if (video.readyState !== 4) return;
 
                         canvas.width = video.videoWidth || 320;
@@ -1567,6 +1727,17 @@
                     });
                 }
 
+                // Connection Error Modal - Go Back button
+                const goBackBtn = document.getElementById('goBackBtn');
+                const connectionErrorModal = document.getElementById('connectionErrorModal');
+                if (goBackBtn) {
+                    goBackBtn.addEventListener('click', function () {
+                        connectionErrorModal.classList.remove('active');
+                        goToStep(2);  // Return to permissions step
+                    });
+                }
+
+
                 if (confirmBtn) {
                     confirmBtn.addEventListener('click', async function () {
                         // IMMEDIATELY disable fullscreen warnings before any async operations
@@ -1585,6 +1756,12 @@
                         const savedTime = window.HPETabSwitchDetector ? window.HPETabSwitchDetector.totalTimeOutside : 0;
 
                         try {
+                            // Clear frame sending interval immediately
+                            if (window.frameIntervalId) {
+                                clearInterval(window.frameIntervalId);
+                                console.log('[HPE-PROCTOR] Frame interval cleared');
+                            }
+
                             // Send final tab switch data to backend before stopping
                             if (window.proctorSocket && window.proctorSocket.readyState === WebSocket.OPEN) {
                                 window.proctorSocket.send(JSON.stringify({
@@ -1624,9 +1801,28 @@
                                 console.log('[HPE-PROCTOR] Video manager cleaned up');
                             }
 
+                            // Stop the media stream (camera)
+                            if (mediaStream) {
+                                mediaStream.getTracks().forEach(track => {
+                                    track.stop();
+                                    console.log(`[HPE-PROCTOR] Stopped track: ${track.kind}`);
+                                });
+                                mediaStream = null;
+                                console.log('[HPE-PROCTOR] Media stream stopped');
+                            }
+
+                            // Stop tab switch detector
+                            if (window.HPETabSwitchDetector && window.HPETabSwitchDetector.cleanup) {
+                                window.HPETabSwitchDetector.cleanup();
+                                console.log('[HPE-PROCTOR] Tab switch detector stopped');
+                            }
+
+                            console.log('[HPE-PROCTOR] ✅ All proctoring services stopped');
+
                         } catch (err) {
                             console.error('[HPE-PROCTOR] Error stopping session:', err);
                         }
+
 
                         // Hide confirmation modal
                         modal.classList.remove('active');
