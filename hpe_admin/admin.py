@@ -28,7 +28,7 @@ hpe_admin_site = HPEAdminSite(name='hpe_admin')
 class HPEContestAdmin(ContestAdmin):
     form = HPEContestForm
     change_form_template = 'hpe_admin/contest_change_form.html'
-    inlines = [ContestProblemInline, ContestMCQInline] # Added Inlines
+    inlines = []  # Removed - using Problem Dashboard instead
     
     def get_form(self, request, obj=None, **kwargs):
         # We skip ContestAdmin.get_form because it assumes fields exist that we removed.
@@ -36,15 +36,14 @@ class HPEContestAdmin(ContestAdmin):
         form = super(ContestAdmin, self).get_form(request, obj, **kwargs)
         return form
 
-    # Custom fieldsets as requested
+    # Custom fieldsets as requested - Problems Dashboard at bottom, just above inlines
     fieldsets = (
         (None, {'fields': ('key', 'name', 'description')}),
         (_('Access Control'), {'fields': ('authors', 'testers')}),
         (_('Tester Permissions'), {'fields': ('tester_see_submissions', 'tester_see_scoreboard')}),
-        (_('Problems'), {'fields': ('dashboard_button', 'contest_problems_json', 'contest_mcqs_json', 'contest_randomization_json')}),
         (_('Scheduling'), {'fields': ('start_time', 'end_time', 'time_limit')}),
-        (_('Participants'), {'fields': ('private_contestants', 'participants_csv')}), # Manual adding + CSV
-        # CSV Upload will be handled via a custom button in the change_form template or action
+        (_('Participants'), {'fields': ('private_contestants', 'participants_csv')}),
+        (_('Problems Dashboard'), {'fields': ('dashboard_button', 'contest_problems_json', 'contest_mcqs_json', 'contest_randomization_json')}),
     )
 
     def get_urls(self):
@@ -130,6 +129,29 @@ class HPEContestAdmin(ContestAdmin):
                             order=i
                         )
             except Exception as e: pass
+
+        # 4. JSON Logic for Randomization
+        if 'contest_randomization_json' in form.cleaned_data and form.cleaned_data['contest_randomization_json']:
+            try:
+                rand_data = json.loads(form.cleaned_data['contest_randomization_json'])
+                # rand_data structure: {'enabled': bool, 'config': {...}, 'regular_enabled': bool, 'mcq_enabled': bool}
+                
+                # Update the contest instance
+                contest = form.instance
+                contest.randomization_config = rand_data
+                
+                # Determine if randomization is active (legacy support + specific flags)
+                is_enabled = rand_data.get('enabled', False)
+                if rand_data.get('regular_enabled') or rand_data.get('mcq_enabled'):
+                    is_enabled = True
+                    
+                contest.randomize = is_enabled
+                contest.save()
+                
+            except Exception as e:
+                # Log silently or maybe message user if critical
+                print(f"Error saving randomization config: {e}")
+                pass
 
         # 4. Handle Participant CSV Upload (Moved from save_model to ensure M2M persistence)
         if 'participants_csv' in request.FILES:

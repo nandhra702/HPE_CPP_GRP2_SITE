@@ -379,6 +379,7 @@ urlpatterns = [
     path('judge-admin/contest/dashboard/', contest_dashboard.contest_dashboard, name='contest_dashboard'),
     path('judge-admin/contest/dashboard/api/', contest_dashboard.contest_dashboard_api, name='contest_dashboard_api'),
     path('judge-admin/contest/dashboard/metadata/', contest_dashboard.contest_dashboard_metadata, name='contest_dashboard_metadata'),
+    path('judge-admin/contest/dashboard/upload/', contest_dashboard.contest_dashboard_upload, name='contest_dashboard_upload'),
 
     path('judge-select2/', include([
         path('profile/', UserSelect2View.as_view(), name='profile_select2'),

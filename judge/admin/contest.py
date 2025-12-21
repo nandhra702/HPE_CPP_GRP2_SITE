@@ -39,32 +39,209 @@ class AdminHeavySelect2Widget(AdminHeavySelect2Widget):
 
 class DashboardButtonWidget(forms.Widget):
     def render(self, name, value, attrs=None, renderer=None):
-        return format_html(
-            '<div style="margin: 10px 0;">'
-            '<button type="button" class="button" onclick="openDashboard()" style="padding: 10px 20px; font-size: 14px; background-color: #2980B9; color: white; border: none; border-radius: 5px; cursor: pointer; transition: background-color 0.3s; display: inline-flex; justify-content: center; align-items: center; text-align: center; line-height: normal; width: auto;">Open Problems Dashboard</button>'
-            '</div>'
-            '<script>'
-            'function openDashboard() {{'
-            '   window.open("/judge-admin/contest/dashboard/", "ContestDashboard", "width=1200,height=800,scrollbars=yes,resizable=yes");'
-            '}}'
-            'window.updateContestSelections = function(problems, mcqs, randomization) {{'
-            '   document.getElementById("id_contest_problems_json").value = JSON.stringify(problems);'
-            '   document.getElementById("id_contest_mcqs_json").value = JSON.stringify(mcqs);'
-            '   document.getElementById("id_contest_randomization_json").value = JSON.stringify(randomization);'
-            '   alert("Selections updated! Click Save to persist.");'
-            '}};'
-            'window.getContestSelections = function() {{'
-            '   const p = document.getElementById("id_contest_problems_json").value;'
-            '   const m = document.getElementById("id_contest_mcqs_json").value;'
-            '   const r = document.getElementById("id_contest_randomization_json").value;'
-            '   return {{'
-            '       problems: p ? JSON.parse(p) : [],'
-            '       mcqs: m ? JSON.parse(m) : [],'
-            '       randomization: r ? JSON.parse(r) : {{}}'
-            '   }};'
-            '}};'
-            '</script>'
-        )
+        return format_html('''
+<style>
+    .dashboard-toggle-container {{ margin: 15px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; }}
+    .dashboard-toggle-container label {{ margin-right: 20px; cursor: pointer; }}
+    .dashboard-toggle-container input[type="radio"] {{ margin-right: 5px; }}
+    .upload-section {{ margin-top: 15px; padding: 15px; background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; }}
+    .upload-row {{ display: flex; gap: 15px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }}
+    .upload-row label {{ min-width: 120px; font-weight: 500; }}
+    .upload-btn {{ padding: 8px 16px; background: #2980B9; color: white; border: none; border-radius: 5px; cursor: pointer; }}
+    .upload-btn:hover {{ background: #1c6ea4; }}
+    .upload-btn:disabled {{ background: #ccc; cursor: not-allowed; }}
+    .upload-status {{ margin-top: 15px; max-height: 300px; overflow-y: auto; }}
+    .upload-status .success {{ color: #27ae60; padding: 5px 0; }}
+    .upload-status .error {{ color: #e74c3c; padding: 5px 0; }}
+    .upload-status .duplicate {{ color: #f39c12; padding: 5px 0; }}
+    .upload-status .summary {{ font-weight: bold; margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 4px; }}
+    .open-dashboard-btn {{ padding: 10px 20px; font-size: 14px; background-color: #2980B9; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; }}
+    .open-dashboard-btn:hover {{ background-color: #1c6ea4; }}
+</style>
+
+<div class="dashboard-toggle-container">
+    <div style="margin-bottom: 12px;">
+        <label><input type="radio" name="dashboard_mode" value="existing" checked onchange="toggleDashboardMode(this)"> Select from existing questions</label>
+        <label><input type="radio" name="dashboard_mode" value="upload" onchange="toggleDashboardMode(this)"> Upload new questions via CSV</label>
+    </div>
+    
+    <div id="existing-mode-section">
+        <button type="button" class="open-dashboard-btn" onclick="openDashboard()">Open Problems Dashboard</button>
+    </div>
+    
+    <div id="upload-mode-section" style="display: none;">
+        <div class="upload-section">
+            <div class="upload-row">
+                <label>Problems CSV:</label>
+                <input type="file" id="problems-csv-input" accept=".csv,.xlsx">
+                <button type="button" class="upload-btn" onclick="uploadCSV('problem')">Upload Problems</button>
+            </div>
+            <div class="upload-row">
+                <label>MCQs CSV:</label>
+                <input type="file" id="mcqs-csv-input" accept=".csv,.xlsx">
+                <button type="button" class="upload-btn" onclick="uploadCSV('mcq')">Upload MCQs</button>
+            </div>
+            <div class="upload-status" id="upload-status"></div>
+            <button type="button" class="open-dashboard-btn" id="open-with-uploaded-btn" style="display: none;" onclick="openDashboardWithUploaded()">Open Dashboard with Uploaded Questions</button>
+        </div>
+    </div>
+</div>
+
+<script>
+var uploadedProblems = [];
+var uploadedMCQs = [];
+
+function toggleDashboardMode(radio) {{
+    document.getElementById('existing-mode-section').style.display = radio.value === 'existing' ? 'block' : 'none';
+    document.getElementById('upload-mode-section').style.display = radio.value === 'upload' ? 'block' : 'none';
+}}
+
+function openDashboard() {{
+    window.open("/judge-admin/contest/dashboard/", "ContestDashboard", "width=1200,height=800,scrollbars=yes,resizable=yes");
+}}
+
+function openDashboardWithUploaded() {{
+    // Pre-populate the hidden fields with uploaded items before opening
+    if (uploadedProblems.length > 0 || uploadedMCQs.length > 0) {{
+        document.getElementById("id_contest_problems_json").value = JSON.stringify(uploadedProblems);
+        document.getElementById("id_contest_mcqs_json").value = JSON.stringify(uploadedMCQs);
+    }}
+    window.open("/judge-admin/contest/dashboard/", "ContestDashboard", "width=1200,height=800,scrollbars=yes,resizable=yes");
+}}
+
+async function uploadCSV(type) {{
+    var fileInput = type === 'problem' ? document.getElementById('problems-csv-input') : document.getElementById('mcqs-csv-input');
+    var file = fileInput.files[0];
+    
+    if (!file) {{
+        alert('Please select a file first.');
+        return;
+    }}
+    
+    var formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type);
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    
+    var statusDiv = document.getElementById('upload-status');
+    statusDiv.innerHTML = '<p>Uploading ' + type + 's... Please wait.</p>';
+    
+    try {{
+        var response = await fetch('/judge-admin/contest/dashboard/upload/', {{
+            method: 'POST',
+            body: formData
+        }});
+        
+        var data = await response.json();
+        
+        if (data.error) {{
+            statusDiv.innerHTML = '<p class="error">Error: ' + data.error + '</p>';
+            return;
+        }}
+        
+        var html = '<h4>' + (type === 'problem' ? 'Problems' : 'MCQs') + ' Upload Results:</h4>';
+        
+        // Show created
+        if (data.created && data.created.length > 0) {{
+            html += '<div class="success"><strong>Created (' + data.created.length + '):</strong><ul>';
+            data.created.forEach(function(item) {{
+                html += '<li>[' + item.code + '] ' + item.name + '</li>';
+            }});
+            html += '</ul></div>';
+            
+            // Add to uploaded arrays
+            if (type === 'problem') {{
+                data.created.forEach(function(p) {{
+                    uploadedProblems.push({{
+                        id: p.id, code: p.code, name: p.name, points: p.points || 0,
+                        group: p.group, partial: true, is_pretested: false,
+                        max_submissions: null, output_prefix_override: 0
+                    }});
+                }});
+            }} else {{
+                data.created.forEach(function(m) {{
+                    uploadedMCQs.push({{
+                        id: m.id, code: m.code, name: m.name, points: m.points || 1, group: m.group
+                    }});
+                }});
+            }}
+        }}
+        
+        // Show duplicates
+        if (data.duplicates && data.duplicates.length > 0) {{
+            html += '<div class="duplicate"><strong>Skipped - Already Exist (' + data.duplicates.length + '):</strong><ul>';
+            data.duplicates.forEach(function(item) {{
+                html += '<li>Row ' + item.row + ': ' + item.name + ' - ' + item.message + '</li>';
+            }});
+            html += '</ul></div>';
+            
+            // Add duplicates to uploaded arrays so they appear in dashboard
+            if (type === 'problem') {{
+                data.duplicates.forEach(function(p) {{
+                    if (p.id) {{
+                        uploadedProblems.push({{
+                            id: p.id, code: p.code, name: p.name, points: p.points || 0,
+                            group: p.group, partial: true, is_pretested: false,
+                            max_submissions: null, output_prefix_override: 0
+                        }});
+                    }}
+                }});
+            }} else {{
+                data.duplicates.forEach(function(m) {{
+                    if (m.id) {{
+                        uploadedMCQs.push({{
+                            id: m.id, code: m.code, name: m.name, points: m.points || 1, group: m.group
+                        }});
+                    }}
+                }});
+            }}
+        }}
+        
+        // Show errors
+        if (data.errors && data.errors.length > 0) {{
+            html += '<div class="error"><strong>Errors (' + data.errors.length + '):</strong><ul>';
+            data.errors.forEach(function(item) {{
+                html += '<li>Row ' + item.row + ': ' + item.name + ' - ' + item.error + '</li>';
+            }});
+            html += '</ul></div>';
+        }}
+        
+        // Summary
+        html += '<div class="summary">';
+        html += 'Created: ' + (data.created ? data.created.length : 0) + ' | ';
+        html += 'Skipped (duplicates): ' + (data.duplicates ? data.duplicates.length : 0) + ' | ';
+        html += 'Errors: ' + (data.errors ? data.errors.length : 0);
+        html += '</div>';
+        
+        statusDiv.innerHTML = html;
+        
+        // Always show the "Open Dashboard" button after upload attempt (even if all duplicates/errors)
+        document.getElementById('open-with-uploaded-btn').style.display = 'inline-block';
+        
+    }} catch (err) {{
+        statusDiv.innerHTML = '<p class="error">Upload failed: ' + err.message + '</p>';
+    }}
+}}
+
+window.updateContestSelections = function(problems, mcqs, randomization) {{
+    document.getElementById("id_contest_problems_json").value = JSON.stringify(problems);
+    document.getElementById("id_contest_mcqs_json").value = JSON.stringify(mcqs);
+    document.getElementById("id_contest_randomization_json").value = JSON.stringify(randomization);
+    alert("Selections updated! Click Save to persist.");
+}};
+
+window.getContestSelections = function() {{
+    var p = document.getElementById("id_contest_problems_json").value;
+    var m = document.getElementById("id_contest_mcqs_json").value;
+    var r = document.getElementById("id_contest_randomization_json").value;
+    return {{
+        problems: p ? JSON.parse(p) : [],
+        mcqs: m ? JSON.parse(m) : [],
+        randomization: r ? JSON.parse(r) : {{}}
+    }};
+}};
+</script>
+''')
 
 
 

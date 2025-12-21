@@ -88,12 +88,21 @@ def _handle_contest_randomization(participation):
     selected_mcqs = None
     if mcq_enabled:
         selected_mcqs = []
-        # Since MCQ no longer has groups, just collect all MCQs
-        mcq_ids = [cm.mcq_question_id for cm in contest.contest_mcqs.select_related('mcq_question').all()]
+        # Group MCQs by their group (difficulty level)
+        mcqs_by_group = defaultdict(list)
+        for cm in contest.contest_mcqs.select_related('mcq_question', 'mcq_question__group').all():
+            group = cm.mcq_question.group.full_name if cm.mcq_question.group else 'Uncategorized'
+            mcqs_by_group[group].append(cm.mcq_question_id)
         
-        # Get count from config (default: all)
-        mcq_count = config.get('config', {}).get('MCQ', len(mcq_ids))
-        selected_mcqs = random.sample(mcq_ids, min(len(mcq_ids), mcq_count))
+        print(f"[RANDOMIZATION DEBUG] MCQs by group: {dict(mcqs_by_group)}")
+        
+        # Sample MCQs per group based on config (keys like "MCQ:Easy", "MCQ:Medium")
+        for group, ids in mcqs_by_group.items():
+            config_key = f'MCQ:{group}'
+            count = config.get('config', {}).get(config_key, len(ids))
+            sampled = random.sample(ids, min(len(ids), count))
+            selected_mcqs.extend(sampled)
+            print(f"[RANDOMIZATION DEBUG] MCQ group '{group}': sampling {count} from {len(ids)}, got {len(sampled)}")
         
     if not participation.format_data:
         participation.format_data = {}

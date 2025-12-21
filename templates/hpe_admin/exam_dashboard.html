@@ -855,7 +855,7 @@
                     <div class="dashboard-view" id="dashboard-view">
                         <div class="dashboard-title">Problems</div>
 
-                        {% for cp in contest.contest_problems.all() %}
+                        {% for cp in filtered_contest_problems %}
                         <div class="question-card" data-code="{{ cp.problem.code }}" data-type="problem">
                             <div class="q-info">
                                 <div class="q-title">{{ loop.index }}. {{ cp.problem.name }}</div>
@@ -867,10 +867,10 @@
                         </div>
                         {% endfor %}
 
-                        {% if contest.contest_mcqs.all()|list|length > 0 %}
+                        {% if filtered_contest_mcqs|length > 0 %}
                         <div class="dashboard-title" style="margin-top: 30px;">MCQ Questions</div>
 
-                        {% for cm in contest.contest_mcqs.all() %}
+                        {% for cm in filtered_contest_mcqs %}
                         <div class="question-card" data-mcq-id="{{ cm.mcq_question.id }}" data-type="mcq">
                             <div class="q-info">
                                 <div class="q-title">MCQ {{ loop.index }}. {{ cm.mcq_question.title or 'Question ' ~
@@ -967,7 +967,7 @@
                 const WS_URL = "ws://127.0.0.1:8001/ws?session_id=" + SESSION_ID;
 
                 // Problem navigation
-                const PROBLEM_CODES = [{% for cp in contest.contest_problems.all() %}"{{ cp.problem.code }}"{% if not loop.last %}, {% endif %} {% endfor %}];
+                const PROBLEM_CODES = {{ problem_codes | tojson }};
                 let currentProblemCode = null;
                 let currentProblemIndex = -1;
 
