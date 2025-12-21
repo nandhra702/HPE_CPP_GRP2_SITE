@@ -107,6 +107,24 @@ class MCQQuestion(models.Model):
         verbose_name=_('license')
     )
     
+    # Difficulty group (Easy, Medium, Hard)
+    group = models.ForeignKey(
+        ProblemGroup,
+        null=True,
+        blank=True,
+        on_delete=SET_NULL,
+        verbose_name=_('difficulty'),
+        help_text=_('Difficulty level: Easy, Medium, or Hard')
+    )
+    
+    # Question types/categories (e.g., Data Structures, Algorithms, etc.)
+    types = models.ManyToManyField(
+        ProblemType,
+        verbose_name=_('question types'),
+        blank=True,
+        help_text=_("The type/category of question (e.g., Arrays, Graphs, etc.)")
+    )
+    
     # Statistics
     user_count = models.IntegerField(
         verbose_name=_('number of users'),

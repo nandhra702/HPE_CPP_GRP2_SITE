@@ -644,17 +644,35 @@ class HPEMCQQuestionAdmin(MCQQuestionAdmin):
     form = HPEMCQForm
     change_list_template = 'hpe_admin/mcq_change_list.html'
     
-    # Simplified list view
+    # Simplified list view (difficulty and types shown only in edit form)
     list_display = ['code', 'question_type', 'points', 'is_public', 'date']
+    list_filter = ['group', 'types', 'question_type', 'is_public']  # Filter by difficulty, types, question type, and visibility
     search_fields = ['code', 'description']
+    filter_horizontal = ['types']  # Use horizontal filter widget for types
+    
+    def difficulty_display(self, obj):
+        """Display group as 'Difficulty'"""
+        if obj.group:
+            return obj.group.full_name
+        return '-'
+    difficulty_display.short_description = 'Difficulty'
+    
+    def types_display(self, obj):
+        """Display types as comma-separated list"""
+        types = obj.types.all()
+        if types:
+            return ', '.join([t.full_name for t in types])
+        return '-'
+    types_display.short_description = 'Types'
     
     def get_form(self, request, obj=None, **kwargs):
         # Bypass MCQQuestionAdmin.get_form
         return super(MCQQuestionAdmin, self).get_form(request, obj, **kwargs)
     
-    # Simplified fieldsets - removed 'name' and Taxonomy
+    # Fieldsets with Difficulty and Types
     fieldsets = (
         (None, {'fields': ('code', 'authors', 'description')}),
+        (_('Categorization'), {'fields': ('group', 'types')}),
         (_('Settings'), {'fields': ('question_type', 'points', 'partial_credit', 'explanation')}),
     )
     
@@ -785,13 +803,22 @@ class HPEMCQQuestionAdmin(MCQQuestionAdmin):
                         
                         # Create MCQ Question
                         from django.utils import timezone
+                        from judge.models.problem import ProblemGroup
+                        
+                        # Get or create 'uncategorized' difficulty group
+                        uncategorized_group, _created = ProblemGroup.objects.get_or_create(
+                            name='uncategorized',
+                            defaults={'full_name': 'Uncategorized'}
+                        )
+                        
                         mcq = MCQQuestion.objects.create(
                             code=code,
                             description=question_text,  # Full question text
                             question_type=question_type,
                             points=1.0,
                             is_public=False,
-                            date=timezone.now()  # Set published date to current time
+                            date=timezone.now(),  # Set published date to current time
+                            group=uncategorized_group  # Default to uncategorized difficulty
                         )
                         
                         # Set creators if specified

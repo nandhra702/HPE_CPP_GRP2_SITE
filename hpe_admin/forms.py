@@ -127,6 +127,12 @@ class HPEMCQForm(MCQQuestionForm):
                 'The question text. Supports <b>Markdown</b> and <b>LaTeX</b> math.<br>'
                 '<small>LaTeX examples: <code>$x^2$</code> for inline, <code>$$\\frac{a}{b}$$</code> for display</small>'
             ))
+        
+        # Rename 'group' to 'Difficulty'
+        if 'group' in self.fields:
+            self.fields['group'].label = _('Difficulty')
+            self.fields['group'].help_text = _('Select difficulty level: Easy, Medium, or Hard')
+            self.fields['group'].required = True
 
 class HPEProblemBulkUploadForm(forms.Form):
     creators = forms.ModelMultipleChoiceField(

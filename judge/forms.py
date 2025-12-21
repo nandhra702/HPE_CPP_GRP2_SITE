@@ -285,7 +285,7 @@ class TwoFactorLoginForm(TOTPForm):
 
 
 class ProblemCloneForm(Form):
-    code = CharField(max_length=20, validators=[RegexValidator('^[a-z0-9]+$', _('Problem code must be ^[a-z0-9]+$'))])
+    code = CharField(max_length=20, validators=[RegexValidator('^[a-z0-9-]+$', _('Problem code must be ^[a-z0-9-]+$ (lowercase letters, numbers, and hyphens)'))])
 
     def clean_code(self):
         code = self.cleaned_data['code']
