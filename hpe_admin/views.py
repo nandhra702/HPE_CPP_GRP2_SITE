@@ -8,8 +8,9 @@ from django.urls import reverse_lazy
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 
-from judge.models import Contest
+from judge.models import Contest, ContestParticipation
 from judge.debug import get_hpe_contest_backend_connect
+from judge.views.contests import _handle_contest_randomization
 
 
 class HPEContestLandingView(View):
@@ -19,7 +20,7 @@ class HPEContestLandingView(View):
     def get_contest(self, contest_key):
         return get_object_or_404(Contest, key=contest_key)
     
-    def get_context_data(self, contest):
+    def get_context_data(self, contest, request=None):
         # Calculate duration
         if contest.time_limit:
             total_seconds = int(contest.time_limit.total_seconds())
@@ -40,22 +41,41 @@ class HPEContestLandingView(View):
             else:
                 duration_display = f"{minutes} mins"
         
-        # Get problems with details
+        # Check if user has a participation with randomized selection
+        selected_problem_ids = None
+        selected_mcq_ids = None
+        if request and request.user.is_authenticated:
+            participation = ContestParticipation.objects.filter(
+                contest=contest,
+                user=request.user.profile,
+                virtual=ContestParticipation.LIVE
+            ).first()
+            if participation and participation.format_data:
+                selected_problem_ids = participation.format_data.get('selected_problems')
+                selected_mcq_ids = participation.format_data.get('selected_mcqs')
+        
+        # Get problems with details (filtered by randomization if applicable)
         problems = []
         for cp in contest.contest_problems.select_related('problem').order_by('order'):
+            # Filter by selected_problems if randomization applied
+            if selected_problem_ids is not None and cp.problem_id not in selected_problem_ids:
+                continue
             problems.append({
-                'label': f"Problem {cp.order + 1}",
+                'label': f"Problem {len(problems) + 1}",
                 'name': cp.problem.name,
                 'code': cp.problem.code,
                 'points': cp.points,
                 'type': 'coding'
             })
         
-        # Get MCQs with details
+        # Get MCQs with details (filtered by randomization if applicable)
         mcqs = []
         for cm in contest.contest_mcqs.select_related('mcq_question').order_by('order'):
+            # Filter by selected_mcqs if randomization applied
+            if selected_mcq_ids is not None and cm.mcq_question_id not in selected_mcq_ids:
+                continue
             mcqs.append({
-                'label': f"MCQ {cm.order + 1}",
+                'label': f"MCQ {len(mcqs) + 1}",
                 'name': cm.mcq_question.code,
                 'id': cm.mcq_question.id,
                 'points': cm.points,
@@ -66,12 +86,39 @@ class HPEContestLandingView(View):
         all_questions = problems + mcqs
         total_points = sum(q['points'] for q in all_questions)
         
+        # Calculate expected counts from randomization config (for landing page display)
+        # This shows users what they'll get AFTER they join
+        expected_problem_count = len(problems)
+        expected_mcq_count = len(mcqs)
+        
+        if contest.randomize and contest.randomization_config:
+            config = contest.randomization_config
+            
+            # Calculate expected problem count from config
+            if config.get('regular_enabled'):
+                expected_problem_count = 0
+                # Sum up the counts from config
+                config_values = config.get('config', {})
+                for key, count in config_values.items():
+                    if not key.startswith('MCQ:'):  # Regular problems
+                        expected_problem_count += count
+            
+            # Calculate expected MCQ count from config
+            if config.get('mcq_enabled'):
+                expected_mcq_count = 0
+                config_values = config.get('config', {})
+                for key, count in config_values.items():
+                    if key.startswith('MCQ:'):  # MCQ problems
+                        expected_mcq_count += count
+        
+        expected_total = expected_problem_count + expected_mcq_count
+        
         return {
             'contest': contest,
             'duration_display': duration_display,
-            'total_questions': len(all_questions),
-            'problem_count': len(problems),
-            'mcq_count': len(mcqs),
+            'total_questions': expected_total,  # Use expected count for landing page
+            'problem_count': expected_problem_count,
+            'mcq_count': expected_mcq_count,
             'questions': all_questions,
             'total_points': total_points,
             'hpe_backend_connect': get_hpe_contest_backend_connect(),
@@ -97,16 +144,16 @@ class HPEContestLandingView(View):
         if request.user.is_authenticated:
             if self.check_permission(request.user, contest):
                 # Stay on page for multi-step flow instead of redirecting
-                context = self.get_context_data(contest)
+                context = self.get_context_data(contest, request)
                 context['logged_in'] = True
                 return render(request, self.template_name, context)
             else:
                 # Show landing page with permission denied error
-                context = self.get_context_data(contest)
+                context = self.get_context_data(contest, request)
                 context['error'] = "You do not have permission to access this contest."
                 return render(request, self.template_name, context)
         
-        context = self.get_context_data(contest)
+        context = self.get_context_data(contest, request)
         return render(request, self.template_name, context)
     
     def post(self, request, contest_key):
@@ -121,7 +168,7 @@ class HPEContestLandingView(View):
         if not username or not password:
             if is_ajax:
                 return JsonResponse({'success': False, 'error': 'Please enter both username and password.'})
-            context = self.get_context_data(contest)
+            context = self.get_context_data(contest, request)
             context['form_errors'] = ['Please enter both username and password.']
             return render(request, self.template_name, context)
         
@@ -130,7 +177,7 @@ class HPEContestLandingView(View):
         if user is None:
             if is_ajax:
                 return JsonResponse({'success': False, 'error': 'Invalid username or password.'})
-            context = self.get_context_data(contest)
+            context = self.get_context_data(contest, request)
             context['form_errors'] = ['Invalid username or password.']
             return render(request, self.template_name, context)
         
@@ -138,7 +185,7 @@ class HPEContestLandingView(View):
         if not self.check_permission(user, contest):
             if is_ajax:
                 return JsonResponse({'success': False, 'error': 'You do not have permission to access this contest.'})
-            context = self.get_context_data(contest)
+            context = self.get_context_data(contest, request)
             context['error'] = "You do not have permission to access this contest."
             return render(request, self.template_name, context)
         
@@ -230,6 +277,36 @@ class HPEContestExamView(HPEContestAccessMixin, DetailView):
             'contestKey': self.contest.key,
             # 'disableBackend': True, # Uncomment for testing without backend
         }
+        
+        # Get filtered problems/MCQs based on randomization
+        participation = ContestParticipation.objects.filter(
+            contest=self.contest,
+            user=self.request.user.profile,
+            virtual=ContestParticipation.LIVE
+        ).first()
+        
+        # Get problem/MCQ IDs from participation format_data (if randomization applied)
+        selected_problem_ids = None
+        selected_mcq_ids = None
+        if participation and participation.format_data:
+            selected_problem_ids = participation.format_data.get('selected_problems')
+            selected_mcq_ids = participation.format_data.get('selected_mcqs')
+        
+        # Filter contest problems
+        contest_problems = self.contest.contest_problems.select_related('problem').order_by('order')
+        if selected_problem_ids is not None:
+            contest_problems = contest_problems.filter(problem_id__in=selected_problem_ids)
+        context['filtered_contest_problems'] = list(contest_problems)
+        
+        # Filter contest MCQs
+        contest_mcqs = self.contest.contest_mcqs.select_related('mcq_question').order_by('order')
+        if selected_mcq_ids is not None:
+            contest_mcqs = contest_mcqs.filter(mcq_question_id__in=selected_mcq_ids)
+        context['filtered_contest_mcqs'] = list(contest_mcqs)
+        
+        # Also provide problem codes list for JS
+        context['problem_codes'] = [cp.problem.code for cp in context['filtered_contest_problems']]
+        
         return context
 
 
@@ -247,11 +324,38 @@ class HPEExamContentView(HPEContestAccessMixin, View):
             'contestKey': self.contest.key,
         }
         
+        # Get filtered problems/MCQs based on randomization
+        participation = ContestParticipation.objects.filter(
+            contest=self.contest,
+            user=request.user.profile,
+            virtual=ContestParticipation.LIVE
+        ).first()
+        
+        # Get problem/MCQ IDs from participation format_data (if randomization applied)
+        selected_problem_ids = None
+        selected_mcq_ids = None
+        if participation and participation.format_data:
+            selected_problem_ids = participation.format_data.get('selected_problems')
+            selected_mcq_ids = participation.format_data.get('selected_mcqs')
+        
+        # Filter contest problems
+        contest_problems = self.contest.contest_problems.select_related('problem').order_by('order')
+        if selected_problem_ids is not None:
+            contest_problems = contest_problems.filter(problem_id__in=selected_problem_ids)
+        
+        # Filter contest MCQs
+        contest_mcqs = self.contest.contest_mcqs.select_related('mcq_question').order_by('order')
+        if selected_mcq_ids is not None:
+            contest_mcqs = contest_mcqs.filter(mcq_question_id__in=selected_mcq_ids)
+        
         context = {
             'contest': self.contest,
             'dmoj_data': dmoj_data,
             'request': request,
             'hpe_backend_connect': get_hpe_contest_backend_connect(),
+            'filtered_contest_problems': list(contest_problems),
+            'filtered_contest_mcqs': list(contest_mcqs),
+            'problem_codes': [cp.problem.code for cp in contest_problems],
         }
         
         html = render_to_string('hpe_admin/exam_content.html', context, request=request)
@@ -647,6 +751,9 @@ class HPEContestJoinView(HPEContestAccessMixin, View):
             )
             created = True
         
+        # Handle randomization of problems/MCQs for this participation
+        _handle_contest_randomization(participation)
+        
         # Set as current contest - use update_fields to ensure it's saved properly
         profile.current_contest = participation
         profile.save(update_fields=['current_contest'])
@@ -691,6 +798,9 @@ class HPEContestLeaveView(HPEContestAccessMixin, View):
         # Mark as exited (prevents rejoining)
         participation.has_exited = True
         participation.save(update_fields=['has_exited'])
+        
+        # Calculate and store final scores (this aggregates code + MCQ scores)
+        participation.recompute_results()
         
         # Remove from contest if this is the current one
         if profile.current_contest and profile.current_contest.id == participation.id:
