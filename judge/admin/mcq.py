@@ -42,7 +42,11 @@ class MCQOptionInlineForm(ModelForm):
         model = MCQOption
         fields = ('option_text', 'is_correct')
         widgets = {
-            'option_text': forms.Textarea(attrs={'rows': 3, 'cols': 80}),
+            'option_text': forms.Textarea(attrs={
+                'rows': 3, 
+                'cols': 80,
+                'placeholder': 'Option text (supports LaTeX: $x^2$, $$\\frac{a}{b}$$)'
+            }),
         }
 
 
@@ -202,11 +206,6 @@ class MCQQuestionAdmin(NoBatchDeleteMixin, VersionAdmin):
         if form.changed_data and 'organizations' in form.changed_data:
             obj.is_organization_private = bool(form.cleaned_data['organizations'])
         obj.randomize_options = True
-        if obj.group is None:
-            obj.group, _created = ProblemGroup.objects.get_or_create(
-                name='uncategorized',
-                defaults={'full_name': _('Uncategorized')}
-            )
         
         super(MCQQuestionAdmin, self).save_model(request, obj, form, change)
 

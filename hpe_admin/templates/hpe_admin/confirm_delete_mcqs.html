@@ -1,0 +1,145 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .delete-confirmation {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .warning-box {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .warning-box h2 {
+        color: #856404;
+        margin-top: 0;
+    }
+
+    .mcq-list {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        max-height: 300px;
+        overflow-y: auto;
+        margin-bottom: 20px;
+    }
+
+    .mcq-list ul {
+        margin: 0;
+        padding-left: 20px;
+    }
+
+    .mcq-list li {
+        padding: 5px 0;
+        border-bottom: 1px solid #eee;
+    }
+
+    .mcq-list li:last-child {
+        border-bottom: none;
+    }
+
+    .mcq-code {
+        font-family: monospace;
+        background: #e9ecef;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 0.9em;
+    }
+
+    .button-row {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    .btn-delete {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 10px 25px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .btn-delete:hover {
+        background: #c82333;
+    }
+
+    .btn-cancel {
+        background: #6c757d;
+        color: white;
+        border: none;
+        padding: 10px 25px;
+        border-radius: 5px;
+        cursor: pointer;
+        text-decoration: none;
+        font-size: 14px;
+    }
+
+    .btn-cancel:hover {
+        background: #5a6268;
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; <a href="{% url 'hpe_admin:index' %}">{% trans 'HPE Admin' %}</a>
+    &rsaquo; <a href="{% url 'hpe_admin:judge_mcqquestion_changelist' %}">{% trans 'MCQs' %}</a>
+    &rsaquo; {% trans 'Confirm Delete' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="delete-confirmation">
+    <div class="warning-box">
+        <h2>⚠️ {% trans 'Confirm Deletion' %}</h2>
+        <p>You are about to delete <strong>{{ count }}</strong> MCQ{{ count|pluralize }}.</p>
+        <p><strong>{% trans 'This action cannot be undone!' %}</strong></p>
+        <p>{% trans 'All related data (submissions, contest associations) will also be deleted.' %}</p>
+    </div>
+
+    <h3>{% trans 'The following MCQs will be deleted:' %}</h3>
+    <div class="mcq-list">
+        <ul>
+            {% for mcq in mcqs %}
+            <li>
+                <span class="mcq-code">{{ mcq.code }}</span>
+                <strong>{{ mcq.description|truncatechars:60 }}</strong>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <form action="" method="post">
+        {% csrf_token %}
+
+        <!-- Preserve selected items -->
+        {% for mcq in mcqs %}
+        <input type="hidden" name="_selected_action" value="{{ mcq.pk }}">
+        {% endfor %}
+        <input type="hidden" name="action" value="delete_selected">
+        <input type="hidden" name="post" value="yes">
+
+        <div class="button-row">
+            <button type="submit" class="btn-delete">
+                {% trans "Yes, delete these MCQs" %}
+            </button>
+            <a href="{% url 'hpe_admin:judge_mcqquestion_changelist' %}" class="btn-cancel">
+                {% trans "Cancel" %}
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

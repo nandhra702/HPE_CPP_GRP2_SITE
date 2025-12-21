@@ -69,7 +69,11 @@
                     <small>• Answer columns contain the <b>actual answer text</b> (must match an option
                         exactly)</small><br>
                     <small>• For multiple correct answers, add more answer columns</small><br>
-                    <small>• Questions with multiple answers are auto-detected as "Multiple Choice"</small>
+                    <small>• Questions with multiple answers are auto-detected as "Multiple Choice"</small><br><br>
+                    <strong>{% trans 'LaTeX Support:' %}</strong><br>
+                    <small>• Use <code>$x^2$</code> for inline math, <code>$$\frac{a}{b}$$</code> for display
+                        math</small><br>
+                    <small>• Example: <code>"What is $\sqrt{16}$?", "$2$", "$4$", "$8$", "$16$", "$4$"</code></small>
                 </div>
             </div>
         </fieldset>
@@ -78,5 +82,45 @@
             <input type="submit" value="{% trans 'Upload MCQ Questions' %}" class="default" name="_save">
         </div>
     </form>
+
+    {% if upload_complete %}
+    <div style="margin-top: 20px;">
+        <h2>Upload Results</h2>
+
+        <div
+            style="background: #dff0d8; border: 1px solid #3c763d; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
+            <strong style="color: #3c763d;">✓ Successfully Created: {{ total_success }} MCQ{{ total_success|pluralize
+                }}</strong>
+        </div>
+
+        {% if success_results %}
+        <details open style="margin-bottom: 15px;">
+            <summary style="cursor: pointer; font-weight: bold; color: #3c763d;">View Successful MCQs</summary>
+            <ul style="margin-top: 10px; padding-left: 20px;">
+                {% for item in success_results %}
+                <li><strong>{{ item.name }}</strong> (code: <code>{{ item.code }}</code>)</li>
+                {% endfor %}
+            </ul>
+        </details>
+        {% endif %}
+
+        {% if error_results %}
+        <div
+            style="background: #f2dede; border: 1px solid #a94442; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
+            <strong style="color: #a94442;">✗ Errors: {{ total_errors }} row{{ total_errors|pluralize }}
+                skipped</strong>
+        </div>
+
+        <details open style="margin-bottom: 15px;">
+            <summary style="cursor: pointer; font-weight: bold; color: #a94442;">View Errors</summary>
+            <ul style="margin-top: 10px; padding-left: 20px;">
+                {% for item in error_results %}
+                <li><strong>{{ item.name }}</strong>: {{ item.error }}</li>
+                {% endfor %}
+            </ul>
+        </details>
+        {% endif %}
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

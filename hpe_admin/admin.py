@@ -17,7 +17,7 @@ import json
 from .sites import HPEAdminSite
 from .forms import ContestParticipantUploadForm, HPEContestForm, HPEProblemForm, HPEMCQForm, HPEProblemBulkUploadForm, HPEMCQBulkUploadForm
 
-from judge.models import Problem, MCQQuestion, Contest, ContestProblem, ContestMCQ, Profile
+from judge.models import Problem, MCQQuestion, Contest, ContestProblem, ContestMCQ, Profile, Solution
 from judge.admin.problem import ProblemAdmin
 from judge.admin.mcq import MCQQuestionAdmin
 from judge.admin.contest import ContestAdmin, ContestForm, ContestProblemInline, ContestMCQInline
@@ -259,6 +259,91 @@ class HPEProblemAdmin(ProblemAdmin):
         return '-'
     difficulty_display.short_description = 'Difficulty'
     difficulty_display.admin_order_field = 'group'
+    
+    def get_actions(self, request):
+        """Re-enable delete action with custom implementation to handle distinct()"""
+        actions = super().get_actions(request)
+        # Add custom delete action that works with distinct querysets
+        actions['delete_selected'] = (self.delete_selected_problems, 'delete_selected', _('Delete selected problems'))
+        return actions
+    
+    def delete_selected_problems(self, modeladmin, request, queryset):
+        """Custom delete action with confirmation page that handles distinct querysets"""
+        from django.contrib import messages
+        from django.template.response import TemplateResponse
+        
+        # Get the IDs first to avoid the distinct() issue
+        problem_ids = list(queryset.values_list('id', flat=True))
+        problems_to_delete = Problem.objects.filter(id__in=problem_ids)
+        count = len(problem_ids)
+        
+        if count == 0:
+            messages.warning(request, "No problems selected.")
+            return None
+        
+        # Check if user confirmed deletion
+        if request.POST.get('post') == 'yes':
+            import os
+            import shutil
+            from django.conf import settings
+            
+            # Get problem codes before deletion (for folder cleanup)
+            problem_codes = list(problems_to_delete.values_list('code', flat=True))
+            
+            # Delete from database
+            problems_to_delete.delete()
+            
+            # Delete problem folders from filesystem
+            problems_dir = os.path.join(settings.BASE_DIR, 'problems')
+            deleted_folders = 0
+            for code in problem_codes:
+                folder_path = os.path.join(problems_dir, code)
+                if os.path.exists(folder_path):
+                    try:
+                        shutil.rmtree(folder_path)
+                        deleted_folders += 1
+                    except Exception as e:
+                        messages.warning(request, f"Could not delete folder for '{code}': {e}")
+            
+            messages.success(request, f"Successfully deleted {count} problem{'' if count == 1 else 's'} and {deleted_folders} folder{'' if deleted_folders == 1 else 's'}.")
+            return None
+        
+        # Show confirmation page
+        context = {
+            **self.admin_site.each_context(request),
+            'title': _('Are you sure?'),
+            'problems': problems_to_delete,
+            'count': count,
+            'action_checkbox_name': '_selected_action',
+            'queryset': queryset,
+            'opts': self.model._meta,
+            'media': self.media,
+        }
+        
+        return TemplateResponse(request, 'hpe_admin/confirm_delete_problems.html', context)
+    delete_selected_problems.short_description = _('Delete selected problems')
+    
+    def delete_model(self, request, obj):
+        """Override to also delete the problem folder from filesystem."""
+        import os
+        import shutil
+        from django.conf import settings
+        
+        # Store the code before deletion
+        problem_code = obj.code
+        
+        # Delete from database (calls parent)
+        super().delete_model(request, obj)
+        
+        # Delete problem folder from filesystem
+        problems_dir = os.path.join(settings.BASE_DIR, 'problems')
+        folder_path = os.path.join(problems_dir, problem_code)
+        if os.path.exists(folder_path):
+            try:
+                shutil.rmtree(folder_path)
+            except Exception as e:
+                from django.contrib import messages
+                messages.warning(request, f"Could not delete folder for '{problem_code}': {e}")
 
     def get_urls(self):
         urls = super().get_urls()
@@ -281,7 +366,8 @@ class HPEProblemAdmin(ProblemAdmin):
                     import yaml
                     from django.core.files.base import ContentFile
                     from django.utils.text import slugify
-                    from judge.models import ProblemData
+                    from django.utils import timezone
+                    from judge.models import ProblemData, Solution
                     
                     rows = []
                     
@@ -299,7 +385,7 @@ class HPEProblemAdmin(ProblemAdmin):
                         reader = csv.reader(decoded_file)
                         rows = list(reader)
                     
-                    # Expected format: Name, Body, Constraints, TL, ML, Difficulty, In1, Out1, In2, Out2...
+                    # Expected format: Name, Body, Constraints, TL, ML, Difficulty, Solution, In1, Out1, In2, Out2...
                     
                     # Map difficulty names to group IDs
                     difficulty_map = {
@@ -309,8 +395,11 @@ class HPEProblemAdmin(ProblemAdmin):
                     }
                     
                     count = 0
+                    success_results = []  # List of successfully created problems
+                    error_results = []  # List of errors
+                    
                     for row in rows:
-                        if len(row) < 6: continue # Minimum fields (including difficulty)
+                        if len(row) < 7: continue # Minimum fields (including difficulty and solution placeholder)
                         
                         # Skip rows where ALL columns are empty
                         if all(not cell or str(cell).strip() == '' for cell in row):
@@ -348,9 +437,22 @@ class HPEProblemAdmin(ProblemAdmin):
                         difficulty_value = raw_difficulty.strip().lower()
                         
                         if difficulty_value not in difficulty_map:
-                            messages.error(request, f"Row '{name}': Invalid difficulty '{raw_difficulty}'. Must be easy, medium, or hard (case insensitive).")
+                            error_results.append({'name': name, 'error': f"Invalid difficulty '{raw_difficulty}'. Must be easy, medium, or hard."})
                             continue  # Skip this row
                         group_id = difficulty_map[difficulty_value]
+                        
+                        # Handle Solution - Optional
+                        solution_content = row[6].strip() if len(row) > 6 and row[6] else ''
+                        
+                        # Check for duplicate name in database
+                        if Problem.objects.filter(name=name).exists():
+                            error_results.append({'name': name, 'error': 'A problem with this name already exists.'})
+                            continue
+                        
+                        # Check for duplicate body in database
+                        if Problem.objects.filter(description__startswith=body[:500]).exists():
+                            error_results.append({'name': name, 'error': 'A problem with similar body already exists.'})
+                            continue
                         
                         # Generate unique problem code from name
                         base_code = slugify(name)[:20] or "prob"
@@ -360,8 +462,8 @@ class HPEProblemAdmin(ProblemAdmin):
                             code = f"{base_code}{suffix}"
                             suffix += 1
                         
-                        # Parse test cases first to build Examples (now starting from index 6)
-                        test_cases_data = row[6:]
+                        # Parse test cases first to build Examples (now starting from index 7)
+                        test_cases_data = row[7:]
                         examples_md = ""
                         example_num = 1
                         
@@ -399,7 +501,8 @@ class HPEProblemAdmin(ProblemAdmin):
                             points=0,  # Default points (can be adjusted later)
                             is_public=False,
                             is_manually_managed=True,
-                            group_id=group_id  # Use mapped difficulty group
+                            group_id=group_id,  # Use mapped difficulty group
+                            date=timezone.now()  # Set upload date to current time
                         )
                         
                         # M2M
@@ -409,6 +512,15 @@ class HPEProblemAdmin(ProblemAdmin):
                             problem.testers.set(form.cleaned_data['testers'])
                         if form.cleaned_data['allowed_languages']:
                             problem.allowed_languages.set(form.cleaned_data['allowed_languages'])
+                            
+                        # Create Solution if provided
+                        if solution_content:
+                            Solution.objects.create(
+                                problem=problem,
+                                content=solution_content,
+                                is_public=False,
+                                publish_on=timezone.now()
+                            )
                             
                         # Test Cases - Create folder structure in site/problems/{code}/
                         if test_cases_data:
@@ -491,12 +603,30 @@ class HPEProblemAdmin(ProblemAdmin):
                                     f.write(zip_buffer.getvalue())
                         
                         count += 1
+                        success_results.append({'name': name, 'code': code})
                     
-                    messages.success(request, f"Successfully uploaded {count} problems.")
-                    return redirect('hpe_admin:judge_problem_changelist')
+                    # Stay on same page and show results
+                    return render(request, 'hpe_admin/bulk_problem_upload.html', {
+                        'form': HPEProblemBulkUploadForm(),  # Fresh form
+                        'title': _('Bulk Upload Problems'),
+                        'upload_complete': True,
+                        'success_results': success_results,
+                        'error_results': error_results,
+                        'total_success': count,
+                        'total_errors': len(error_results)
+                    })
                     
                 except Exception as e:
-                    messages.error(request, f"Error processing file: {e}")
+                    error_results = [{'name': 'File Error', 'error': str(e)}]
+                    return render(request, 'hpe_admin/bulk_problem_upload.html', {
+                        'form': HPEProblemBulkUploadForm(),
+                        'title': _('Bulk Upload Problems'),
+                        'upload_complete': True,
+                        'success_results': [],
+                        'error_results': error_results,
+                        'total_success': 0,
+                        'total_errors': 1
+                    })
         else:
             form = HPEProblemBulkUploadForm()
             
@@ -515,7 +645,7 @@ class HPEMCQQuestionAdmin(MCQQuestionAdmin):
     change_list_template = 'hpe_admin/mcq_change_list.html'
     
     # Simplified list view
-    list_display = ['code', 'question_type', 'points', 'is_public']
+    list_display = ['code', 'question_type', 'points', 'is_public', 'date']
     search_fields = ['code', 'description']
     
     def get_form(self, request, obj=None, **kwargs):
@@ -527,6 +657,49 @@ class HPEMCQQuestionAdmin(MCQQuestionAdmin):
         (None, {'fields': ('code', 'authors', 'description')}),
         (_('Settings'), {'fields': ('question_type', 'points', 'partial_credit', 'explanation')}),
     )
+    
+    def get_actions(self, request):
+        """Re-enable delete action with custom implementation to handle distinct()"""
+        actions = super().get_actions(request)
+        # Add custom delete action that works with distinct querysets
+        actions['delete_selected'] = (self.delete_selected_mcqs, 'delete_selected', _('Delete selected MCQs'))
+        return actions
+    
+    def delete_selected_mcqs(self, modeladmin, request, queryset):
+        """Custom delete action with confirmation page that handles distinct querysets"""
+        from django.contrib import messages
+        from django.template.response import TemplateResponse
+        
+        # Get the IDs first to avoid the distinct() issue
+        mcq_ids = list(queryset.values_list('id', flat=True))
+        mcqs_to_delete = MCQQuestion.objects.filter(id__in=mcq_ids)
+        count = len(mcq_ids)
+        
+        if count == 0:
+            messages.warning(request, "No MCQs selected.")
+            return None
+        
+        # Check if user confirmed deletion
+        if request.POST.get('post') == 'yes':
+            # Delete from database
+            mcqs_to_delete.delete()
+            messages.success(request, f"Successfully deleted {count} MCQ{'' if count == 1 else 's'}.")
+            return None
+        
+        # Show confirmation page
+        context = {
+            **self.admin_site.each_context(request),
+            'title': _('Are you sure?'),
+            'mcqs': mcqs_to_delete,
+            'count': count,
+            'action_checkbox_name': '_selected_action',
+            'queryset': queryset,
+            'opts': self.model._meta,
+            'media': self.media,
+        }
+        
+        return TemplateResponse(request, 'hpe_admin/confirm_delete_mcqs.html', context)
+    delete_selected_mcqs.short_description = _('Delete selected MCQs')
     
     def get_urls(self):
         urls = super().get_urls()
@@ -565,6 +738,9 @@ class HPEMCQQuestionAdmin(MCQQuestionAdmin):
                     
                     # Format: Question, Option1, Option2, Option3, Option4, Answer(s)...
                     count = 0
+                    success_results = []  # List of successfully created MCQs
+                    error_results = []  # List of errors
+                    
                     for row in rows:
                         if len(row) < 6: continue  # Minimum: Question + 4 options + 1 answer
                         
@@ -574,6 +750,11 @@ class HPEMCQQuestionAdmin(MCQQuestionAdmin):
                         
                         question_text = row[0].strip()
                         if not question_text: continue  # Skip rows with empty question
+                        
+                        # Check for duplicate question text
+                        if MCQQuestion.objects.filter(description=question_text).exists():
+                            error_results.append({'name': question_text[:50] + '...', 'error': 'This question already exists.'})
+                            continue
                         
                         # Get the 4 options
                         options = [row[i].strip() if i < len(row) else '' for i in range(1, 5)]
@@ -588,7 +769,7 @@ class HPEMCQQuestionAdmin(MCQQuestionAdmin):
                                 correct_options.add(idx + 1)  # 1-indexed
                         
                         if not correct_options:
-                            messages.error(request, f"Row '{question_text[:50]}...': No matching answers found. Check that answer text matches option text exactly.")
+                            error_results.append({'name': question_text[:50] + '...', 'error': 'No matching answers found. Check answer text matches option text.'})
                             continue
                         
                         # Determine question type
@@ -603,12 +784,14 @@ class HPEMCQQuestionAdmin(MCQQuestionAdmin):
                             suffix += 1
                         
                         # Create MCQ Question
+                        from django.utils import timezone
                         mcq = MCQQuestion.objects.create(
                             code=code,
                             description=question_text,  # Full question text
                             question_type=question_type,
                             points=1.0,
-                            is_public=False
+                            is_public=False,
+                            date=timezone.now()  # Set published date to current time
                         )
                         
                         # Set creators if specified
@@ -626,12 +809,30 @@ class HPEMCQQuestionAdmin(MCQQuestionAdmin):
                                 )
                         
                         count += 1
+                        success_results.append({'name': question_text[:50] + '...', 'code': code})
                     
-                    messages.success(request, f"Successfully uploaded {count} MCQ questions.")
-                    return redirect('hpe_admin:judge_mcqquestion_changelist')
+                    # Stay on same page and show results
+                    return render(request, 'hpe_admin/bulk_mcq_upload.html', {
+                        'form': HPEMCQBulkUploadForm(),  # Fresh form
+                        'title': _('Bulk Upload MCQ Questions'),
+                        'upload_complete': True,
+                        'success_results': success_results,
+                        'error_results': error_results,
+                        'total_success': count,
+                        'total_errors': len(error_results)
+                    })
                     
                 except Exception as e:
-                    messages.error(request, f"Error processing file: {e}")
+                    error_results = [{'name': 'File Error', 'error': str(e)}]
+                    return render(request, 'hpe_admin/bulk_mcq_upload.html', {
+                        'form': HPEMCQBulkUploadForm(),
+                        'title': _('Bulk Upload MCQ Questions'),
+                        'upload_complete': True,
+                        'success_results': [],
+                        'error_results': error_results,
+                        'total_success': 0,
+                        'total_errors': 1
+                    })
         else:
             form = HPEMCQBulkUploadForm()
             

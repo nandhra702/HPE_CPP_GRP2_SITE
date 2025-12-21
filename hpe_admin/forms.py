@@ -120,6 +120,13 @@ class HPEMCQForm(MCQQuestionForm):
             self.fields['change_message'].widget.attrs.update({
                 'placeholder': _('Describe the changes you made (optional)'),
             })
+        
+        # Add LaTeX help text to description field
+        if 'description' in self.fields:
+            self.fields['description'].help_text = mark_safe(_(
+                'The question text. Supports <b>Markdown</b> and <b>LaTeX</b> math.<br>'
+                '<small>LaTeX examples: <code>$x^2$</code> for inline, <code>$$\\frac{a}{b}$$</code> for display</small>'
+            ))
 
 class HPEProblemBulkUploadForm(forms.Form):
     creators = forms.ModelMultipleChoiceField(
@@ -149,10 +156,11 @@ class HPEProblemBulkUploadForm(forms.Form):
         label=_('CSV/Excel File'),
         help_text=mark_safe(_(
             '<b>Accepts:</b> .csv or .xlsx files<br>'
-            'Format: Name, Body, Constraints, Time Limit (s), Memory Limit (kb), <b>Difficulty</b>, Test Cases...<br>'
+            'Format: Name, Body, Constraints, Time Limit (s), Memory Limit (kb), <b>Difficulty</b>, <b>Solution</b>, Test Cases...<br>'
             '<b>Difficulty</b>: Required. Must be <code>easy</code>, <code>medium</code>, or <code>hard</code>.<br>'
+            '<b>Solution</b>: Optional. Text for the editorial.<br>'
             'Test Cases: Input1, Output1, Input2, Output2, etc.<br>'
-            '<small>Example: "Sum", "Find A+B", "none", 1, 65536, "easy", "1 2", "3", "5 5", "10"</small>'
+            '<small>Example: "Sum", "Find A+B", "none", 1, 65536, "easy", "This is the solution", "1 2", "3", "5 5", "10"</small>'
         )),
         validators=[FileExtensionValidator(allowed_extensions=['csv', 'xlsx'])]
     )
