@@ -692,6 +692,9 @@ class HPEContestLeaveView(HPEContestAccessMixin, View):
         participation.has_exited = True
         participation.save(update_fields=['has_exited'])
         
+        # Calculate and store final scores (this aggregates code + MCQ scores)
+        participation.recompute_results()
+        
         # Remove from contest if this is the current one
         if profile.current_contest and profile.current_contest.id == participation.id:
             profile.remove_contest()

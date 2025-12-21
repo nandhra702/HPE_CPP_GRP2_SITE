@@ -27,22 +27,48 @@ class DefaultContestFormat(BaseContestFormat):
 
     def update_participation(self, participation):
         cumtime = 0
-        points = 0
-        format_data = {}
+        problem_points = 0
+        problem_data = {}
 
+        # Aggregate coding problem scores
         for result in participation.submissions.values('problem_id').annotate(
                 time=Max('submission__date'), points=Max('points'),
         ):
             dt = (result['time'] - participation.start).total_seconds()
             if result['points']:
                 cumtime += dt
-            format_data[str(result['problem_id'])] = {'time': dt, 'points': result['points']}
-            points += result['points']
+            problem_data[str(result['problem_id'])] = {'time': dt, 'points': result['points']}
+            problem_points += result['points']
+
+        # Aggregate MCQ scores
+        mcq_points = 0
+        mcq_data = {}
+        for mcq_sub in participation.contest_mcq_submissions.select_related('mcq').all():
+            mcq_data[str(mcq_sub.mcq_id)] = {
+                'points': mcq_sub.points,
+                'is_correct': mcq_sub.is_correct
+            }
+            mcq_points += mcq_sub.points
+
+        # Calculate total score
+        total_points = problem_points + mcq_points
+
+        # Build format_data with clear separation
+        participation.format_data = {
+            'problems': problem_data,
+            'mcqs': mcq_data,
+            'summary': {
+                'problem_score': round(problem_points, self.contest.points_precision),
+                'mcq_score': round(mcq_points, self.contest.points_precision),
+                'total_score': round(total_points, self.contest.points_precision)
+            }
+        }
 
         participation.cumtime = max(cumtime, 0)
-        participation.score = round(points, self.contest.points_precision)
+        participation.score = round(total_points, self.contest.points_precision)
+        participation.problem_score = round(problem_points, self.contest.points_precision)
+        participation.mcq_score = round(mcq_points, self.contest.points_precision)
         participation.tiebreaker = 0
-        participation.format_data = format_data
         participation.save()
 
     def display_user_problem(self, participation, contest_problem):
