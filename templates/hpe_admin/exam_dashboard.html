@@ -1196,8 +1196,68 @@
                 }
 
                 function confirmSubmit() {
-                    if (confirm("Are you sure you want to finish the test?")) {
-                        window.location.href = "/";
+                    // Show custom confirmation modal
+                    const modal = document.getElementById('submitConfirmModal');
+                    modal.classList.add('active');
+                }
+
+                // Auto-submit function triggered by timer or manual confirmation
+                window.doFinalSubmit = async function (isAutoSubmit = false) {
+                    // IMMEDIATELY disable fullscreen warnings before any async operations
+                    window.examSubmitted = true;
+                    const fullscreenModal = document.getElementById('fullscreen-warning-modal');
+                    if (fullscreenModal) {
+                        fullscreenModal.style.display = 'none';
+                    }
+
+                    // Hide any open modals
+                    document.getElementById('submitConfirmModal').classList.remove('active');
+                    document.getElementById('timeUpModal').classList.remove('active');
+
+                    // Get tab switch data before any operations
+                    const savedCount = window.HPETabSwitchDetector ? window.HPETabSwitchDetector.tabSwitchCount : 0;
+                    const savedTime = window.HPETabSwitchDetector ? window.HPETabSwitchDetector.totalTimeOutside : 0;
+
+                    try {
+                        // Stop tab switch detector
+                        if (window.HPETabSwitchDetector && window.HPETabSwitchDetector.cleanup) {
+                            window.HPETabSwitchDetector.cleanup();
+                            console.log('[HPE-EXAM] Tab switch detector stopped');
+                        }
+
+                        // Leave the contest (sets has_exited=True, prevents rejoining)
+                        try {
+                            const leaveResponse = await fetch(`/hpe/contest/{{ contest.key }}/leave/`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': getCookie('csrftoken'),
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            });
+                            const leaveData = await leaveResponse.json();
+                            console.log('[HPE-EXAM] Left contest:', leaveData);
+                        } catch (err) {
+                            console.error('[HPE-EXAM] Error leaving contest:', err);
+                        }
+
+                        console.log('[HPE-EXAM] ✅ Exam submitted successfully');
+
+                    } catch (err) {
+                        console.error('[HPE-EXAM] Error during submission:', err);
+                    }
+
+                    // Show thank you overlay with stats
+                    const thankYouOverlay = document.getElementById('thankYouOverlay');
+                    document.getElementById('final-tab-count').textContent = savedCount;
+                    document.getElementById('final-time-away').textContent = Math.round(savedTime) + 's';
+                    thankYouOverlay.classList.add('active');
+
+                    // Exit fullscreen to show thank you page properly
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen().catch(() => { });
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
                     }
                 }
 
@@ -1393,8 +1453,14 @@
                 }
 
                 // ========== TIMER ==========
+                let timerInterval = null;
+                let autoSubmitTriggered = false;
+
                 function initTimer() {
-                    const endTime = new Date("{{ contest.end_time.isoformat() }}");
+                    // Use participation-aware end time if available (considers time_limit)
+                    // Falls back to contest end time for backward compatibility
+                    const endTimeStr = window.examEndTime || "{{ exam_end_time|default(contest.end_time.isoformat()) }}";
+                    const endTime = new Date(endTimeStr);
 
                     function updateTimer() {
                         const now = new Date();
@@ -1402,6 +1468,13 @@
 
                         if (diff <= 0) {
                             document.getElementById('countdown').textContent = 'Time Up!';
+
+                            // Prevent multiple auto-submit triggers
+                            if (!autoSubmitTriggered && !window.examSubmitted) {
+                                autoSubmitTriggered = true;
+                                clearInterval(timerInterval);
+                                triggerAutoSubmit();
+                            }
                             return;
                         }
 
@@ -1416,7 +1489,21 @@
                     }
 
                     updateTimer();
-                    setInterval(updateTimer, 1000);
+                    timerInterval = setInterval(updateTimer, 1000);
+                }
+
+                // Auto-submit when time is up
+                function triggerAutoSubmit() {
+                    console.log('[HPE-EXAM] Time is up! Triggering auto-submit...');
+
+                    // Show the Time's Up modal
+                    const timeUpModal = document.getElementById('timeUpModal');
+                    timeUpModal.classList.add('active');
+
+                    // Auto-submit after 2 seconds
+                    setTimeout(() => {
+                        window.doFinalSubmit(true);
+                    }, 2000);
                 }
 
                 // ========== RESIZE ==========
@@ -1649,6 +1736,49 @@
         </div>
     </div>
 
+    <!-- Submit Confirmation Modal -->
+    <div class="submit-modal-overlay" id="submitConfirmModal">
+        <div class="submit-modal">
+            <div class="submit-modal-icon">⚠️</div>
+            <h3>Submit Your Test?</h3>
+            <p>Are you sure you want to finish and submit your test? This action cannot be undone.</p>
+            <div class="submit-modal-buttons">
+                <button class="submit-modal-btn cancel" id="cancelSubmitBtn">Cancel</button>
+                <button class="submit-modal-btn confirm" id="confirmSubmitBtn">Yes, Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Time's Up Modal -->
+    <div class="submit-modal-overlay" id="timeUpModal">
+        <div class="submit-modal">
+            <div class="submit-modal-icon">⏰</div>
+            <h3>Time's Up!</h3>
+            <p>Your exam time has ended. Submitting your test...</p>
+            <div class="time-up-spinner"></div>
+        </div>
+    </div>
+
+    <!-- Thank You Overlay -->
+    <div class="thank-you-overlay" id="thankYouOverlay">
+        <div class="thank-you-content">
+            <div class="thank-you-icon">✓</div>
+            <h1>Thank You!</h1>
+            <p>Your test has been successfully submitted. You can now close this window.</p>
+            <div class="thank-you-stats">
+                <div class="thank-you-stat">
+                    <div class="thank-you-stat-value" id="final-tab-count">0</div>
+                    <div class="thank-you-stat-label">Tab Switches</div>
+                </div>
+                <div class="thank-you-stat">
+                    <div class="thank-you-stat-value" id="final-time-away">0s</div>
+                    <div class="thank-you-stat-label">Time Away</div>
+                </div>
+            </div>
+            <button class="thank-you-btn" onclick="window.location.href='/'">Return to Home</button>
+        </div>
+    </div>
+
     <style>
         #fullscreen-warning-modal {
             position: fixed;
@@ -1690,6 +1820,230 @@
             color: #ddd;
             margin-bottom: 30px;
             line-height: 1.5;
+        }
+
+        /* Submit Modal Styles */
+        .submit-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 25000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .submit-modal-overlay.active {
+            display: flex;
+        }
+
+        .submit-modal {
+            background: linear-gradient(145deg, #1e1e1e 0%, #2d2d2d 100%);
+            padding: 40px;
+            border-radius: 16px;
+            text-align: center;
+            max-width: 420px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .submit-modal-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .submit-modal h3 {
+            color: #fff;
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+
+        .submit-modal p {
+            color: #9ca3af;
+            font-size: 15px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .submit-modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .submit-modal-btn {
+            padding: 12px 28px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .submit-modal-btn.cancel {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .submit-modal-btn.cancel:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .submit-modal-btn.confirm {
+            background: linear-gradient(135deg, #01a982 0%, #00875a 100%);
+            color: #fff;
+        }
+
+        .submit-modal-btn.confirm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(1, 169, 130, 0.4);
+        }
+
+        .submit-modal-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        /* Time's Up Spinner */
+        .time-up-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            border-top: 4px solid #01a982;
+            border-radius: 50%;
+            animation: timeUpSpin 1s linear infinite;
+            margin: 20px auto 0;
+        }
+
+        @keyframes timeUpSpin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Thank You Overlay */
+        .thank-you-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(145deg, #0d1117 0%, #161b22 100%);
+            z-index: 30000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .thank-you-overlay.active {
+            display: flex;
+        }
+
+        .thank-you-content {
+            text-align: center;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .thank-you-icon {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 30px;
+            background: linear-gradient(135deg, #01a982 0%, #00875a 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: #fff;
+            animation: checkmarkPop 0.5s ease-out 0.3s both;
+        }
+
+        @keyframes checkmarkPop {
+            0% {
+                transform: scale(0);
+            }
+
+            50% {
+                transform: scale(1.2);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .thank-you-content h1 {
+            color: #fff;
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+
+        .thank-you-content p {
+            color: #9ca3af;
+            font-size: 1.1rem;
+            margin-bottom: 40px;
+            max-width: 400px;
+        }
+
+        .thank-you-stats {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+
+        .thank-you-stat {
+            text-align: center;
+        }
+
+        .thank-you-stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #01a982;
+        }
+
+        .thank-you-stat-label {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .thank-you-btn {
+            padding: 14px 32px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .thank-you-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
         }
     </style>
 
@@ -1857,6 +2211,25 @@
                     if (debugStatus) debugStatus.textContent = "Error: " + e.message;
                 }
             };
+
+            // Set up modal button handlers
+            const submitModal = document.getElementById('submitConfirmModal');
+            const cancelSubmitBtn = document.getElementById('cancelSubmitBtn');
+            const confirmSubmitBtn = document.getElementById('confirmSubmitBtn');
+
+            if (cancelSubmitBtn) {
+                cancelSubmitBtn.addEventListener('click', function () {
+                    submitModal.classList.remove('active');
+                });
+            }
+
+            if (confirmSubmitBtn) {
+                confirmSubmitBtn.addEventListener('click', async function () {
+                    confirmSubmitBtn.disabled = true;
+                    confirmSubmitBtn.textContent = 'Submitting...';
+                    await window.doFinalSubmit(false);
+                });
+            }
         })();
     </script>
 </body>

@@ -746,6 +746,27 @@
             box-shadow: 0 4px 15px rgba(1, 169, 130, 0.4);
         }
 
+        /* Time's Up Spinner */
+        .time-up-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            border-top: 4px solid #01a982;
+            border-radius: 50%;
+            animation: timeUpSpin 1s linear infinite;
+            margin: 20px auto 0;
+        }
+
+        @keyframes timeUpSpin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
         .button-group {
             display: flex;
             gap: 12px;
@@ -1147,6 +1168,16 @@
             <div class="confirm-modal-buttons">
                 <button class="confirm-modal-btn confirm" id="errorModalOkBtn">OK</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Time's Up Modal -->
+    <div class="confirm-modal-overlay" id="timeUpModal">
+        <div class="confirm-modal">
+            <div class="confirm-modal-icon">⏰</div>
+            <h3>Time's Up!</h3>
+            <p>Your exam time has ended. Submitting your test...</p>
+            <div class="time-up-spinner"></div>
         </div>
     </div>
 
@@ -1650,6 +1681,9 @@
                     window.dmojData = data.dmoj_data;
                     window.dmojData.proctoringSessionId = proctoringSessionId;
 
+                    // Store exam end time (participation-aware, considers time_limit)
+                    window.examEndTime = data.exam_end_time;
+
                     // Hide the landing page container
                     document.querySelector('.container').style.display = 'none';
 
@@ -2013,8 +2047,14 @@
             checkFullscreen();
         }
 
+        let timerInterval = null;
+        let autoSubmitTriggered = false;
+
         function initTimer() {
-            const endTime = new Date("{{ contest.end_time.isoformat() }}");
+            // Use participation-aware end time if available (considers time_limit)
+            // Falls back to contest end time for backward compatibility
+            const endTimeStr = window.examEndTime || "{{ contest.end_time.isoformat() }}";
+            const endTime = new Date(endTimeStr);
 
             function updateTimer() {
                 const now = new Date();
@@ -2022,6 +2062,13 @@
 
                 if (diff <= 0) {
                     document.getElementById('countdown').textContent = 'Time Up!';
+
+                    // Prevent multiple auto-submit triggers
+                    if (!autoSubmitTriggered && !window.examSubmitted) {
+                        autoSubmitTriggered = true;
+                        clearInterval(timerInterval);
+                        triggerAutoSubmit();
+                    }
                     return;
                 }
 
@@ -2036,7 +2083,27 @@
             }
 
             updateTimer();
-            setInterval(updateTimer, 1000);
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        // Auto-submit when time is up
+        function triggerAutoSubmit() {
+            console.log('[HPE-CONTEST] Time is up! Triggering auto-submit...');
+
+            // Show the Time's Up modal
+            const timeUpModal = document.getElementById('timeUpModal');
+            if (timeUpModal) {
+                timeUpModal.classList.add('active');
+            }
+
+            // Auto-submit after 2 seconds
+            setTimeout(() => {
+                // Trigger the same submit flow as clicking "Yes, Submit"
+                const confirmBtn = document.getElementById('confirmSubmitBtn');
+                if (confirmBtn) {
+                    confirmBtn.click();
+                }
+            }, 2000);
         }
 
         function initResize() {
@@ -2120,6 +2187,8 @@
                     goToStep(2);  // Return to permissions step
                 });
             }
+
+
 
 
             if (confirmBtn) {

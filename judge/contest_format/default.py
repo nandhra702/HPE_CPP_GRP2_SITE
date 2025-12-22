@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from django.core.exceptions import ValidationError
-from django.db.models import Max
+from django.db.models import Max, OuterRef, Subquery
 from django.template.defaultfilters import floatformat
 from django.urls import reverse
 from django.utils.html import format_html
@@ -30,15 +30,24 @@ class DefaultContestFormat(BaseContestFormat):
         problem_points = 0
         problem_data = {}
 
-        # Aggregate coding problem scores
+        # Aggregate coding problem scores - USE LATEST SUBMISSION (not best)
+        # Get the points from the submission with the maximum (most recent) date for each problem
+        latest_submission_points = (
+            participation.submissions
+            .filter(problem_id=OuterRef('problem_id'))
+            .order_by('-submission__date')
+            .values('points')[:1]
+        )
+        
         for result in participation.submissions.values('problem_id').annotate(
-                time=Max('submission__date'), points=Max('points'),
+                time=Max('submission__date'),
+                points=Subquery(latest_submission_points),
         ):
             dt = (result['time'] - participation.start).total_seconds()
             if result['points']:
                 cumtime += dt
-            problem_data[str(result['problem_id'])] = {'time': dt, 'points': result['points']}
-            problem_points += result['points']
+            problem_data[str(result['problem_id'])] = {'time': dt, 'points': result['points'] or 0}
+            problem_points += result['points'] or 0
 
         # Aggregate MCQ scores
         mcq_points = 0
@@ -102,5 +111,5 @@ class DefaultContestFormat(BaseContestFormat):
         return str(index + 1)
 
     def get_short_form_display(self):
-        yield _('The maximum score submission for each problem will be used.')
+        yield _('The latest submission for each problem will be used for scoring.')
         yield _('Ties will be broken by the sum of the last submission time on problems with a non-zero score.')

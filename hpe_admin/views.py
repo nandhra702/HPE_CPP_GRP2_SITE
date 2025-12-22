@@ -316,6 +316,12 @@ class HPEContestExamView(HPEContestAccessMixin, DetailView):
         # Also provide problem codes list for JS
         context['problem_codes'] = [cp.problem.code for cp in context['filtered_contest_problems']]
         
+        # Add participation-aware end time for the timer (considers time_limit)
+        if participation:
+            context['exam_end_time'] = participation.end_time.isoformat() if participation.end_time else self.contest.end_time.isoformat()
+        else:
+            context['exam_end_time'] = self.contest.end_time.isoformat()
+        
         return context
 
 
@@ -357,6 +363,13 @@ class HPEExamContentView(HPEContestAccessMixin, View):
         if selected_mcq_ids is not None:
             contest_mcqs = contest_mcqs.filter(mcq_question_id__in=selected_mcq_ids)
         
+        # Calculate the correct end time - use participation.end_time if available
+        # This correctly handles time_limit for user's personal contest end time
+        if participation:
+            exam_end_time = participation.end_time.isoformat() if participation.end_time else self.contest.end_time.isoformat()
+        else:
+            exam_end_time = self.contest.end_time.isoformat()
+        
         context = {
             'contest': self.contest,
             'dmoj_data': dmoj_data,
@@ -365,6 +378,7 @@ class HPEExamContentView(HPEContestAccessMixin, View):
             'filtered_contest_problems': list(contest_problems),
             'filtered_contest_mcqs': list(contest_mcqs),
             'problem_codes': [cp.problem.code for cp in contest_problems],
+            'exam_end_time': exam_end_time,  # Add participation-aware end time
         }
         
         html = render_to_string('hpe_admin/exam_content.html', context, request=request)
@@ -372,6 +386,7 @@ class HPEExamContentView(HPEContestAccessMixin, View):
             'success': True,
             'html': html,
             'dmoj_data': dmoj_data,
+            'exam_end_time': exam_end_time,  # Also return in JSON for JS to use
         })
 
 
