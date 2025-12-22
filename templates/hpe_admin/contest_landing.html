@@ -296,7 +296,13 @@
         .auth-status p {
             color: #374151;
             font-size: 1rem;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .auth-status .logged-in-hint {
+            color: #6b7280;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
         }
 
         .oauth-hint {
@@ -493,12 +499,21 @@
 
         .video-preview.show {
             display: block;
+            width: 100%;
+            height: 240px;
+            /* Fixed height for consistency */
+            margin-bottom: 1.5rem;
+            position: relative;
         }
 
         .video-preview video {
             width: 100%;
-            height: 120px;
+            height: 100%;
             object-fit: cover;
+            /* Ensures no stretching */
+            border-radius: 10px;
+            transform: scaleX(-1);
+            /* Mirror effect */
         }
 
         /* Question List Styles */
@@ -731,6 +746,42 @@
             box-shadow: 0 4px 15px rgba(1, 169, 130, 0.4);
         }
 
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 2rem;
+        }
+
+        .button-group .btn-primary {
+            flex: 2;
+            margin-top: 0;
+        }
+
+        .btn-secondary {
+            padding: 14px 24px;
+            background: #f3f4f6;
+            color: #374151;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+            color: #111827;
+        }
+
+        .btn-back {
+            flex: 1;
+        }
+
         .confirm-modal-btn:disabled {
             opacity: 0.7;
             cursor: not-allowed;
@@ -900,7 +951,7 @@
                     <div class="slide-content">
                         <div class="form-header">
                             <h2>Sign In to Continue</h2>
-                            <p>Use your Google account to access the contest</p>
+                            <p>Use the Google account associated with your contest invitation email.</p>
                         </div>
 
                         {% if request.user.is_authenticated %}
@@ -924,9 +975,18 @@
                         <!-- User is logged in and has permission -->
                         <div class="auth-status success">
                             <div class="auth-icon">✓</div>
-                            <p>Signed in as <strong>{{ request.user.username }}</strong></p>
-                            <button type="button" class="btn-primary" id="continueAfterLogin">Continue to
-                                Permissions</button>
+                            <p>Signed in as <strong>{{ request.user.email or request.user.username }}</strong></p>
+                            <p class="logged-in-hint">You are logged in with this account. If you want to use a
+                                different account, click below.</p>
+                            <a href="/hpe/contest/{{ contest.key }}/logout/" class="btn-switch-account">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" />
+                                </svg>
+                                Use different account
+                            </a>
+                            <button type="button" class="btn-primary" id="continueAfterLogin">Continue with this
+                                account</button>
                         </div>
                         {% endif %}
                         {% else %}
@@ -996,7 +1056,16 @@
                             <video id="cameraPreview" autoplay muted playsinline></video>
                         </div>
 
-                        <button type="button" class="btn-primary" id="continueToInfoBtn" disabled>Continue</button>
+                        <div class="button-group">
+                            <button type="button" class="btn-secondary btn-back" onclick="cleanupAndGoBack()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                                </svg>
+                                Back
+                            </button>
+                            <button type="button" class="btn-primary" id="continueToInfoBtn" disabled>Continue</button>
+                        </div>
                     </div>
                 </div>
 
@@ -1039,7 +1108,16 @@
                             {% endfor %}
                         </div>
 
-                        <button type="button" class="btn-primary" id="startExamBtn">Start Exam</button>
+                        <div class="button-group">
+                            <button type="button" class="btn-secondary btn-back" onclick="goToStep(2)">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                                </svg>
+                                Back
+                            </button>
+                            <button type="button" class="btn-primary" id="startExamBtn">Start Exam</button>
+                        </div>
                     </div>
                 </div>
 
@@ -1134,8 +1212,99 @@
             currentStep = step;
             slidesContainer.setAttribute('data-step', step);
         }
+        window.goToStep = goToStep; // Expose to global scope for inline onclick handlers
 
-        // ===== Step 1: Login (Google OAuth) =====
+        // Cleanup function when going back from Step 2 to Step 1
+        async function cleanupAndGoBack() {
+            console.log('[HPE-PROCTOR] Cleaning up before going back...');
+
+            // 1. Stop camera stream
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => {
+                    track.stop();
+                    console.log('[HPE-PROCTOR] Camera track stopped');
+                });
+                mediaStream = null;
+            }
+
+            // 2. Hide video preview
+            const videoPreview = document.getElementById('videoPreview');
+            if (videoPreview) {
+                videoPreview.classList.remove('show');
+            }
+            const cameraPreview = document.getElementById('cameraPreview');
+            if (cameraPreview) {
+                cameraPreview.srcObject = null;
+            }
+
+            // 3. Close WebSocket connection
+            if (window.proctorSocket) {
+                window.proctorSocket.close();
+                window.proctorSocket = null;
+                console.log('[HPE-PROCTOR] WebSocket closed');
+            }
+
+            // 4. Delete temp session from backend
+            if (validatedSessionId && HPE_BACKEND_CONNECT) {
+                try {
+                    const response = await fetch(`${PROCTOR_API_URL}/delete-temp-session/${validatedSessionId}`, {
+                        method: 'DELETE',
+                        headers: { 'ngrok-skip-browser-warning': 'true' }
+                    });
+                    console.log('[HPE-PROCTOR] Temp session deleted:', validatedSessionId);
+                } catch (err) {
+                    console.warn('[HPE-PROCTOR] Failed to delete temp session:', err);
+                }
+                validatedSessionId = null;
+            }
+
+            // 5. Reset check states
+            checks.camera = false;
+            checks.fullscreen = false;
+            checks.internet = false;
+
+            // 6. Reset button states
+            const btnCamera = document.getElementById('btn-camera');
+            const btnFullscreen = document.getElementById('btn-fullscreen');
+            const btnInternet = document.getElementById('btn-internet');
+            const continueBtn = document.getElementById('continueToInfoBtn');
+
+            if (btnCamera) {
+                btnCamera.classList.remove('success', 'error');
+                btnCamera.textContent = 'Enable';
+                btnCamera.disabled = false;
+            }
+            if (btnFullscreen) {
+                btnFullscreen.classList.remove('success', 'error');
+                btnFullscreen.textContent = 'Enable';
+                btnFullscreen.disabled = false;
+            }
+            if (btnInternet) {
+                btnInternet.classList.remove('success', 'error');
+                btnInternet.textContent = 'Check';
+                btnInternet.disabled = false;
+            }
+            if (continueBtn) {
+                continueBtn.disabled = true;
+            }
+
+            // 7. Reset check item visual states
+            ['check-camera', 'check-fullscreen', 'check-internet'].forEach(id => {
+                const item = document.getElementById(id);
+                if (item) {
+                    item.classList.remove('checking', 'success', 'error');
+                }
+            });
+
+            // 8. Exit fullscreen if active
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(err => console.log('Exit fullscreen error:', err));
+            }
+
+            console.log('[HPE-PROCTOR] Cleanup complete, going to step 1');
+            goToStep(1);
+        }
+        window.cleanupAndGoBack = cleanupAndGoBack; // Expose to global scope
         const continueAfterLoginBtn = document.getElementById('continueAfterLogin');
         const loginError = document.getElementById('loginError');
 
@@ -2406,10 +2575,8 @@
             return cookieValue;
         }
 
-        // Handle already logged in user
-        {% if request.user.is_authenticated and not error %}
-        goToStep(2);
-        {% endif %}
+        // Always show step 1 - user will click continue to proceed
+        // (removed auto-skip for logged-in users)
         }) ();
     </script>
 </body>
