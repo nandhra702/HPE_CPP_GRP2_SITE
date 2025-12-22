@@ -5,19 +5,296 @@
 {{ block.super }}
 {% if original %}
 <li>
-    <a href="{% url 'hpe_admin:hpe_contest_send_invites' original.pk %}" class="historylink">{% trans "Send Invites"
-        %}</a>
+    <button type="button" id="send-invites-btn" class="historylink"
+        style="background: #417690; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 4px;">
+        {% trans "Send Invites" %}
+    </button>
 </li>
 {% endif %}
 {% endblock %}
 
 {% block extrahead %}
 {{ block.super }}
+<style>
+    /* Send Invites Modal Styles */
+    .send-invites-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .send-invites-overlay.active {
+        display: flex;
+    }
+
+    .send-invites-modal {
+        background: white;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 600px;
+        max-height: 80vh;
+        overflow: hidden;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .send-invites-header {
+        background: #417690;
+        color: white;
+        padding: 16px 20px;
+        font-size: 18px;
+        font-weight: bold;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .send-invites-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+    }
+
+    .send-invites-close:hover {
+        opacity: 0.8;
+    }
+
+    .send-invites-body {
+        padding: 20px;
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+
+    .send-invites-loading {
+        text-align: center;
+        padding: 40px;
+    }
+
+    .send-invites-loading .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #e0e0e0;
+        border-top-color: #417690;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .send-invites-section {
+        margin-bottom: 16px;
+    }
+
+    .send-invites-section-title {
+        font-weight: bold;
+        margin-bottom: 8px;
+        padding: 8px 12px;
+        border-radius: 4px;
+    }
+
+    .section-success .send-invites-section-title {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .section-failed .send-invites-section-title {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .section-skipped .send-invites-section-title {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .send-invites-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .send-invites-list li {
+        padding: 8px 12px;
+        border-bottom: 1px solid #eee;
+        font-size: 14px;
+    }
+
+    .send-invites-list li:last-child {
+        border-bottom: none;
+    }
+
+    .email-reason {
+        color: #666;
+        font-size: 12px;
+        margin-top: 4px;
+    }
+
+    .send-invites-summary {
+        background: #f8f9fa;
+        padding: 12px;
+        border-radius: 4px;
+        margin-bottom: 16px;
+        text-align: center;
+    }
+
+    .send-invites-summary span {
+        margin: 0 12px;
+    }
+
+    .count-success {
+        color: #28a745;
+        font-weight: bold;
+    }
+
+    .count-failed {
+        color: #dc3545;
+        font-weight: bold;
+    }
+
+    .count-skipped {
+        color: #ffc107;
+        font-weight: bold;
+    }
+</style>
+
+<!-- Send Invites Modal -->
+<div id="send-invites-overlay" class="send-invites-overlay">
+    <div class="send-invites-modal">
+        <div class="send-invites-header">
+            <span>{% trans "Send Invites Results" %}</span>
+            <button type="button" class="send-invites-close" id="send-invites-close">&times;</button>
+        </div>
+        <div class="send-invites-body" id="send-invites-body">
+            <div class="send-invites-loading">
+                <div class="spinner"></div>
+                <p>{% trans "Sending invites, please wait..." %}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     (function () {
         // Wait for DOM to be ready
         document.addEventListener('DOMContentLoaded', function () {
             console.log("HPE Admin CSV Script Loaded!");
+
+            // Send Invites Button Handler
+            var sendInvitesBtn = document.getElementById('send-invites-btn');
+            var overlay = document.getElementById('send-invites-overlay');
+            var closeBtn = document.getElementById('send-invites-close');
+            var body = document.getElementById('send-invites-body');
+
+            if (sendInvitesBtn) {
+                sendInvitesBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+
+                    // Show modal with loading state
+                    overlay.classList.add('active');
+                    body.innerHTML = '<div class="send-invites-loading"><div class="spinner"></div><p>Sending invites, please wait...</p></div>';
+
+                    // Get CSRF token
+                    var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+
+                    // Make AJAX request
+                    var url = "{% url 'hpe_admin:hpe_contest_send_invites' original.pk %}";
+
+                    fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        credentials: 'same-origin'
+                    })
+                        .then(function (response) {
+                            return response.json();
+                        })
+                        .then(function (data) {
+                            var html = '';
+
+                            // Summary section
+                            html += '<div class="send-invites-summary">';
+                            html += '<span class="count-success">✓ ' + data.total_sent + ' Sent</span>';
+                            html += '<span class="count-failed">✗ ' + data.total_failed + ' Failed</span>';
+                            html += '<span class="count-skipped">○ ' + data.total_skipped + ' Skipped</span>';
+                            html += '</div>';
+
+                            // Success emails
+                            if (data.success_emails && data.success_emails.length > 0) {
+                                html += '<div class="send-invites-section section-success">';
+                                html += '<div class="send-invites-section-title">✓ Successfully Sent (' + data.success_emails.length + ')</div>';
+                                html += '<ul class="send-invites-list">';
+                                data.success_emails.forEach(function (email) {
+                                    html += '<li>' + email + '</li>';
+                                });
+                                html += '</ul></div>';
+                            }
+
+                            // Failed emails
+                            if (data.failed_emails && data.failed_emails.length > 0) {
+                                html += '<div class="send-invites-section section-failed">';
+                                html += '<div class="send-invites-section-title">✗ Failed to Send (' + data.failed_emails.length + ')</div>';
+                                html += '<ul class="send-invites-list">';
+                                data.failed_emails.forEach(function (item) {
+                                    html += '<li>' + item.email + '<div class="email-reason">Reason: ' + item.reason + '</div></li>';
+                                });
+                                html += '</ul></div>';
+                            }
+
+                            // Skipped emails
+                            if (data.skipped_emails && data.skipped_emails.length > 0) {
+                                html += '<div class="send-invites-section section-skipped">';
+                                html += '<div class="send-invites-section-title">○ Skipped (' + data.skipped_emails.length + ')</div>';
+                                html += '<ul class="send-invites-list">';
+                                data.skipped_emails.forEach(function (item) {
+                                    html += '<li>' + item.username + '<div class="email-reason">Reason: ' + item.reason + '</div></li>';
+                                });
+                                html += '</ul></div>';
+                            }
+
+                            // If nothing happened
+                            if (data.total_sent === 0 && data.total_failed === 0 && data.total_skipped === 0) {
+                                html = '<div style="text-align:center; padding: 20px; color: #666;">No participants to send invites to.</div>';
+                            }
+
+                            body.innerHTML = html;
+                        })
+                        .catch(function (error) {
+                            body.innerHTML = '<div style="text-align:center; padding: 20px; color: #dc3545;">Error: ' + error.message + '</div>';
+                        });
+                });
+            }
+
+            // Close modal
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function () {
+                    overlay.classList.remove('active');
+                });
+            }
+
+            // Close on overlay click
+            if (overlay) {
+                overlay.addEventListener('click', function (e) {
+                    if (e.target === overlay) {
+                        overlay.classList.remove('active');
+                    }
+                });
+            }
 
             var csvInput = document.getElementById('id_participants_csv');
             if (!csvInput) {

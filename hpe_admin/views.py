@@ -252,77 +252,12 @@ class HPEContestAccessMixin(LoginRequiredMixin):
         return context
 
 class HPEContestView(HPEContestAccessMixin, DetailView):
-    # This is the old portal, keeping for backward compat or redirection?
-    # Actually, user wants the NEW flow.
-    # Let's redirect this to Check View if it's the entry point.
+    # This is the old portal entry point
+    # We redirect to the new landing page flow
     def get(self, request, *args, **kwargs):
-        return redirect('hpe_contest_check', contest_key=self.contest.key)
+        return redirect('hpe_contest_landing', contest_key=self.contest.key)
 
-class HPEContestCheckView(HPEContestAccessMixin, DetailView):
-    template_name = 'hpe_admin/system_check.html'
-    
-    def get_object(self, queryset=None):
-        return self.contest
 
-class HPEContestIntroView(HPEContestAccessMixin, DetailView):
-    template_name = 'hpe_admin/instructions.html'
-    
-    def get_object(self, queryset=None):
-        return self.contest
-
-class HPEContestExamView(HPEContestAccessMixin, DetailView):
-    template_name = 'hpe_admin/exam_dashboard.html'
-    
-    def get_object(self, queryset=None):
-        return self.contest
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        # Add DMOJ data for proctoring
-        context['dmoj_data'] = {
-            'userId': self.request.user.id,
-            'username': self.request.user.username,
-            'contestName': self.contest.name,
-            'contestKey': self.contest.key,
-            # 'disableBackend': True, # Uncomment for testing without backend
-        }
-        
-        # Get filtered problems/MCQs based on randomization
-        participation = ContestParticipation.objects.filter(
-            contest=self.contest,
-            user=self.request.user.profile,
-            virtual=ContestParticipation.LIVE
-        ).first()
-        
-        # Get problem/MCQ IDs from participation format_data (if randomization applied)
-        selected_problem_ids = None
-        selected_mcq_ids = None
-        if participation and participation.format_data:
-            selected_problem_ids = participation.format_data.get('selected_problems')
-            selected_mcq_ids = participation.format_data.get('selected_mcqs')
-        
-        # Filter contest problems
-        contest_problems = self.contest.contest_problems.select_related('problem').order_by('order')
-        if selected_problem_ids is not None:
-            contest_problems = contest_problems.filter(problem_id__in=selected_problem_ids)
-        context['filtered_contest_problems'] = list(contest_problems)
-        
-        # Filter contest MCQs
-        contest_mcqs = self.contest.contest_mcqs.select_related('mcq_question').order_by('order')
-        if selected_mcq_ids is not None:
-            contest_mcqs = contest_mcqs.filter(mcq_question_id__in=selected_mcq_ids)
-        context['filtered_contest_mcqs'] = list(contest_mcqs)
-        
-        # Also provide problem codes list for JS
-        context['problem_codes'] = [cp.problem.code for cp in context['filtered_contest_problems']]
-        
-        # Add participation-aware end time for the timer (considers time_limit)
-        if participation:
-            context['exam_end_time'] = participation.end_time.isoformat() if participation.end_time else self.contest.end_time.isoformat()
-        else:
-            context['exam_end_time'] = self.contest.end_time.isoformat()
-        
-        return context
 
 
 class HPEExamContentView(HPEContestAccessMixin, View):

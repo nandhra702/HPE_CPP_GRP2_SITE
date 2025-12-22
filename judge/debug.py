@@ -13,7 +13,7 @@ HPE_CONTEST_BACKEND_CONNECT = True  # Set to True to enable backend connection, 
 GENERAL_CONTEST_DEBUG = True  # General contest debugging features
 
 # Code editor security settings
-DISABLE_COPY_PASTE_BLOCKING =True # Set to True to disable copy/paste blocking in code editor (for testing)
+DISABLE_COPY_PASTE_BLOCKING =False # Set to True to disable copy/paste blocking in code editor (for testing)
 
 # You can easily disable all debug features by setting this to False
 MASTER_DEBUG_ENABLED = True

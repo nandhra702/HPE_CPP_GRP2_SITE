@@ -9,9 +9,8 @@ urlpatterns = [
     path('contest/<str:contest_key>/logout/', views.HPEContestLogoutView.as_view(), name='hpe_contest_logout'),
 
     # New Pipeline Steps
-    path('contest/<str:contest_key>/check/', views.HPEContestCheckView.as_view(), name='hpe_contest_check'),
-    path('contest/<str:contest_key>/intro/', views.HPEContestIntroView.as_view(), name='hpe_contest_intro'),
-    path('contest/<str:contest_key>/exam/', views.HPEContestExamView.as_view(), name='hpe_contest_exam'),
+
+
     # Exam content for SPA loading (returns HTML fragment)
     path('contest/<str:contest_key>/exam/content/', views.HPEExamContentView.as_view(), name='hpe_exam_content'),
     # AJAX Content
