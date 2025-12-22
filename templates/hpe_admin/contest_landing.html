@@ -241,6 +241,122 @@
             cursor: not-allowed;
         }
 
+        /* Google OAuth Button */
+        .btn-google {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            padding: 14px 24px;
+            background: white;
+            border: 2px solid #dadce0;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #3c4043;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 0.5rem;
+        }
+
+        .btn-google:hover {
+            background: #f8f9fa;
+            border-color: #d2e3fc;
+            box-shadow: 0 2px 8px rgba(66, 133, 244, 0.2);
+        }
+
+        .google-icon-svg {
+            flex-shrink: 0;
+        }
+
+        /* Authenticated User Status */
+        .auth-status {
+            text-align: center;
+            padding: 2rem;
+            border-radius: 12px;
+            background: #f0fdf4;
+            border: 2px solid #22c55e;
+        }
+
+        .auth-status .auth-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 28px;
+            color: white;
+        }
+
+        .auth-status p {
+            color: #374151;
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .oauth-hint {
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.85rem;
+            margin-top: 1.5rem;
+        }
+
+        /* Error Status */
+        .auth-status.error-status {
+            background: #fef2f2;
+            border-color: #ef4444;
+        }
+
+        .auth-status .auth-icon.error {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .auth-status .error-detail {
+            color: #dc2626;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .auth-status .error-hint {
+            color: #6b7280;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn-switch-account {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: transparent;
+            border: 2px solid #6b7280;
+            border-radius: 8px;
+            color: #374151;
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 0.5rem;
+        }
+
+        .btn-switch-account:hover {
+            background: #f3f4f6;
+            border-color: #374151;
+            color: #1f2937;
+        }
+
+        .btn-switch-account svg {
+            flex-shrink: 0;
+        }
+
+
+
         .error-message {
             color: #dc2626;
             font-size: 0.875rem;
@@ -784,30 +900,60 @@
                     <div class="slide-content">
                         <div class="form-header">
                             <h2>Sign In to Continue</h2>
-                            <p>Enter your credentials to access the contest</p>
+                            <p>Use your Google account to access the contest</p>
                         </div>
 
-                        <form id="loginForm">
-                            <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                        {% if request.user.is_authenticated %}
+                        {% if error %}
+                        <!-- User logged in but doesn't have permission -->
+                        <div class="auth-status error-status">
+                            <div class="auth-icon error">🚫</div>
+                            <p><strong>Access Denied</strong></p>
+                            <p class="error-detail">{{ error }}</p>
+                            <p class="error-hint">Make sure you're using the Google account that received the contest
+                                invitation.</p>
+                            <a href="/hpe/contest/{{ contest.key }}/logout/" class="btn-switch-account">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" />
+                                </svg>
+                                Login with different account
+                            </a>
+                        </div>
+                        {% else %}
+                        <!-- User is logged in and has permission -->
+                        <div class="auth-status success">
+                            <div class="auth-icon">✓</div>
+                            <p>Signed in as <strong>{{ request.user.username }}</strong></p>
+                            <button type="button" class="btn-primary" id="continueAfterLogin">Continue to
+                                Permissions</button>
+                        </div>
+                        {% endif %}
+                        {% else %}
+                        <!-- Google OAuth Sign-In Button -->
+                        <a href="/login/google-oauth2/?next={{ request.path }}" class="btn-google" id="googleSignInBtn">
+                            <svg class="google-icon-svg" viewBox="0 0 24 24" width="24" height="24">
+                                <path fill="#4285F4"
+                                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                <path fill="#34A853"
+                                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                <path fill="#FBBC05"
+                                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                <path fill="#EA4335"
+                                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                            </svg>
+                            <span>Sign in with Google</span>
+                        </a>
 
-                            <div class="form-group">
-                                <label for="id_username">Username</label>
-                                <input type="text" name="username" id="id_username" required autofocus
-                                    placeholder="Enter your username">
-                            </div>
+                        <div class="error-message" id="loginError" style="display: none;"></div>
 
-                            <div class="form-group">
-                                <label for="id_password">Password</label>
-                                <input type="password" name="password" id="id_password" required
-                                    placeholder="Enter your password">
-                            </div>
-
-                            <button type="submit" class="btn-primary" id="loginBtn">Continue</button>
-
-                            <div class="error-message" id="loginError" style="display: none;"></div>
-                        </form>
+                        <p class="oauth-hint">
+                            Use the Google account associated with your contest invitation email.
+                        </p>
+                        {% endif %}
                     </div>
                 </div>
+
 
                 <!-- Step 2: Permission Checks -->
                 <div class="slide" id="step-permissions">
@@ -989,44 +1135,26 @@
             slidesContainer.setAttribute('data-step', step);
         }
 
-        // ===== Step 1: Login =====
-        const loginForm = document.getElementById('loginForm');
-        const loginBtn = document.getElementById('loginBtn');
+        // ===== Step 1: Login (Google OAuth) =====
+        const continueAfterLoginBtn = document.getElementById('continueAfterLogin');
         const loginError = document.getElementById('loginError');
 
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            loginBtn.disabled = true;
-            loginBtn.innerHTML = '<span class="spinner"></span> Signing in...';
-            loginError.style.display = 'none';
+        // If user is already authenticated, handle the continue button
+        if (continueAfterLoginBtn) {
+            continueAfterLoginBtn.addEventListener('click', () => {
+                goToStep(2);
+            });
+        }
 
-            const formData = new FormData(loginForm);
-
-            try {
-                const response = await fetch(window.location.href, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    goToStep(2);
-                } else {
-                    loginError.textContent = data.error || 'Login failed. Please try again.';
-                    loginError.style.display = 'block';
-                }
-            } catch (err) {
-                loginError.textContent = 'An error occurred. Please try again.';
+        // Check URL for OAuth error (in case Google auth failed or user not permitted)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('error')) {
+            if (loginError) {
+                loginError.textContent = decodeURIComponent(urlParams.get('error'));
                 loginError.style.display = 'block';
             }
+        }
 
-            loginBtn.disabled = false;
-            loginBtn.innerHTML = 'Continue';
-        });
 
         // ===== Step 2: Permission Checks =====
         const btnCamera = document.getElementById('btn-camera');
@@ -1875,11 +2003,11 @@
                                         'X-Requested-With': 'XMLHttpRequest'
                                     }
                                 });
-                                
+
                                 if (submissionsResponse.ok) {
                                     const submissionsData = await submissionsResponse.json();
                                     console.log('[HPE-PROCTOR] Fetched submissions:', submissionsData);
-                                    
+
                                     // Prepare payload for Proctor backend (3NF schema)
                                     const proctorPayload = {
                                         session_id: proctoringSessionId,
@@ -1891,7 +2019,7 @@
                                         format_data: submissionsData.format_data || {},
                                         submissions: submissionsData.submissions || []
                                     };
-                                    
+
                                     // Send to Proctor backend
                                     const proctorResponse = await fetch(`${PROCTOR_API_URL}/submit-contest-results`, {
                                         method: 'POST',
@@ -1901,7 +2029,7 @@
                                         },
                                         body: JSON.stringify(proctorPayload)
                                     });
-                                    
+
                                     const proctorResult = await proctorResponse.json();
                                     console.log('[HPE-PROCTOR] Contest results sent to Proctor:', proctorResult);
                                 } else {

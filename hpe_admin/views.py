@@ -1,6 +1,6 @@
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.views.generic import DetailView, TemplateView
 from django.views import View
 from django.shortcuts import get_object_or_404, redirect, render
@@ -212,6 +212,15 @@ class HPEContestLoginView(auth_views.LoginView):
             return url
         # Fallback to main site home if no next URL is provided to prevent redirection loop
         return '/'
+
+
+class HPEContestLogoutView(View):
+    """Seamless logout that redirects back to contest landing without showing DMOJ logout page."""
+    
+    def get(self, request, contest_key):
+        logout(request)
+        return redirect('hpe_contest_landing', contest_key=contest_key)
+
 
 class HPEContestAccessMixin(LoginRequiredMixin):
     login_url = reverse_lazy('hpe_contest_login')
@@ -866,6 +875,13 @@ class HPEContestSubmissionsView(HPEContestAccessMixin, View):
                 'dmoj_submission_id': cs.submission.id,
                 'points': float(cs.points) if cs.points else 0.0,
             })
+        
+        # Recompute results to ensure MCQ scores are up-to-date
+        # This is important because this endpoint is called BEFORE /leave/
+        participation.recompute_results()
+        
+        # Refresh participation from DB to get updated scores
+        participation.refresh_from_db()
         
         # Get participation scores
         format_data = participation.format_data or {}

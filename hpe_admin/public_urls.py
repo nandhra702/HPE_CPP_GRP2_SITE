@@ -5,6 +5,8 @@ urlpatterns = [
     path('login/', views.HPEContestLoginView.as_view(), name='hpe_contest_login'),
     # Landing page with inline login
     path('contest/<str:contest_key>/', views.HPEContestLandingView.as_view(), name='hpe_contest_landing'),
+    # Seamless logout (for account switching)
+    path('contest/<str:contest_key>/logout/', views.HPEContestLogoutView.as_view(), name='hpe_contest_logout'),
 
     # New Pipeline Steps
     path('contest/<str:contest_key>/check/', views.HPEContestCheckView.as_view(), name='hpe_contest_check'),

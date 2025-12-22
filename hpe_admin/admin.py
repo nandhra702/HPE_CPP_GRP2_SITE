@@ -221,24 +221,21 @@ class HPEContestAdmin(ContestAdmin):
             user = profile.user
             if not user.email: continue
             
-            # Reset Password
-            new_password = get_random_string(12)
-            user.set_password(new_password)
-            user.save()
+            # No password generation - using Google OAuth instead
             
-            # Send Email
-            contest_url = request.build_absolute_uri(reverse('hpe_contest_view', args=[contest.key]))
+            # Send Email with Google Sign-In instructions
+            contest_url = request.build_absolute_uri(reverse('hpe_contest_landing', args=[contest.key]))
             subject = f"Invitation to {contest.name}"
             message = f"""
 Hello {user.username},
 
 You have been invited to participate in the contest "{contest.name}".
 
-Link: {contest_url}
-Username: {user.username}
-Password: {new_password}
+To access the contest, please visit the link below and sign in with your Google account:
 
-Please log in using the credentials above.
+Contest Link: {contest_url}
+
+Make sure to use your Google account associated with this email address ({user.email}).
 
 Good luck!
             """
@@ -253,6 +250,7 @@ Good luck!
             messages.warning(request, f"Failed to send to {len(failed_emails)} participants: <br>" + "<br>".join(failed_emails))
             
         return redirect('hpe_admin:judge_contest_change', contest_id)
+
 
 
 class HPEProblemAdmin(ProblemAdmin):
