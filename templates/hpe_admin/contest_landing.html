@@ -1217,6 +1217,7 @@
 
     {% include "hpe_admin/proctor/tab_monitor.html" %}
     {% include "hpe_admin/proctor/video_utils.html" %}
+    {% include "hpe_admin/hpe_clipboard_guard.html" %}
 
     <script>
         (function () {
@@ -1228,6 +1229,7 @@
             const PROCTOR_API_URL = "http://127.0.0.1:8001";
             const HPE_BACKEND_CONNECT = {{ hpe_backend_connect| lower
         }};  // Toggle from debug.py
+        const ALLOW_COPY_PASTE = {{ allow_copy_paste| lower }};  // Toggle from debug.py
         let proctoringSessionId = null;
         let validatedSessionId = null;  // Stores session ID from connection validation
         let videoManager = null;
@@ -1733,6 +1735,11 @@
                 showPrintMargin: false,
                 highlightActiveLine: true
             });
+
+            // Initialize clipboard guard to prevent external copy-paste
+            if (window.HPEClipboardGuard) {
+                window.HPEClipboardGuard.initialize(window.editor, ALLOW_COPY_PASTE);
+            }
 
             // Initialize proctoring with existing stream
             initProctoringWithStream(stream);

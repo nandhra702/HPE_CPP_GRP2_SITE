@@ -9,7 +9,7 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404
 
 from judge.models import Contest, ContestParticipation
-from judge.debug import get_hpe_contest_backend_connect
+from judge.debug import get_hpe_contest_backend_connect, get_allow_copy_paste
 from judge.views.contests import _handle_contest_randomization
 
 
@@ -122,6 +122,7 @@ class HPEContestLandingView(View):
             'questions': all_questions,
             'total_points': total_points,
             'hpe_backend_connect': get_hpe_contest_backend_connect(),
+            'allow_copy_paste': get_allow_copy_paste(),
         }
 
     
@@ -310,6 +311,7 @@ class HPEExamContentView(HPEContestAccessMixin, View):
             'dmoj_data': dmoj_data,
             'request': request,
             'hpe_backend_connect': get_hpe_contest_backend_connect(),
+            'allow_copy_paste': get_allow_copy_paste(),
             'filtered_contest_problems': list(contest_problems),
             'filtered_contest_mcqs': list(contest_mcqs),
             'problem_codes': [cp.problem.code for cp in contest_problems],
