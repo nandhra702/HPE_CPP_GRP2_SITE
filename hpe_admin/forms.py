@@ -2,12 +2,114 @@ from django import forms
 from django.core.validators import FileExtensionValidator
 from django.utils.translation import gettext_lazy as _
 from django.utils.safestring import mark_safe
+from datetime import timedelta
 import json
 from judge.admin.contest import ContestForm, DashboardButtonWidget
 from judge.admin.problem import ProblemForm
 from judge.admin.mcq import MCQQuestionForm
 from judge.models import Profile, Problem, Language
 from judge.widgets import AdminHeavySelect2MultipleWidget, AdminSelect2MultipleWidget, AdminHeavySelect2Widget, CheckboxSelectMultipleWithSelectAll
+
+
+class DurationDropdownWidget(forms.Widget):
+    """
+    A custom widget that displays three dropdowns for Hours, Minutes, and Seconds
+    to input a duration value in a user-friendly way.
+    """
+    template_name = 'django/forms/widgets/text.html'  # Fallback, we override render()
+    
+    def __init__(self, attrs=None, max_hours=24):
+        super().__init__(attrs)
+        self.max_hours = max_hours
+    
+    def render(self, name, value, attrs=None, renderer=None):
+        # Parse the current value (timedelta or string)
+        hours, minutes, seconds = 0, 0, 0
+        
+        if value:
+            if isinstance(value, timedelta):
+                total_seconds = int(value.total_seconds())
+                hours = total_seconds // 3600
+                minutes = (total_seconds % 3600) // 60
+                seconds = total_seconds % 60
+            elif isinstance(value, str) and value:
+                # Try to parse string formats like "HH:MM:SS" or just seconds
+                try:
+                    parts = value.split(':')
+                    if len(parts) == 3:
+                        hours, minutes, seconds = int(parts[0]), int(parts[1]), int(parts[2])
+                    elif len(parts) == 2:
+                        hours, minutes = 0, int(parts[0])
+                        seconds = int(parts[1])
+                    else:
+                        # Assume it's just seconds
+                        total_seconds = int(float(value))
+                        hours = total_seconds // 3600
+                        minutes = (total_seconds % 3600) // 60
+                        seconds = total_seconds % 60
+                except (ValueError, TypeError):
+                    pass
+        
+        # Build the hours dropdown
+        hours_options = ''.join(
+            f'<option value="{h}"{" selected" if h == hours else ""}>{h:02d}</option>'
+            for h in range(self.max_hours + 1)
+        )
+        
+        # Build the minutes dropdown
+        minutes_options = ''.join(
+            f'<option value="{m}"{" selected" if m == minutes else ""}>{m:02d}</option>'
+            for m in range(60)
+        )
+        
+        # Build the seconds dropdown
+        seconds_options = ''.join(
+            f'<option value="{s}"{" selected" if s == seconds else ""}>{s:02d}</option>'
+            for s in range(60)
+        )
+        
+        html = f'''
+        <div class="duration-dropdown-widget" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <label style="font-size: 11px; color: #666; margin-bottom: 3px;">Hours</label>
+                <select name="{name}_hours" id="id_{name}_hours" class="duration-dropdown" style="padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; min-width: 70px;">
+                    {hours_options}
+                </select>
+            </div>
+            <span style="font-size: 18px; font-weight: bold; margin-top: 18px;">:</span>
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <label style="font-size: 11px; color: #666; margin-bottom: 3px;">Minutes</label>
+                <select name="{name}_minutes" id="id_{name}_minutes" class="duration-dropdown" style="padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; min-width: 70px;">
+                    {minutes_options}
+                </select>
+            </div>
+            <span style="font-size: 18px; font-weight: bold; margin-top: 18px;">:</span>
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <label style="font-size: 11px; color: #666; margin-bottom: 3px;">Seconds</label>
+                <select name="{name}_seconds" id="id_{name}_seconds" class="duration-dropdown" style="padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; min-width: 70px;">
+                    {seconds_options}
+                </select>
+            </div>
+        </div>
+        '''
+        return mark_safe(html)
+    
+    def value_from_datadict(self, data, files, name):
+        """Convert the three dropdown values back to a timedelta-compatible string."""
+        try:
+            hours = int(data.get(f'{name}_hours', 0) or 0)
+            minutes = int(data.get(f'{name}_minutes', 0) or 0)
+            seconds = int(data.get(f'{name}_seconds', 0) or 0)
+            
+            # Return None if all values are 0 (no time limit)
+            if hours == 0 and minutes == 0 and seconds == 0:
+                return None
+            
+            # Return as HH:MM:SS format for DurationField to parse
+            return f'{hours}:{minutes:02d}:{seconds:02d}'
+        except (ValueError, TypeError):
+            return None
+
 
 class ContestParticipantUploadForm(forms.Form):
     participants_csv = forms.FileField(
@@ -44,6 +146,11 @@ class HPEContestForm(ContestForm):
         # Call ModelForm.__init__ directly
         super(ContestForm, self).__init__(*args, **kwargs)
         
+        # Apply custom duration dropdown widget for time_limit field
+        if 'time_limit' in self.fields:
+            self.fields['time_limit'].widget = DurationDropdownWidget(max_hours=48)
+            self.fields['time_limit'].help_text = _('Select the contest duration using the dropdowns above. Leave all at 00 for no time limit.')
+        
         # Re-implement necessary logic from ContestForm.__init__
         if self.instance and self.instance.pk:
             # Load existing selections
@@ -75,6 +182,7 @@ class HPEContestForm(ContestForm):
             self.fields['contest_problems_json'].initial = json.dumps(p_data)
             self.fields['contest_mcqs_json'].initial = json.dumps(m_data)
             self.fields['contest_randomization_json'].initial = json.dumps(self.instance.randomization_config)
+
 
     def clean(self):
         # Skip ContestForm.clean which expects 'banned_users'

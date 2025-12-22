@@ -1,6 +1,6 @@
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.views.generic import DetailView, TemplateView
 from django.views import View
 from django.shortcuts import get_object_or_404, redirect, render
@@ -9,7 +9,7 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404
 
 from judge.models import Contest, ContestParticipation
-from judge.debug import get_hpe_contest_backend_connect
+from judge.debug import get_hpe_contest_backend_connect, get_allow_copy_paste
 from judge.views.contests import _handle_contest_randomization
 
 
@@ -122,6 +122,7 @@ class HPEContestLandingView(View):
             'questions': all_questions,
             'total_points': total_points,
             'hpe_backend_connect': get_hpe_contest_backend_connect(),
+            'allow_copy_paste': get_allow_copy_paste(),
         }
 
     
@@ -213,6 +214,15 @@ class HPEContestLoginView(auth_views.LoginView):
         # Fallback to main site home if no next URL is provided to prevent redirection loop
         return '/'
 
+
+class HPEContestLogoutView(View):
+    """Seamless logout that redirects back to contest landing without showing DMOJ logout page."""
+    
+    def get(self, request, contest_key):
+        logout(request)
+        return redirect('hpe_contest_landing', contest_key=contest_key)
+
+
 class HPEContestAccessMixin(LoginRequiredMixin):
     login_url = reverse_lazy('hpe_contest_login')
 
@@ -243,71 +253,12 @@ class HPEContestAccessMixin(LoginRequiredMixin):
         return context
 
 class HPEContestView(HPEContestAccessMixin, DetailView):
-    # This is the old portal, keeping for backward compat or redirection?
-    # Actually, user wants the NEW flow.
-    # Let's redirect this to Check View if it's the entry point.
+    # This is the old portal entry point
+    # We redirect to the new landing page flow
     def get(self, request, *args, **kwargs):
-        return redirect('hpe_contest_check', contest_key=self.contest.key)
+        return redirect('hpe_contest_landing', contest_key=self.contest.key)
 
-class HPEContestCheckView(HPEContestAccessMixin, DetailView):
-    template_name = 'hpe_admin/system_check.html'
-    
-    def get_object(self, queryset=None):
-        return self.contest
 
-class HPEContestIntroView(HPEContestAccessMixin, DetailView):
-    template_name = 'hpe_admin/instructions.html'
-    
-    def get_object(self, queryset=None):
-        return self.contest
-
-class HPEContestExamView(HPEContestAccessMixin, DetailView):
-    template_name = 'hpe_admin/exam_dashboard.html'
-    
-    def get_object(self, queryset=None):
-        return self.contest
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        # Add DMOJ data for proctoring
-        context['dmoj_data'] = {
-            'userId': self.request.user.id,
-            'username': self.request.user.username,
-            'contestName': self.contest.name,
-            'contestKey': self.contest.key,
-            # 'disableBackend': True, # Uncomment for testing without backend
-        }
-        
-        # Get filtered problems/MCQs based on randomization
-        participation = ContestParticipation.objects.filter(
-            contest=self.contest,
-            user=self.request.user.profile,
-            virtual=ContestParticipation.LIVE
-        ).first()
-        
-        # Get problem/MCQ IDs from participation format_data (if randomization applied)
-        selected_problem_ids = None
-        selected_mcq_ids = None
-        if participation and participation.format_data:
-            selected_problem_ids = participation.format_data.get('selected_problems')
-            selected_mcq_ids = participation.format_data.get('selected_mcqs')
-        
-        # Filter contest problems
-        contest_problems = self.contest.contest_problems.select_related('problem').order_by('order')
-        if selected_problem_ids is not None:
-            contest_problems = contest_problems.filter(problem_id__in=selected_problem_ids)
-        context['filtered_contest_problems'] = list(contest_problems)
-        
-        # Filter contest MCQs
-        contest_mcqs = self.contest.contest_mcqs.select_related('mcq_question').order_by('order')
-        if selected_mcq_ids is not None:
-            contest_mcqs = contest_mcqs.filter(mcq_question_id__in=selected_mcq_ids)
-        context['filtered_contest_mcqs'] = list(contest_mcqs)
-        
-        # Also provide problem codes list for JS
-        context['problem_codes'] = [cp.problem.code for cp in context['filtered_contest_problems']]
-        
-        return context
 
 
 class HPEExamContentView(HPEContestAccessMixin, View):
@@ -348,14 +299,23 @@ class HPEExamContentView(HPEContestAccessMixin, View):
         if selected_mcq_ids is not None:
             contest_mcqs = contest_mcqs.filter(mcq_question_id__in=selected_mcq_ids)
         
+        # Calculate the correct end time - use participation.end_time if available
+        # This correctly handles time_limit for user's personal contest end time
+        if participation:
+            exam_end_time = participation.end_time.isoformat() if participation.end_time else self.contest.end_time.isoformat()
+        else:
+            exam_end_time = self.contest.end_time.isoformat()
+        
         context = {
             'contest': self.contest,
             'dmoj_data': dmoj_data,
             'request': request,
             'hpe_backend_connect': get_hpe_contest_backend_connect(),
+            'allow_copy_paste': get_allow_copy_paste(),
             'filtered_contest_problems': list(contest_problems),
             'filtered_contest_mcqs': list(contest_mcqs),
             'problem_codes': [cp.problem.code for cp in contest_problems],
+            'exam_end_time': exam_end_time,  # Add participation-aware end time
         }
         
         html = render_to_string('hpe_admin/exam_content.html', context, request=request)
@@ -363,6 +323,7 @@ class HPEExamContentView(HPEContestAccessMixin, View):
             'success': True,
             'html': html,
             'dmoj_data': dmoj_data,
+            'exam_end_time': exam_end_time,  # Also return in JSON for JS to use
         })
 
 
@@ -809,4 +770,83 @@ class HPEContestLeaveView(HPEContestAccessMixin, View):
         return JsonResponse({
             'success': True,
             'message': 'Contest submitted successfully.'
+        })
+
+
+class HPEContestSubmissionsView(HPEContestAccessMixin, View):
+    """Get all submissions for the current user in this contest.
+    Returns source code and scores for sending to Proctor backend.
+    """
+    
+    def get(self, request, *args, **kwargs):
+        from django.http import JsonResponse
+        from judge.models import ContestParticipation, ContestSubmission
+        from judge.models.submission import SubmissionSource
+        
+        contest = self.contest
+        profile = request.user.profile
+        
+        # Get participation
+        try:
+            participation = ContestParticipation.objects.get(
+                contest=contest,
+                user=profile,
+                virtual=ContestParticipation.LIVE
+            )
+        except ContestParticipation.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'No participation found for this contest.'
+            }, status=400)
+        
+        # Get all code submissions for this participation
+        submissions_data = []
+        contest_submissions = ContestSubmission.objects.filter(
+            participation=participation
+        ).select_related('submission__language', 'problem__problem').order_by('-submission__date')
+        
+        # Keep only the latest submission per problem
+        seen_problems = set()
+        for cs in contest_submissions:
+            problem_code = cs.problem.problem.code
+            if problem_code in seen_problems:
+                continue
+            seen_problems.add(problem_code)
+            
+            # Get source code
+            try:
+                source = SubmissionSource.objects.get(submission=cs.submission)
+                source_code = source.source
+            except SubmissionSource.DoesNotExist:
+                source_code = ""
+            
+            submissions_data.append({
+                'problem_code': problem_code,
+                'language': cs.submission.language.key,  # e.g., 'PY3', 'CPP17'
+                'source_code': source_code,
+                'dmoj_submission_id': cs.submission.id,
+                'points': float(cs.points) if cs.points else 0.0,
+            })
+        
+        # Recompute results to ensure MCQ scores are up-to-date
+        # This is important because this endpoint is called BEFORE /leave/
+        participation.recompute_results()
+        
+        # Refresh participation from DB to get updated scores
+        participation.refresh_from_db()
+        
+        # Get participation scores
+        format_data = participation.format_data or {}
+        
+        return JsonResponse({
+            'success': True,
+            'dmoj_user_id': request.user.id,
+            'dmoj_username': request.user.username,
+            'contest_key': contest.key,
+            'contest_name': contest.name,
+            'problem_score': float(participation.problem_score),
+            'mcq_score': float(participation.mcq_score),
+            'total_score': float(participation.score),
+            'format_data': format_data,
+            'submissions': submissions_data
         })

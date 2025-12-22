@@ -55,6 +55,30 @@
         padding-bottom: 10px;
     }
 
+    .column-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .score-input-group {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        margin-left: 10px;
+    }
+
+    .score-input {
+        width: 60px;
+    }
+
+    .score-label {
+        font-size: 11px;
+        color: #666;
+    }
+
     .problem-list {
         list-style: none;
         padding: 0;
@@ -308,21 +332,54 @@
         <div id="regular-browse-view" class="columns-container">
             <!-- Easy Column -->
             <div class="column" id="col-Easy">
-                <h3>{% trans "Easy" %} <input type="checkbox" onchange="toggleSelectAll('Easy', this.checked)"></h3>
+                <h3>
+                    <div class="column-header">
+                        <span>{% trans "Easy" %}</span>
+                        <input type="checkbox" onchange="toggleSelectAll('Easy', this.checked)">
+                        <div class="score-input-group">
+                            <input type="number" id="score-Easy" class="score-input" value="10" min="0"
+                                placeholder="Score" title="Default score for Easy problems"
+                                onchange="updateCategoryScores('Easy')">
+                            <span class="score-label">pts</span>
+                        </div>
+                    </div>
+                </h3>
                 <ul class="problem-list" id="list-Easy"></ul>
                 <div class="pagination" id="pag-Easy"></div>
             </div>
 
             <!-- Medium Column -->
             <div class="column" id="col-Medium">
-                <h3>{% trans "Medium" %} <input type="checkbox" onchange="toggleSelectAll('Medium', this.checked)"></h3>
+                <h3>
+                    <div class="column-header">
+                        <span>{% trans "Medium" %}</span>
+                        <input type="checkbox" onchange="toggleSelectAll('Medium', this.checked)">
+                        <div class="score-input-group">
+                            <input type="number" id="score-Medium" class="score-input" value="20" min="0"
+                                placeholder="Score" title="Default score for Medium problems"
+                                onchange="updateCategoryScores('Medium')">
+                            <span class="score-label">pts</span>
+                        </div>
+                    </div>
+                </h3>
                 <ul class="problem-list" id="list-Medium"></ul>
                 <div class="pagination" id="pag-Medium"></div>
             </div>
 
             <!-- Hard Column -->
             <div class="column" id="col-Hard">
-                <h3>{% trans "Hard" %} <input type="checkbox" onchange="toggleSelectAll('Hard', this.checked)"></h3>
+                <h3>
+                    <div class="column-header">
+                        <span>{% trans "Hard" %}</span>
+                        <input type="checkbox" onchange="toggleSelectAll('Hard', this.checked)">
+                        <div class="score-input-group">
+                            <input type="number" id="score-Hard" class="score-input" value="30" min="0"
+                                placeholder="Score" title="Default score for Hard problems"
+                                onchange="updateCategoryScores('Hard')">
+                            <span class="score-label">pts</span>
+                        </div>
+                    </div>
+                </h3>
                 <ul class="problem-list" id="list-Hard"></ul>
                 <div class="pagination" id="pag-Hard"></div>
             </div>
@@ -353,6 +410,12 @@
         <div class="controls">
             <button type="button" id="mcq-toggle-view" onclick="toggleView('mcq')">{% trans "Show Selected" %}</button>
             <div id="mcq-browse-controls" style="display: inline-flex; gap: 10px; align-items: center;">
+                <div class="score-input-group" style="margin-right: 10px;">
+                    <span style="font-weight: 500;">{% trans "MCQ Score:" %}</span>
+                    <input type="number" id="score-MCQ" class="score-input" value="1" min="0" placeholder="Score"
+                        title="Score for all MCQ questions" onchange="updateMCQScores()">
+                    <span class="score-label">pts</span>
+                </div>
                 <input type="text" id="mcq-search" placeholder="Search MCQs..." onkeyup="debounceSearch('mcq')">
                 <select id="mcq-cat-filter" onchange="reloadMCQ()">
                     <option value="">{% trans "All Categories" %}</option>
@@ -452,8 +515,41 @@
         filters: {
             p_ids: null, // string "1,2,3"
             m_ids: null  // string "4,5,6"
+        },
+        difficultyScores: {
+            Easy: 10,
+            Medium: 20,
+            Hard: 30
         }
     };
+
+    // Get current difficulty score from input
+    function getDifficultyScore(category) {
+        const input = document.getElementById(`score-${category}`);
+        if (input) {
+            const val = parseFloat(input.value);
+            return isNaN(val) ? state.difficultyScores[category] : val;
+        }
+        return state.difficultyScores[category];
+    }
+
+    // Update all selected problems of a category with the new score
+    function updateCategoryScores(category) {
+        const newScore = getDifficultyScore(category);
+        let updateCount = 0;
+        state.selectedProblems.forEach((item, id) => {
+            // Match if group equals category or contains it (e.g., "Easy" matches "Easy Problems")
+            if (item.group === category || (item.group && item.group.toLowerCase().includes(category.toLowerCase()))) {
+                item.points = newScore;
+                updateCount++;
+            }
+        });
+        // If in selected view, re-render
+        if (state.regular.view === 'selected') {
+            renderSelected('regular');
+        }
+        console.log(`Updated ${updateCount} ${category} problems to ${newScore} points`);
+    }
 
     // Init
     document.addEventListener('DOMContentLoaded', () => {
@@ -670,13 +766,17 @@
             }
 
             if (item) {
-                // Add with defaults
+                // Get the difficulty category for scoring
+                const difficultyCategory = item.group || category;
+                const difficultyScore = getDifficultyScore(difficultyCategory);
+
+                // Add with defaults - use difficulty-based score
                 state.selectedProblems.set(id, {
                     id: item.id,
                     code: item.code,
                     name: item.name,
-                    points: item.points,
-                    group: item.group || category, // Fallback to column category if group is missing
+                    points: difficultyScore,
+                    group: difficultyCategory, // Fallback to column category if group is missing
                     partial: true,
                     is_pretested: false,
                     max_submissions: null,
@@ -696,7 +796,7 @@
             const cb = document.getElementById(`p-${item.id}`);
             if (cb) {
                 cb.checked = checked;
-                toggleProblem(item.id, checked);
+                toggleProblem(item.id, checked, category);
             }
         });
     }
@@ -718,12 +818,15 @@
         }
 
         toSelect.forEach(item => {
+            // Get the difficulty score for this category
+            const difficultyScore = getDifficultyScore(category);
+
             // Add to state manually to ensure object creation
             state.selectedProblems.set(item.id, {
                 id: item.id,
                 code: item.code,
                 name: item.name,
-                points: item.points,
+                points: difficultyScore, // Use difficulty-based score
                 group: item.group || category, // Use API group or fallback to column category
                 partial: true,
                 is_pretested: false,
@@ -813,11 +916,12 @@
         if (checked) {
             const item = state.mcq.items.find(i => i.id == id);
             if (item) {
+                const mcqScore = getMCQScore();
                 state.selectedMCQs.set(id, {
                     id: item.id,
                     code: item.code,
                     name: item.name,
-                    points: item.points,
+                    points: mcqScore,
                     group: item.group
                 });
             }
@@ -835,6 +939,29 @@
                 toggleMCQ(item.id, checked);
             }
         });
+    }
+
+    // Get MCQ score from input
+    function getMCQScore() {
+        const input = document.getElementById('score-MCQ');
+        if (input) {
+            const val = parseFloat(input.value);
+            return isNaN(val) ? 1 : val;
+        }
+        return 1;
+    }
+
+    // Update all selected MCQs with the new score
+    function updateMCQScores() {
+        const newScore = getMCQScore();
+        state.selectedMCQs.forEach((item, id) => {
+            item.points = newScore;
+        });
+        // If in selected view, re-render
+        if (state.mcq.view === 'selected') {
+            renderSelected('mcq');
+        }
+        console.log(`Updated all MCQs to ${newScore} points`);
     }
 
     // Utils

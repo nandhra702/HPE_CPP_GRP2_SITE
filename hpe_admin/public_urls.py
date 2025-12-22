@@ -5,11 +5,12 @@ urlpatterns = [
     path('login/', views.HPEContestLoginView.as_view(), name='hpe_contest_login'),
     # Landing page with inline login
     path('contest/<str:contest_key>/', views.HPEContestLandingView.as_view(), name='hpe_contest_landing'),
+    # Seamless logout (for account switching)
+    path('contest/<str:contest_key>/logout/', views.HPEContestLogoutView.as_view(), name='hpe_contest_logout'),
 
     # New Pipeline Steps
-    path('contest/<str:contest_key>/check/', views.HPEContestCheckView.as_view(), name='hpe_contest_check'),
-    path('contest/<str:contest_key>/intro/', views.HPEContestIntroView.as_view(), name='hpe_contest_intro'),
-    path('contest/<str:contest_key>/exam/', views.HPEContestExamView.as_view(), name='hpe_contest_exam'),
+
+
     # Exam content for SPA loading (returns HTML fragment)
     path('contest/<str:contest_key>/exam/content/', views.HPEExamContentView.as_view(), name='hpe_exam_content'),
     # AJAX Content
@@ -24,5 +25,7 @@ urlpatterns = [
     # Contest Join/Leave
     path('contest/<str:contest_key>/join/', views.HPEContestJoinView.as_view(), name='hpe_contest_join'),
     path('contest/<str:contest_key>/leave/', views.HPEContestLeaveView.as_view(), name='hpe_contest_leave'),
+    # Get all submissions for Proctor backend
+    path('contest/<str:contest_key>/submissions/', views.HPEContestSubmissionsView.as_view(), name='hpe_contest_submissions'),
 ]
 

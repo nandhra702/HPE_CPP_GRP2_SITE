@@ -63,29 +63,84 @@ class UsernameForm(forms.Form):
 
 
 @partial
-def choose_username(backend, user, username=None, *args, **kwargs):
+def choose_username(backend, user, username=None, details=None, *args, **kwargs):
     if not user:
+        # Auto-generate username from Google name or email
         request = backend.strategy.request
-        if request.POST:
-            form = UsernameForm(request.POST)
-            if form.is_valid():
-                return {'username': form.cleaned_data['username']}
+        
+        # Get next URL from session (where social_django stores it during OAuth flow)
+        next_url = backend.strategy.session_get('next', '') or request.GET.get('next', '') or request.POST.get('next', '')
+        is_hpe_flow = '/hpe/' in next_url
+        
+        if is_hpe_flow:
+            # Auto-generate username without prompting
+            details = details or {}
+            base_username = None
+            
+            # Try to get name from Google response
+            if details.get('first_name') and details.get('last_name'):
+                base_username = slugify_username(f"{details['first_name']}{details['last_name']}")
+            elif details.get('fullname'):
+                base_username = slugify_username(details['fullname'].replace(' ', ''))
+            elif details.get('email'):
+                base_username = slugify_username(details['email'].split('@')[0])
+            else:
+                base_username = username or 'user'
+            
+            # Make username unique
+            final_username = base_username[:20]  # Limit length
+            suffix = 1
+            while User.objects.filter(username=final_username).exists():
+                final_username = f"{base_username[:17]}{suffix}"
+                suffix += 1
+            
+            return {'username': final_username}
         else:
-            form = UsernameForm(initial={'username': username})
-        return render(request, 'registration/username_select.html', {
-            'title': 'Choose a username', 'form': form,
-        })
+            # Original interactive flow for non-HPE logins
+            if request.POST:
+                form = UsernameForm(request.POST)
+                if form.is_valid():
+                    return {'username': form.cleaned_data['username']}
+            else:
+                form = UsernameForm(initial={'username': username})
+            return render(request, 'registration/username_select.html', {
+                'title': 'Choose a username', 'form': form,
+            })
 
 
 @partial
-def make_profile(backend, user, response, is_new=False, *args, **kwargs):
+def make_profile(backend, user, response, is_new=False, details=None, *args, **kwargs):
     if is_new:
+        request = backend.strategy.request
+        
+        # Get next URL from session (where social_django stores it during OAuth flow)
+        next_url = backend.strategy.session_get('next', '') or request.GET.get('next', '') or request.POST.get('next', '')
+        is_hpe_flow = '/hpe/' in next_url
+        
         if not hasattr(user, 'profile'):
             profile = Profile(user=user)
             profile.language = Language.get_default_language()
+            
+            if is_hpe_flow:
+                # Auto-set timezone to Kolkata for HPE users
+                profile.timezone = 'Asia/Kolkata'
+            
             logger.info('Info from %s: %s', backend.name, response)
             profile.save()
-            form = ProfileForm(instance=profile, user=user)
+            
+            if is_hpe_flow:
+                # Skip profile form - auto-creation complete
+                # Set first_name and last_name on user from Google data
+                details = details or {}
+                if details.get('first_name'):
+                    user.first_name = details['first_name']
+                if details.get('last_name'):
+                    user.last_name = details['last_name']
+                user.save()
+                return  # Continue to next pipeline step (redirect to contest)
+            else:
+                # Show profile form for non-HPE users
+                form = ProfileForm(instance=profile, user=user)
         else:
             data = backend.strategy.request_data()
             logger.info(data)
@@ -96,9 +151,12 @@ def make_profile(backend, user, response, is_new=False, *args, **kwargs):
                     revisions.set_user(user)
                     revisions.set_comment('Updated on registration')
                     return
-        return render(backend.strategy.request, 'registration/profile_creation.html', {
-            'title': 'Create your profile', 'form': form,
-        })
+        
+        # Only show form for non-HPE flows
+        if not is_hpe_flow:
+            return render(backend.strategy.request, 'registration/profile_creation.html', {
+                'title': 'Create your profile', 'form': form,
+            })
 
 
 class SocialAuthExceptionMiddleware(OldSocialAuthExceptionMiddleware):

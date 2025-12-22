@@ -211,48 +211,73 @@ class HPEContestAdmin(ContestAdmin):
         return redirect('hpe_admin:judge_contest_change', contest_id)
 
     def send_invites_view(self, request, contest_id):
+        from django.http import JsonResponse
+        
         contest = get_object_or_404(Contest, id=contest_id)
         
         # Iterate private contestants
-        count = 0
+        success_emails = []
         failed_emails = []
+        skipped_emails = []
         
         for profile in contest.private_contestants.all():
             user = profile.user
-            if not user.email: continue
+            if not user.email:
+                skipped_emails.append({
+                    'username': user.username,
+                    'reason': 'No email address configured'
+                })
+                continue
             
-            # Reset Password
-            new_password = get_random_string(12)
-            user.set_password(new_password)
-            user.save()
+            # No password generation - using Google OAuth instead
             
-            # Send Email
-            contest_url = request.build_absolute_uri(reverse('hpe_contest_view', args=[contest.key]))
+            # Send Email with Google Sign-In instructions
+            contest_url = request.build_absolute_uri(reverse('hpe_contest_landing', args=[contest.key]))
             subject = f"Invitation to {contest.name}"
             message = f"""
 Hello {user.username},
 
 You have been invited to participate in the contest "{contest.name}".
 
-Link: {contest_url}
-Username: {user.username}
-Password: {new_password}
+To access the contest, please visit the link below and sign in with your Google account:
 
-Please log in using the credentials above.
+Contest Link: {contest_url}
+
+Make sure to use your Google account associated with this email address ({user.email}).
 
 Good luck!
             """
             try:
                 send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
-                count += 1
+                success_emails.append(user.email)
             except Exception as e:
-                failed_emails.append(f"{user.email}: {str(e)}")
+                failed_emails.append({
+                    'email': user.email,
+                    'reason': str(e)
+                })
         
-        messages.success(request, f"Sent invites to {count} participants.")
+        # Check if this is an AJAX request
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        
+        if is_ajax:
+            return JsonResponse({
+                'success': True,
+                'success_emails': success_emails,
+                'failed_emails': failed_emails,
+                'skipped_emails': skipped_emails,
+                'total_sent': len(success_emails),
+                'total_failed': len(failed_emails),
+                'total_skipped': len(skipped_emails),
+            })
+        
+        # Fallback for non-AJAX requests
+        messages.success(request, f"Sent invites to {len(success_emails)} participants.")
         if failed_emails:
-            messages.warning(request, f"Failed to send to {len(failed_emails)} participants: <br>" + "<br>".join(failed_emails))
+            failed_list = "<br>".join([f"{e['email']}: {e['reason']}" for e in failed_emails])
+            messages.warning(request, f"Failed to send to {len(failed_emails)} participants: <br>" + failed_list)
             
         return redirect('hpe_admin:judge_contest_change', contest_id)
+
 
 
 class HPEProblemAdmin(ProblemAdmin):
