@@ -1865,6 +1865,53 @@
                             window.proctorSocket.close();
                         }
 
+                        // Send contest results to Proctor backend for plagiarism check and score dashboard
+                        if (proctoringSessionId) {
+                            try {
+                                // Fetch all submissions from DMOJ
+                                const submissionsResponse = await fetch(`/hpe/contest/{{ contest.key }}/submissions/`, {
+                                    method: 'GET',
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                });
+                                
+                                if (submissionsResponse.ok) {
+                                    const submissionsData = await submissionsResponse.json();
+                                    console.log('[HPE-PROCTOR] Fetched submissions:', submissionsData);
+                                    
+                                    // Prepare payload for Proctor backend (3NF schema)
+                                    const proctorPayload = {
+                                        session_id: proctoringSessionId,
+                                        contest_key: '{{ contest.key }}',
+                                        contest_name: '{{ contest.name }}',
+                                        problem_score: submissionsData.problem_score || 0,
+                                        mcq_score: submissionsData.mcq_score || 0,
+                                        total_score: submissionsData.total_score || 0,
+                                        format_data: submissionsData.format_data || {},
+                                        submissions: submissionsData.submissions || []
+                                    };
+                                    
+                                    // Send to Proctor backend
+                                    const proctorResponse = await fetch(`${PROCTOR_API_URL}/submit-contest-results`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'ngrok-skip-browser-warning': 'true'
+                                        },
+                                        body: JSON.stringify(proctorPayload)
+                                    });
+                                    
+                                    const proctorResult = await proctorResponse.json();
+                                    console.log('[HPE-PROCTOR] Contest results sent to Proctor:', proctorResult);
+                                } else {
+                                    console.error('[HPE-PROCTOR] Failed to fetch submissions:', submissionsResponse.status);
+                                }
+                            } catch (err) {
+                                console.error('[HPE-PROCTOR] Error sending contest results to Proctor:', err);
+                            }
+                        }
+
                         // Stop proctoring session
                         if (proctoringSessionId) {
                             const stopFormData = new FormData();

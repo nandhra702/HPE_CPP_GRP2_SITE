@@ -810,3 +810,75 @@ class HPEContestLeaveView(HPEContestAccessMixin, View):
             'success': True,
             'message': 'Contest submitted successfully.'
         })
+
+
+class HPEContestSubmissionsView(HPEContestAccessMixin, View):
+    """Get all submissions for the current user in this contest.
+    Returns source code and scores for sending to Proctor backend.
+    """
+    
+    def get(self, request, *args, **kwargs):
+        from django.http import JsonResponse
+        from judge.models import ContestParticipation, ContestSubmission
+        from judge.models.submission import SubmissionSource
+        
+        contest = self.contest
+        profile = request.user.profile
+        
+        # Get participation
+        try:
+            participation = ContestParticipation.objects.get(
+                contest=contest,
+                user=profile,
+                virtual=ContestParticipation.LIVE
+            )
+        except ContestParticipation.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'error': 'No participation found for this contest.'
+            }, status=400)
+        
+        # Get all code submissions for this participation
+        submissions_data = []
+        contest_submissions = ContestSubmission.objects.filter(
+            participation=participation
+        ).select_related('submission__language', 'problem__problem').order_by('-submission__date')
+        
+        # Keep only the latest submission per problem
+        seen_problems = set()
+        for cs in contest_submissions:
+            problem_code = cs.problem.problem.code
+            if problem_code in seen_problems:
+                continue
+            seen_problems.add(problem_code)
+            
+            # Get source code
+            try:
+                source = SubmissionSource.objects.get(submission=cs.submission)
+                source_code = source.source
+            except SubmissionSource.DoesNotExist:
+                source_code = ""
+            
+            submissions_data.append({
+                'problem_code': problem_code,
+                'language': cs.submission.language.key,  # e.g., 'PY3', 'CPP17'
+                'source_code': source_code,
+                'dmoj_submission_id': cs.submission.id,
+                'points': float(cs.points) if cs.points else 0.0,
+            })
+        
+        # Get participation scores
+        format_data = participation.format_data or {}
+        
+        return JsonResponse({
+            'success': True,
+            'dmoj_user_id': request.user.id,
+            'dmoj_username': request.user.username,
+            'contest_key': contest.key,
+            'contest_name': contest.name,
+            'problem_score': float(participation.problem_score),
+            'mcq_score': float(participation.mcq_score),
+            'total_score': float(participation.score),
+            'format_data': format_data,
+            'submissions': submissions_data
+        })

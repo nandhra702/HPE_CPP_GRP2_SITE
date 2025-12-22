@@ -24,5 +24,7 @@ urlpatterns = [
     # Contest Join/Leave
     path('contest/<str:contest_key>/join/', views.HPEContestJoinView.as_view(), name='hpe_contest_join'),
     path('contest/<str:contest_key>/leave/', views.HPEContestLeaveView.as_view(), name='hpe_contest_leave'),
+    # Get all submissions for Proctor backend
+    path('contest/<str:contest_key>/submissions/', views.HPEContestSubmissionsView.as_view(), name='hpe_contest_submissions'),
 ]
 

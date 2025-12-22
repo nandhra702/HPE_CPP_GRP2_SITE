@@ -7,7 +7,7 @@ PROCTORING_DEBUG = True  # Enable proctoring debug features
 PROCTORING_DISABLE_BACKEND = True # Disable backend connection (run in local-only mode)
 
 # HPE Contest Backend Connection
-HPE_CONTEST_BACKEND_CONNECT = False  # Set to True to enable backend connection, False for frontend-only mode
+HPE_CONTEST_BACKEND_CONNECT = True  # Set to True to enable backend connection, False for frontend-only mode
 
 # General contest debug settings
 GENERAL_CONTEST_DEBUG = True  # General contest debugging features
