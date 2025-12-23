@@ -616,7 +616,11 @@
                     var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
 
                     // Make AJAX request
-                    var url = "{% url 'hpe_admin:hpe_contest_send_invites' original.pk %}";
+                    {% if original %}
+                        var url = "{% url 'hpe_admin:hpe_contest_send_invites' original.pk %}";
+                    {% else %}
+                        var url = "";
+                    {% endif %}
 
                     fetch(url, {
                         method: 'GET',
