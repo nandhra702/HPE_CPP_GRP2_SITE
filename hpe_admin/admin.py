@@ -25,6 +25,51 @@ from judge.admin.contest import ContestAdmin, ContestForm, ContestProblemInline,
 # Initialize the custom admin site
 hpe_admin_site = HPEAdminSite(name='hpe_admin')
 
+
+def sync_contest_to_proctor(contest):
+    """
+    Sync contest data to Proctor backend.
+    Called after a contest is saved/updated in DMOJ admin.
+    """
+    import requests
+    
+    PROCTOR_API_URL = getattr(settings, 'PROCTOR_API_URL', 'http://127.0.0.1:8001')
+    
+    # Build problem list from contest_problems
+    problems = []
+    for cp in contest.contest_problems.select_related('problem').all():
+        problems.append({
+            'id': cp.id,  # ContestProblem primary key
+            'points': cp.points,
+            'code': cp.problem.code,
+            'name': cp.problem.name,
+            'description': cp.problem.description[:5000] if cp.problem.description else None,  # Truncate long descriptions
+        })
+    
+    # Build request payload
+    payload = {
+        'contest_key': contest.key,
+        'name': contest.name,
+        'start_time': contest.start_time.isoformat(),
+        'end_time': contest.end_time.isoformat(),
+        'time_limit_seconds': int(contest.time_limit.total_seconds()) if contest.time_limit else None,
+        'problems': problems,
+    }
+    
+    try:
+        response = requests.post(
+            f"{PROCTOR_API_URL}/sync-contest",
+            json=payload,
+            timeout=10
+        )
+        response.raise_for_status()
+        print(f"✅ Contest '{contest.key}' synced to Proctor: {len(problems)} problems")
+    except requests.exceptions.ConnectionError:
+        print(f"⚠️ Warning: Could not connect to Proctor backend at {PROCTOR_API_URL}")
+    except Exception as e:
+        # Log error but don't fail contest save
+        print(f"⚠️ Warning: Failed to sync contest to Proctor: {e}")
+
 class HPEContestAdmin(ContestAdmin):
     form = HPEContestForm
     change_form_template = 'hpe_admin/contest_change_form.html'
@@ -51,8 +96,142 @@ class HPEContestAdmin(ContestAdmin):
         custom_urls = [
             path('<int:contest_id>/upload-participants/', self.upload_participants_view, name='hpe_contest_upload_participants'),
             path('<int:contest_id>/send-invites/', self.send_invites_view, name='hpe_contest_send_invites'),
+            path('process-participants-csv/', self.process_participants_csv_view, name='hpe_process_participants_csv'),
         ]
         return custom_urls + urls
+
+    def process_participants_csv_view(self, request):
+        """Process CSV/Excel file and immediately create users if they don't exist.
+        Returns detailed breakdown of existing vs newly created users."""
+        from django.http import JsonResponse
+        import csv
+        
+        if request.method != 'POST':
+            return JsonResponse({'error': 'Method not allowed'}, status=405)
+        
+        uploaded_file = request.FILES.get('participants_csv')
+        if not uploaded_file:
+            return JsonResponse({'error': 'No file uploaded'}, status=400)
+        
+        try:
+            emails = []
+            file_name = uploaded_file.name.lower()
+            
+            # Handle CSV files
+            if file_name.endswith('.csv'):
+                decoded_file = uploaded_file.read().decode('utf-8').splitlines()
+                reader = csv.reader(decoded_file)
+                for row in reader:
+                    if row and row[0].strip():
+                        email = row[0].strip()
+                        if '@' in email:
+                            emails.append(email)
+            
+            # Handle Excel files
+            elif file_name.endswith(('.xlsx', '.xls')):
+                try:
+                    import pandas as pd
+                    df = pd.read_excel(uploaded_file)
+                    # Try to find email column (case-insensitive)
+                    email_col = None
+                    for col in df.columns:
+                        if 'email' in str(col).lower():
+                            email_col = col
+                            break
+                    if email_col is None:
+                        # Use first column if no email column found
+                        email_col = df.columns[0]
+                    
+                    for val in df[email_col].dropna():
+                        email = str(val).strip()
+                        if '@' in email:
+                            emails.append(email)
+                except ImportError:
+                    return JsonResponse({
+                        'error': 'Excel file support requires pandas. Please install: pip install pandas openpyxl'
+                    }, status=400)
+            else:
+                return JsonResponse({
+                    'error': 'Unsupported file format. Please upload CSV (.csv) or Excel (.xlsx, .xls) files.'
+                }, status=400)
+            
+            if not emails:
+                return JsonResponse({'error': 'No valid email addresses found in file.'}, status=400)
+            
+            existing_users = []  # Users already in the system
+            new_users = []       # Users we just created
+            errors = []          # Any errors encountered
+            profile_data = []    # Profile IDs for the select widget
+            
+            for email in emails:
+                
+                # Check if user already exists
+                try:
+                    user = User.objects.get(email=email)
+                    # User exists - get or create profile
+                    profile, _ = Profile.objects.get_or_create(user=user)
+                    existing_users.append({
+                        'email': email,
+                        'username': user.username,
+                        'profile_id': profile.id
+                    })
+                    profile_data.append({
+                        'id': profile.id,
+                        'text': user.username
+                    })
+                except User.DoesNotExist:
+                    # Create new user
+                    try:
+                        # Generate username from email
+                        base_username = email.split('@')[0][:20]
+                        username = base_username
+                        counter = 1
+                        while User.objects.filter(username=username).exists():
+                            username = f"{base_username}{counter}"
+                            counter += 1
+                        
+                        # Create user with random password
+                        password = get_random_string(12)
+                        user = User.objects.create_user(
+                            username=username,
+                            email=email,
+                            password=password
+                        )
+                        
+                        # Create or get profile with Kolkata timezone
+                        profile, created = Profile.objects.get_or_create(user=user)
+                        if created or profile.timezone != 'Asia/Kolkata':
+                            profile.timezone = 'Asia/Kolkata'
+                            profile.save()
+                        
+                        new_users.append({
+                            'email': email,
+                            'username': username,
+                            'profile_id': profile.id
+                        })
+                        profile_data.append({
+                            'id': profile.id,
+                            'text': username
+                        })
+                    except Exception as e:
+                        errors.append({
+                            'email': email,
+                            'error': str(e)
+                        })
+            
+            return JsonResponse({
+                'success': True,
+                'existing_users': existing_users,
+                'new_users': new_users,
+                'errors': errors,
+                'profile_data': profile_data,
+                'total_existing': len(existing_users),
+                'total_new': len(new_users),
+                'total_errors': len(errors)
+            })
+            
+        except Exception as e:
+            return JsonResponse({'error': f'Error processing file: {str(e)}'}, status=500)
 
     def save_related(self, request, form, formsets, change):
         # 1. Save Inlines (Standard Django behavior)
@@ -204,6 +383,9 @@ class HPEContestAdmin(ContestAdmin):
                     
             except Exception as e:
                 self.message_user(request, f"Error processing CSV: {e}", level=messages.ERROR)
+
+        # 5. Sync contest data to Proctor backend
+        sync_contest_to_proctor(form.instance)
 
 
     def upload_participants_view(self, request, contest_id):

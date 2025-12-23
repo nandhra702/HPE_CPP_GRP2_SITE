@@ -17,9 +17,37 @@
 {{ block.super }}
 <style>
     /* ========================================
+       PARTICIPANT UPLOAD MODAL STYLES
+       ======================================== */
+    .participant-add-btn {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 14px;
+        margin-left: 10px;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+    }
+
+    .participant-add-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+    }
+
+    .participant-add-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    /* ========================================
        SEND INVITES MODAL - PREMIUM DESIGN
        ======================================== */
-
     /* Google Fonts Import */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -592,6 +620,37 @@
     </div>
 </div>
 
+<!-- Participant Upload Modal -->
+<div id="participant-upload-overlay" class="send-invites-overlay">
+    <div class="send-invites-modal">
+        <div class="send-invites-header"
+            style="background: linear-gradient(135deg, #28a745 0%, #20c997 50%, #17a2b8 100%);">
+            <div class="send-invites-header-content">
+                <div class="send-invites-header-icon">👥</div>
+                <div class="send-invites-header-text">
+                    <h2>{% trans "Add Participants" %}</h2>
+                    <p>{% trans "CSV upload results" %}</p>
+                </div>
+            </div>
+            <button type="button" class="send-invites-close" id="participant-upload-close">×</button>
+        </div>
+        <div class="send-invites-body" id="participant-upload-body">
+            <div class="send-invites-loading">
+                <div class="spinner-container">
+                    <div class="spinner" style="border-top-color: #28a745;"></div>
+                    <div class="spinner-inner">📋</div>
+                </div>
+                <h3>{% trans "Processing CSV" %}</h3>
+                <p>{% trans "Please wait while we process the participants..." %}</p>
+            </div>
+        </div>
+        <div class="send-invites-footer">
+            <button type="button" class="btn-close-modal" id="participant-upload-done"
+                style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">{% trans "Done" %}</button>
+        </div>
+    </div>
+</div>
+
 <script>
     (function () {
         // Wait for DOM to be ready
@@ -616,7 +675,7 @@
                     var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
 
                     // Make AJAX request
-                    var url = "{% url 'hpe_admin:hpe_contest_send_invites' original.pk %}";
+                    var url = "{% if original %}{% url 'hpe_admin:hpe_contest_send_invites' original.pk %}{% endif %}";
 
                     fetch(url, {
                         method: 'GET',
@@ -714,40 +773,78 @@
 
             var csvInput = document.getElementById('id_participants_csv');
             if (!csvInput) {
-                console.error("ERROR: #id_participants_csv not found!");
+                console.log("CSV input not found - may not be on this page");
                 return;
             }
             console.log("Found CSV input element");
 
-            csvInput.addEventListener('change', function (e) {
-                console.log("File selected!");
-                var file = this.files[0];
-                if (!file) return;
+            // Store selected file for the Add button
+            var selectedFile = null;
 
-                console.log("File name:", file.name);
+            // Create the Add button next to the file input
+            var addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.className = 'participant-add-btn';
+            addBtn.textContent = 'Add Participants';
+            addBtn.disabled = true;
+            csvInput.parentNode.insertBefore(addBtn, csvInput.nextSibling);
+
+            // Enable/disable Add button based on file selection
+            csvInput.addEventListener('change', function (e) {
+                selectedFile = this.files[0];
+                addBtn.disabled = !selectedFile;
+                if (selectedFile) {
+                    addBtn.textContent = 'Add Participants (' + selectedFile.name + ')';
+                } else {
+                    addBtn.textContent = 'Add Participants';
+                }
+            });
+
+            // Participant Upload Modal elements
+            var partOverlay = document.getElementById('participant-upload-overlay');
+            var partBody = document.getElementById('participant-upload-body');
+            var partCloseBtn = document.getElementById('participant-upload-close');
+            var partDoneBtn = document.getElementById('participant-upload-done');
+
+            // Close modal handlers
+            if (partCloseBtn) {
+                partCloseBtn.addEventListener('click', function () {
+                    partOverlay.classList.remove('active');
+                });
+            }
+            if (partDoneBtn) {
+                partDoneBtn.addEventListener('click', function () {
+                    partOverlay.classList.remove('active');
+                });
+            }
+            if (partOverlay) {
+                partOverlay.addEventListener('click', function (e) {
+                    if (e.target === partOverlay) {
+                        partOverlay.classList.remove('active');
+                    }
+                });
+            }
+
+            // Add button click handler
+            addBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                if (!selectedFile) return;
+
+                // Show modal with loading state
+                partOverlay.classList.add('active');
+                partBody.innerHTML = '<div class="send-invites-loading"><div class="spinner-container"><div class="spinner" style="border-top-color: #28a745;"></div><div class="spinner-inner">📋</div></div><h3>Processing CSV</h3><p>Please wait while we process the participants...</p></div>';
 
                 var formData = new FormData();
-                formData.append('private_contestants_csv', file);
+                formData.append('participants_csv', selectedFile);
 
-                // Get CSRF token from cookie or form
+                // Get CSRF token
                 var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
                 if (csrfToken) {
                     formData.append('csrfmiddlewaretoken', csrfToken.value);
                 }
 
-                // Create status div
-                var existingStatus = this.parentNode.querySelector('.csv-status');
-                if (existingStatus) existingStatus.remove();
-
-                var statusDiv = document.createElement('div');
-                statusDiv.className = 'csv-status';
-                statusDiv.style.cssText = 'margin-top:10px; padding:10px; background:#f8f9fa; border:1px solid #ddd; border-radius:4px;';
-                statusDiv.textContent = 'Reading file...';
-                this.parentNode.appendChild(statusDiv);
-
-                // Make AJAX request
-                var url = "{% url 'hpe_admin:judge_contest_add_private_contestants_new' %}";
-                console.log("Posting to:", url);
+                // Make AJAX request to the new endpoint
+                var url = "{% url 'hpe_admin:hpe_process_participants_csv' %}";
 
                 fetch(url, {
                     method: 'POST',
@@ -758,11 +855,73 @@
                         return response.json();
                     })
                     .then(function (data) {
-                        console.log("Response:", data);
-                        var html = "";
-                        var addedCount = 0;
+                        if (data.error) {
+                            partBody.innerHTML = '<div class="send-invites-error"><div class="error-icon">⚠</div><h3>Error</h3><p>' + data.error + '</p></div>';
+                            return;
+                        }
 
-                        // Add existing users to the select widget
+                        var html = '';
+
+                        // Stats Cards Section
+                        html += '<div class="send-invites-stats">';
+                        html += '<div class="stat-card success"><div class="stat-icon">✓</div><div class="stat-number">' + data.total_existing + '</div><div class="stat-label">Existing</div></div>';
+                        html += '<div class="stat-card" style="border-top: 4px solid #17a2b8;"><div class="stat-icon" style="background: #d1ecf1; color: #17a2b8;">+</div><div class="stat-number" style="color: #17a2b8;">' + data.total_new + '</div><div class="stat-label">Created</div></div>';
+                        html += '<div class="stat-card failed"><div class="stat-icon">✗</div><div class="stat-number">' + data.total_errors + '</div><div class="stat-label">Errors</div></div>';
+                        html += '</div>';
+
+                        // Existing users section
+                        if (data.existing_users && data.existing_users.length > 0) {
+                            html += '<div class="send-invites-section section-success">';
+                            html += '<div class="send-invites-section-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === \'none\' ? \'block\' : \'none\'; this.querySelector(\'.section-toggle\').classList.toggle(\'expanded\');">';
+                            html += '<div class="section-icon">✓</div>';
+                            html += '<div class="section-title-text"><h4>Already Existing</h4><span>' + data.existing_users.length + ' user(s) already in system</span></div>';
+                            html += '<div class="section-toggle expanded">▼</div>';
+                            html += '</div>';
+                            html += '<ul class="send-invites-list">';
+                            data.existing_users.forEach(function (user, index) {
+                                html += '<li style="animation-delay: ' + (index * 0.05) + 's"><div class="email-icon">👤</div><div class="email-content"><div class="email-address">' + user.username + '</div><div class="email-reason">' + user.email + '</div></div></li>';
+                            });
+                            html += '</ul></div>';
+                        }
+
+                        // Newly created users section
+                        if (data.new_users && data.new_users.length > 0) {
+                            html += '<div class="send-invites-section" style="border-color: #17a2b8;">';
+                            html += '<div class="send-invites-section-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === \'none\' ? \'block\' : \'none\'; this.querySelector(\'.section-toggle\').classList.toggle(\'expanded\');" style="border-top: 4px solid #17a2b8;">';
+                            html += '<div class="section-icon" style="background: #d1ecf1; color: #17a2b8;">+</div>';
+                            html += '<div class="section-title-text"><h4>Newly Created</h4><span>' + data.new_users.length + ' user(s) created with Kolkata timezone</span></div>';
+                            html += '<div class="section-toggle expanded">▼</div>';
+                            html += '</div>';
+                            html += '<ul class="send-invites-list">';
+                            data.new_users.forEach(function (user, index) {
+                                html += '<li style="animation-delay: ' + (index * 0.05) + 's"><div class="email-icon" style="background: #d1ecf1; color: #17a2b8;">🆕</div><div class="email-content"><div class="email-address">' + user.username + '</div><div class="email-reason">' + user.email + '</div></div></li>';
+                            });
+                            html += '</ul></div>';
+                        }
+
+                        // Errors section  
+                        if (data.errors && data.errors.length > 0) {
+                            html += '<div class="send-invites-section section-failed">';
+                            html += '<div class="send-invites-section-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === \'none\' ? \'block\' : \'none\'; this.querySelector(\'.section-toggle\').classList.toggle(\'expanded\');">';
+                            html += '<div class="section-icon">✗</div>';
+                            html += '<div class="section-title-text"><h4>Errors</h4><span>' + data.errors.length + ' could not be processed</span></div>';
+                            html += '<div class="section-toggle expanded">▼</div>';
+                            html += '</div>';
+                            html += '<ul class="send-invites-list">';
+                            data.errors.forEach(function (err, index) {
+                                html += '<li style="animation-delay: ' + (index * 0.05) + 's"><div class="email-icon">!</div><div class="email-content"><div class="email-address">' + err.email + '</div><div class="email-reason">' + err.error + '</div></div></li>';
+                            });
+                            html += '</ul></div>';
+                        }
+
+                        // If nothing processed
+                        if (data.total_existing === 0 && data.total_new === 0 && data.total_errors === 0) {
+                            html = '<div class="send-invites-empty"><div class="empty-icon">📭</div><h3>No Participants Found</h3><p>No valid email addresses were found in the CSV file.</p></div>';
+                        }
+
+                        partBody.innerHTML = html;
+
+                        // Add users to the select widget
                         if (data.profile_data && data.profile_data.length > 0) {
                             var selectEl = document.getElementById('id_private_contestants');
                             if (selectEl) {
@@ -782,7 +941,6 @@
                                         opt.text = profile.text;
                                         opt.selected = true;
                                         selectEl.appendChild(opt);
-                                        addedCount++;
                                     }
                                 });
                                 // Trigger change event for Select2
@@ -792,28 +950,15 @@
                             }
                         }
 
-                        // Build status message
-                        if (addedCount > 0) {
-                            html += "<div style='color:green; margin-bottom:5px;'>✓ Added " + addedCount + " existing user(s) to the list.</div>";
-                        } else if (data.already_added > 0) {
-                            html += "<div style='color:#666; margin-bottom:5px;'>All found users are already in the list.</div>";
-                        }
-
-                        if (data.not_found > 0) {
-                            html += "<div style='background-color:#e3f2fd; color:#0d47a1; padding:8px; border-radius:4px; border:1px solid #90caf9; margin-top:5px; font-weight:bold;'>" +
-                                "+ " + data.not_found + " new user(s) will be created when you click Save." +
-                                "</div>";
-                        }
-
-                        if (!html) {
-                            html = "<div style='color:#666;'>No users found in file.</div>";
-                        }
-
-                        statusDiv.innerHTML = html;
+                        // Reset file input
+                        csvInput.value = '';
+                        selectedFile = null;
+                        addBtn.disabled = true;
+                        addBtn.textContent = 'Add Participants';
                     })
                     .catch(function (error) {
                         console.error("AJAX Error:", error);
-                        statusDiv.innerHTML = "<span style='color:red;'>Error: " + error.message + "</span>";
+                        partBody.innerHTML = '<div class="send-invites-error"><div class="error-icon">⚠</div><h3>Something Went Wrong</h3><p>' + error.message + '</p></div>';
                     });
             });
         });

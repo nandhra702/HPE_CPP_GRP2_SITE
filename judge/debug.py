@@ -48,3 +48,7 @@ def get_hpe_contest_backend_connect():
     Note: This is not affected by MASTER_DEBUG_ENABLED since it's a feature toggle, not a debug setting.
     """
     return HPE_CONTEST_BACKEND_CONNECT
+
+def get_disable_copy_paste_blocking():
+    """Get the copy/paste blocking disable setting"""
+    return MASTER_DEBUG_ENABLED and ALLOW_COPY_PASTE

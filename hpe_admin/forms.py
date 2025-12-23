@@ -113,31 +113,31 @@ class DurationDropdownWidget(forms.Widget):
 
 class ContestParticipantUploadForm(forms.Form):
     participants_csv = forms.FileField(
-        label=_('Upload Participants CSV'),
-        help_text=_('CSV format: username,email (optional: password)'),
-        validators=[FileExtensionValidator(allowed_extensions=['csv'])],
+        label=_('Upload Participants CSV/Excel'),
+        help_text=_('CSV/Excel format: email in first column'),
+        validators=[FileExtensionValidator(allowed_extensions=['csv', 'xlsx', 'xls'])],
         required=False
     )
 
 class HPEContestForm(ContestForm):
     participants_csv = forms.FileField(
-        label=_('Upload Participants CSV'),
+        label=_('Upload Participants CSV/Excel'),
         help_text=mark_safe(_(
-            'Upload a CSV file containing participant emails.<br>'
+            'Upload a CSV or Excel file containing participant emails.<br>'
             '<small>Usernames will be automatically generated from emails if not provided.</small><br>'
             '<details>'
-            '<summary><strong>View Example CSV Format</strong></summary>'
+            '<summary><strong>View Example Format</strong></summary>'
             '<pre style="margin-top: 5px; background: #f5f5f5; padding: 5px; border-radius: 4px;">'
-            '<strong>Option 1: Email only</strong>\n'
+            '<strong>CSV or Excel - Email in first column</strong>\n'
             'john@example.com\n'
             'jane@example.com\n\n'
-            '<strong>Option 2: Email and Username</strong>\n'
+            '<strong>With optional username in second column</strong>\n'
             'john@example.com,john_doe\n'
             'jane@example.com,jane_smith'
             '</pre>'
             '</details>'
         )),
-        validators=[FileExtensionValidator(allowed_extensions=['csv'])],
+        validators=[FileExtensionValidator(allowed_extensions=['csv', 'xlsx', 'xls'])],
         required=False
     )
 
