@@ -728,7 +728,7 @@ class HPEProblemAdmin(ProblemAdmin):
                             time_limit=time_limit,
                             memory_limit=memory_limit,
                             points=0,  # Default points (can be adjusted later)
-                            is_public=False,
+                            is_public=True,
                             is_manually_managed=True,
                             group_id=group_id,  # Use mapped difficulty group
                             date=timezone.now()  # Set upload date to current time

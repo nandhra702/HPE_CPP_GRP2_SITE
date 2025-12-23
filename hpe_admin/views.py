@@ -694,6 +694,17 @@ class HPEContestJoinView(HPEContestAccessMixin, View):
                     'error': 'You have already submitted this contest and cannot rejoin.'
                 }, status=403)
         
+        # EXIT any previous active participations in OTHER contests
+        # This ensures user can only be in one contest at a time
+        old_participations = ContestParticipation.objects.filter(
+            user=profile,
+            has_exited=False,
+            virtual=ContestParticipation.LIVE
+        ).exclude(contest=contest)
+        
+        if old_participations.exists():
+            old_participations.update(has_exited=True)
+        
         # Get or create participation
         LIVE = ContestParticipation.LIVE
         try:
@@ -715,9 +726,17 @@ class HPEContestJoinView(HPEContestAccessMixin, View):
         # Handle randomization of problems/MCQs for this participation
         _handle_contest_randomization(participation)
         
-        # Set as current contest - use update_fields to ensure it's saved properly
+        # Refresh profile to avoid stale data and set current_contest properly
+        profile.refresh_from_db()
         profile.current_contest = participation
         profile.save(update_fields=['current_contest'])
+        
+        # Double-check update persisted
+        profile.refresh_from_db()
+        if profile.current_contest_id != participation.id:
+            # Fallback: direct database update
+            from judge.models import Profile
+            Profile.objects.filter(pk=profile.pk).update(current_contest=participation)
         
         # Update contest user count
         contest._updating_stats_only = True
