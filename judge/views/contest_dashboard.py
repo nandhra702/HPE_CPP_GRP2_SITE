@@ -280,7 +280,7 @@ def _process_problem_upload(rows, request):
                 time_limit=time_limit,
                 memory_limit=memory_limit,
                 points=0,
-                is_public=False,
+                is_public=True,
                 is_manually_managed=True,
                 group_id=group_id,
                 date=timezone.now()
@@ -373,7 +373,7 @@ def _process_mcq_upload(rows, request):
                 description=question_text,
                 question_type=question_type,
                 points=1.0,
-                is_public=False
+                is_public=True
             )
             
             # Create options

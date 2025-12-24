@@ -7,7 +7,7 @@ PROCTORING_DEBUG = True  # Enable proctoring debug features
 PROCTORING_DISABLE_BACKEND = True # Disable backend connection (run in local-only mode)
 
 # HPE Contest Backend Connection
-HPE_CONTEST_BACKEND_CONNECT = False  # Set to True to enable backend connection, False for frontend-only mode
+HPE_CONTEST_BACKEND_CONNECT = True # Set to True to enable backend connection, False for frontend-only mode
 
 # General contest debug settings
 GENERAL_CONTEST_DEBUG = True  # General contest debugging features
@@ -48,3 +48,7 @@ def get_hpe_contest_backend_connect():
     Note: This is not affected by MASTER_DEBUG_ENABLED since it's a feature toggle, not a debug setting.
     """
     return HPE_CONTEST_BACKEND_CONNECT
+
+def get_disable_copy_paste_blocking():
+    """Get the copy/paste blocking disable setting"""
+    return MASTER_DEBUG_ENABLED and ALLOW_COPY_PASTE
