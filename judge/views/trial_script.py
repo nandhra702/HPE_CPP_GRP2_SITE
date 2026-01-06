@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 import tempfile
 import os
 import zipfile
+import requests
 import subprocess
 import csv
 from collections import defaultdict
@@ -118,6 +119,8 @@ def download_problem_submissions(request, contest_key):
 
     lang_zip_paths = []
     used_ports = set()
+    id_mappings = {}
+
 
     try:
         for problem in problems:
@@ -186,9 +189,24 @@ def download_problem_submissions(request, contest_key):
                 if lang_flag:
                     try:
                         free_port = find_free_port(start_port=3001, used_ports=used_ports)
-                        subprocess.Popen([
-                            "dolos", "run", "-f", "web", "-l", lang_flag,
-                            "--port", str(free_port), zip_path],cwd=tmp_dir)
+                        # subprocess.Popen([
+                        #     "dolos", "run", "-f", "web", "-l", lang_flag,
+                        #     "--port", str(free_port), zip_path],cwd=tmp_dir)
+                        proc = subprocess.Popen(["dolos", "run", "-f", "web", "-l", lang_flag,"--port", str(free_port), zip_path], cwd=tmp_dir)
+                        id_mappings[(problem_code, lang)] = {"proc": proc, "proxy_id": None}
+                        # Notify proxy
+                        try:
+                            resp = requests.post(
+                                "http://localhost:4000/register",
+                                json={"port": free_port, "question": problem_code, "lang": lang},
+                                timeout=5
+                            )
+                            proxy_id = resp.json().get("id")
+                            id_mappings[(problem_code, lang)]["proxy_id"] = proxy_id
+                            print(f"[✓] Registered {problem_code} {lang} on proxy as report {proxy_id}")
+                        except Exception as e:
+                            print(f"[✗] Proxy register failed for {problem_code} {lang}: {e}")
+
 
                         csv_output_path = zip_path.replace(".zip", "_report.csv")
                         with open(csv_output_path, 'w') as csv_file:
@@ -233,9 +251,10 @@ def download_problem_submissions(request, contest_key):
 
         return FileResponse(open(final_zip_path, 'rb'), as_attachment=True,
                             filename=f"{contest_key}_grouped_submissions.zip")
-
+    # Unregister Dolos reports from proxy
     finally:
-        print("[✓] Finished preparing submissions and running Dolos.")
+    # Unregister + kill Dolos servers
+        print("[✓] Cleanup finished")
 #<<<<<<< HEAD
 
 
