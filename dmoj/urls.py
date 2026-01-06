@@ -21,7 +21,7 @@ from judge.feed import AtomBlogFeed, AtomCommentFeed, AtomProblemFeed, BlogFeed,
 from judge.sitemap import sitemaps
 from judge.views import TitledTemplateView, api, blog, comment, contests, language, license, mailgun, mcq, organization, \
     preview, problem, problem_manage, ranked_submission, register, stats, status, submission, tasks, ticket, \
-    two_factor, user, widgets
+    two_factor, user, widgets, contest_dashboard
 from judge.views.problem_data import ProblemDataView, ProblemSubmissionDiff, \
     problem_data_file, problem_init_view
 from judge.views.register import ActivationView, RegistrationView
@@ -105,9 +105,11 @@ urlpatterns = [
     path('', blog.PostList.as_view(template_name='home.html', title=_('Home')), kwargs={'page': 1}, name='home'),
     path('500/', exception),
     path('admin/', admin.site.urls),
+    path('hpe_admin/', include('hpe_admin.urls')),
     path('i18n/', include('django.conf.urls.i18n')),
     path('accounts/', include(register_patterns)),
     path('', include('social_django.urls')),
+    path('hpe/', include('hpe_admin.public_urls')),
 
     path('problems/', xframe_options_exempt(problem.ProblemList.as_view()), name='problem_list'),
     path('problems/random/', xframe_options_exempt(problem.RandomProblem.as_view()), name='problem_random'),
@@ -373,6 +375,11 @@ urlpatterns = [
     ])),
 
     path('sitemap.xml', sitemap, {'sitemaps': sitemaps}),
+
+    path('judge-admin/contest/dashboard/', contest_dashboard.contest_dashboard, name='contest_dashboard'),
+    path('judge-admin/contest/dashboard/api/', contest_dashboard.contest_dashboard_api, name='contest_dashboard_api'),
+    path('judge-admin/contest/dashboard/metadata/', contest_dashboard.contest_dashboard_metadata, name='contest_dashboard_metadata'),
+    path('judge-admin/contest/dashboard/upload/', contest_dashboard.contest_dashboard_upload, name='contest_dashboard_upload'),
 
     path('judge-select2/', include([
         path('profile/', UserSelect2View.as_view(), name='profile_select2'),

@@ -106,7 +106,7 @@ class MCQList(QueryStringSortMixin, TitleMixin, SolvedMCQMixin, ListView):
     template_name = 'mcq/list.html'
     paginate_by = 50
     sql_sort = frozenset(('points', 'ac_rate', 'user_count', 'code'))
-    manual_sort = frozenset(('name', 'group', 'solved', 'type'))
+    manual_sort = frozenset(('solved',))
     all_sorts = sql_sort | manual_sort
     default_desc = frozenset(('points', 'ac_rate', 'user_count'))
     default_sort = 'code'
@@ -126,10 +126,6 @@ class MCQList(QueryStringSortMixin, TitleMixin, SolvedMCQMixin, ListView):
         sort_key = self.order.lstrip('-')
         if not isinstance(queryset, list) and sort_key in self.sql_sort:
             queryset = queryset.order_by(self.order, 'id')
-        elif sort_key == 'name':
-            queryset = queryset.order_by(self.order, 'id')
-        elif sort_key == 'group':
-            queryset = queryset.order_by(self.order + '__name', 'id')
         elif sort_key == 'solved':
             if self.request.user.is_authenticated:
                 completed = self.get_completed_mcqs()
@@ -144,11 +140,6 @@ class MCQList(QueryStringSortMixin, TitleMixin, SolvedMCQMixin, ListView):
 
                 queryset = list(queryset)
                 queryset.sort(key=_solved_sort_order, reverse=self.order.startswith('-'))
-        elif sort_key == 'type':
-            if self.show_types:
-                queryset = list(queryset)
-                queryset.sort(key=lambda mcq: mcq.types_list[0] if mcq.types_list else '',
-                              reverse=self.order.startswith('-'))
         
         paginator.object_list = queryset
         return paginator
@@ -172,11 +163,18 @@ class MCQList(QueryStringSortMixin, TitleMixin, SolvedMCQMixin, ListView):
         contest_data = {cm['mcq_question_id']: {'points': cm['points'], 'order': cm['order']} 
                        for cm in contest_mcq_data}
         mcq_ids = list(contest_data.keys())
+
+        # Filter randomized MCQs
+        if self.profile and self.profile.current_contest and self.profile.current_contest.contest_id == self.contest.id:
+            participation = self.profile.current_contest
+            if participation.format_data and 'selected_mcqs' in participation.format_data:
+                selected_ids = set(participation.format_data['selected_mcqs'])
+                mcq_ids = [mid for mid in mcq_ids if mid in selected_ids]
         
         # Get the actual MCQQuestion objects
         queryset = MCQQuestion.objects.filter(
             id__in=mcq_ids
-        ).select_related('group').prefetch_related('options')
+        ).prefetch_related('options')
         
         # Annotate each MCQ with its contest-specific data
         mcqs = list(queryset)
@@ -198,25 +196,18 @@ class MCQList(QueryStringSortMixin, TitleMixin, SolvedMCQMixin, ListView):
             # Include organization private questions if user is in organization
             filter |= Q(is_organization_private=True, organizations__in=self.profile.organizations.all())
         
-        queryset = MCQQuestion.objects.filter(filter).select_related('group').prefetch_related('options').distinct()
+        queryset = MCQQuestion.objects.filter(filter).prefetch_related('options').distinct()
         
         if self.profile is not None and self.hide_solved:
             completed = self.get_completed_mcqs()
             queryset = queryset.exclude(id__in=completed)
-        
-        if self.show_types:
-            queryset = queryset.prefetch_related('types')
-        
-        if self.category is not None:
-            queryset = queryset.filter(group__id=self.category)
-        
-        if self.selected_types:
-            queryset = queryset.filter(types__in=self.selected_types)
+            
+        if self.format:
+            queryset = queryset.filter(question_type=self.format)
         
         if self.search_query:
             queryset = queryset.filter(
                 Q(code__icontains=self.search_query) |
-                Q(name__icontains=self.search_query) |
                 Q(description__icontains=self.search_query)
             )
         
@@ -236,24 +227,16 @@ class MCQList(QueryStringSortMixin, TitleMixin, SolvedMCQMixin, ListView):
             context['in_contest'] = True
             context['contest'] = self.contest
             context['hide_solved'] = 0
-            context['show_types'] = 0
-            context['category'] = None
             context['search_query'] = ''
             # Provide empty sort context for contest mode (sorting disabled but links still needed)
             context['sort_links'] = {
                 'solved': '#',
-                'name': '#',
-                'group': '#',
-                'type': '#',
                 'points': '#',
                 'ac_rate': '#',
                 'user_count': '#'
             }
             context['sort_order'] = {
                 'solved': '',
-                'name': '',
-                'group': '',
-                'type': '',
                 'points': '',
                 'ac_rate': '',
                 'user_count': ''
@@ -261,20 +244,9 @@ class MCQList(QueryStringSortMixin, TitleMixin, SolvedMCQMixin, ListView):
         else:
             context['in_contest'] = False
             context['hide_solved'] = int(self.hide_solved)
-            context['show_types'] = int(self.show_types)
-            context['category'] = self.category
-            context['categories'] = ProblemGroup.objects.all()
-            
-            if self.show_types:
-                context['selected_types'] = self.selected_types
-                context['mcq_types'] = ProblemType.objects.all()
+            context['format'] = self.format
             
             context['search_query'] = self.search_query
-            
-            # Get types list for each MCQ (only in normal mode)
-            if not isinstance(context['mcqs'], list):
-                for mcq in context['mcqs']:
-                    mcq.types_list = list(mcq.types.values_list('full_name', flat=True))
             
             # Add sorting context
             context.update(self.get_sort_context())
@@ -287,21 +259,10 @@ class MCQList(QueryStringSortMixin, TitleMixin, SolvedMCQMixin, ListView):
     def setup(self, request, *args, **kwargs):
         super(MCQList, self).setup(request, *args, **kwargs)
         self.hide_solved = request.GET.get('hide_solved') == '1'
-        self.show_types = request.GET.get('show_types') == '1'
-        self.category = request.GET.get('category')
-        if self.category:
-            try:
-                self.category = int(self.category)
-            except ValueError:
-                self.category = None
-        # Convert selected types to integers for comparison in template
-        self.selected_types = []
-        for type_id in request.GET.getlist('type'):
-            try:
-                self.selected_types.append(int(type_id))
-            except (ValueError, TypeError):
-                pass
         self.search_query = ''
+        self.format = request.GET.get('format')
+        if self.format not in ['SINGLE', 'MULTIPLE']:
+            self.format = None
 
 
 class MCQDetail(MCQMixin, SolvedMCQMixin, TitleMixin, DetailView):
@@ -309,7 +270,7 @@ class MCQDetail(MCQMixin, SolvedMCQMixin, TitleMixin, DetailView):
     template_name = 'mcq/detail.html'
 
     def get_title(self):
-        return self.object.name
+        return self.object.description[:50] + '...' if len(self.object.description) > 50 else self.object.description
 
     def get_context_data(self, **kwargs):
         context = super(MCQDetail, self).get_context_data(**kwargs)
@@ -414,18 +375,18 @@ class MCQSubmitView(LoginRequiredMixin, MCQMixin, SolvedMCQMixin, SingleObjectMi
                     'error': _('This MCQ is not part of the current contest.')
                 })
         
-        # Create or update submission based on context
+        # ALWAYS create a new submission for each attempt
         with transaction.atomic():
             if in_contest and contest_mcq:
-                # Contest mode: Use get_or_create to allow answer updates
-                submission, created = MCQSubmission.objects.get_or_create(
+                # Contest mode: ALWAYS create a new submission entry
+                submission = MCQSubmission.objects.create(
                     question=self.object,
                     user=request.profile,
                     participation=participation,
                     contest_object=contest_mcq
                 )
                 
-                # Update selected options (allows changing answer)
+                # Set selected options
                 submission.selected_options.set(selected_options)
                 
                 # Use contest points for scoring
@@ -433,20 +394,7 @@ class MCQSubmitView(LoginRequiredMixin, MCQMixin, SolvedMCQMixin, SingleObjectMi
                 submission.calculate_score()
                 
             else:
-                # Normal mode: Check if already submitted
-                existing_submission = MCQSubmission.objects.filter(
-                    question=self.object,
-                    user=request.profile,
-                    participation__isnull=True
-                ).first()
-                
-                if existing_submission:
-                    return JsonResponse({
-                        'success': False,
-                        'error': _('You have already submitted an answer for this question.')
-                    })
-                
-                # Create new submission
+                # Normal mode: ALWAYS create a new submission entry
                 submission = MCQSubmission.objects.create(
                     question=self.object,
                     user=request.profile

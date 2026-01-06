@@ -1,0 +1,2660 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ contest.name }} - HPE Contest</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <!-- MathJax for LaTeX rendering -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)'], ['~', '~']],
+                displayMath: [['\\[', '\\]'], ['$$', '$$']],
+                processEscapes: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-chtml.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            min-height: 100vh;
+        }
+
+        /* Left Panel - Contest Info (Fixed) */
+        .left-panel {
+            flex: 0 0 45%;
+            background: linear-gradient(135deg, #f0f9f6 0%, #e8f5f0 100%);
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #01a982 0%, #00875a 100%);
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .logo svg {
+            width: 32px;
+            height: 32px;
+            fill: white;
+        }
+
+        .contest-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .welcome-text {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            line-height: 1.2;
+            margin-bottom: 2rem;
+        }
+
+        .info-badges {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+
+        .info-badge {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 0.25rem;
+        }
+
+        .info-value {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .footer-links a {
+            color: #01a982;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+
+        .footer-links span {
+            color: #d1d5db;
+        }
+
+        /* Right Panel - Sliding Steps Container */
+        .right-panel {
+            flex: 0 0 55%;
+            background: white;
+            position: relative;
+            overflow: hidden;
+            border-left: 1px solid #e5e7eb;
+        }
+
+        .slides-container {
+            display: flex;
+            width: 300%;
+            height: 100%;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .slide {
+            flex: 0 0 33.333%;
+            height: 100%;
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overflow-y: auto;
+        }
+
+        .slide-content {
+            max-width: 450px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Slide positioning */
+        .slides-container[data-step="1"] {
+            transform: translateX(0);
+        }
+
+        .slides-container[data-step="2"] {
+            transform: translateX(-33.333%);
+        }
+
+        .slides-container[data-step="3"] {
+            transform: translateX(-66.666%);
+        }
+
+        /* Form Styles */
+        .form-header {
+            margin-bottom: 2rem;
+        }
+
+        .form-header h2 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-header p {
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            border: 1.5px solid #d1d5db;
+            border-radius: 8px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: #fafafa;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #01a982;
+            box-shadow: 0 0 0 3px rgba(1, 169, 130, 0.1);
+            background: white;
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, #01a982 0%, #00875a 100%);
+            color: white;
+            padding: 0.875rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+            margin-top: 0.5rem;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(1, 169, 130, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Google OAuth Button */
+        .btn-google {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            padding: 14px 24px;
+            background: white;
+            border: 2px solid #dadce0;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #3c4043;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 0.5rem;
+        }
+
+        .btn-google:hover {
+            background: #f8f9fa;
+            border-color: #d2e3fc;
+            box-shadow: 0 2px 8px rgba(66, 133, 244, 0.2);
+        }
+
+        .google-icon-svg {
+            flex-shrink: 0;
+        }
+
+        /* Authenticated User Status */
+        .auth-status {
+            text-align: center;
+            padding: 2rem;
+            border-radius: 12px;
+            background: #f0fdf4;
+            border: 2px solid #22c55e;
+        }
+
+        .auth-status .auth-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 28px;
+            color: white;
+        }
+
+        .auth-status p {
+            color: #374151;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .auth-status .logged-in-hint {
+            color: #6b7280;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+
+        .oauth-hint {
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.85rem;
+            margin-top: 1.5rem;
+        }
+
+        /* Error Status */
+        .auth-status.error-status {
+            background: #fef2f2;
+            border-color: #ef4444;
+        }
+
+        .auth-status .auth-icon.error {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .auth-status .error-detail {
+            color: #dc2626;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .auth-status .error-hint {
+            color: #6b7280;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn-switch-account {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: transparent;
+            border: 2px solid #6b7280;
+            border-radius: 8px;
+            color: #374151;
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 0.5rem;
+        }
+
+        .btn-switch-account:hover {
+            background: #f3f4f6;
+            border-color: #374151;
+            color: #1f2937;
+        }
+
+        .btn-switch-account svg {
+            flex-shrink: 0;
+        }
+
+
+
+        .error-message {
+            color: #dc2626;
+            font-size: 0.875rem;
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: #fef2f2;
+            border-radius: 6px;
+            border-left: 3px solid #dc2626;
+        }
+
+        /* Permission Check Styles */
+        .check-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .check-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 10px;
+            background: #fafafa;
+            transition: all 0.3s ease;
+        }
+
+        .check-item.checking {
+            border-color: #fbbf24;
+            background: #fffbeb;
+        }
+
+        .check-item.success {
+            border-color: #22c55e;
+            background: #f0fdf4;
+        }
+
+        .check-item.error {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .check-icon {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border-radius: 10px;
+            margin-right: 1rem;
+            font-size: 1.25rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .check-info {
+            flex: 1;
+        }
+
+        .check-info h4 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.25rem;
+        }
+
+        .check-info p {
+            font-size: 0.8rem;
+            color: #6b7280;
+        }
+
+        .check-status {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #9ca3af;
+        }
+
+        .check-item.success .check-status {
+            color: #22c55e;
+        }
+
+        .check-item.error .check-status {
+            color: #ef4444;
+        }
+
+        .check-item.checking .check-status {
+            color: #f59e0b;
+        }
+
+        /* Individual Check Buttons */
+        .check-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: linear-gradient(135deg, #01a982 0%, #00875a 100%);
+            color: white;
+            min-width: 80px;
+        }
+
+        .check-btn:hover:not(:disabled) {
+            transform: scale(1.02);
+            box-shadow: 0 2px 8px rgba(1, 169, 130, 0.3);
+        }
+
+        .check-btn:disabled {
+            background: #d1d5db;
+            color: #6b7280;
+            cursor: not-allowed;
+        }
+
+        .check-btn.success {
+            background: #22c55e;
+            cursor: default;
+        }
+
+        .check-btn.error {
+            background: #ef4444;
+        }
+
+
+        /* Video Preview */
+        .video-preview {
+            margin-top: 1rem;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #000;
+            display: none;
+        }
+
+        .video-preview.show {
+            display: block;
+            width: 100%;
+            height: 240px;
+            /* Fixed height for consistency */
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .video-preview video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            /* Ensures no stretching */
+            border-radius: 10px;
+            transform: scaleX(-1);
+            /* Mirror effect */
+        }
+
+        /* Question List Styles */
+        .question-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .question-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.875rem 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+
+        .question-item .q-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .question-item .q-type {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .question-item .q-type.coding {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .question-item .q-type.mcq {
+            background: #fef3c7;
+            color: #b45309;
+        }
+
+        .question-item .q-name {
+            font-weight: 500;
+            color: #1f2937;
+        }
+
+        .question-item .q-points {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #01a982;
+        }
+
+        .summary-stats {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: linear-gradient(135deg, #f0f9f6 0%, #e8f5f0 100%);
+            border-radius: 10px;
+        }
+
+        .stat-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #01a982;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .left-panel {
+                flex: 0 0 auto;
+                padding: 2rem;
+            }
+
+            .right-panel {
+                flex: 1;
+                border-left: none;
+                border-top: 1px solid #e5e7eb;
+            }
+
+            .welcome-text {
+                font-size: 1.75rem;
+            }
+
+            .info-badges {
+                flex-direction: row;
+                gap: 1.5rem;
+            }
+        }
+
+        /* Loading spinner */
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #d1d5db;
+            border-top-color: #01a982;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* Custom Confirmation Modal */
+        .confirm-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .confirm-modal-overlay.active {
+            display: flex;
+        }
+
+        .confirm-modal {
+            background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            border: 1px solid rgba(1, 169, 130, 0.3);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .confirm-modal-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 20px;
+            background: rgba(255, 193, 7, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+        }
+
+        .confirm-modal h3 {
+            color: #fff;
+            font-size: 1.5rem;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .confirm-modal p {
+            color: #9ca3af;
+            font-size: 0.95rem;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .confirm-modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .confirm-modal-btn {
+            padding: 12px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+        }
+
+        .confirm-modal-btn.cancel {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .confirm-modal-btn.cancel:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .confirm-modal-btn.confirm {
+            background: linear-gradient(135deg, #01a982 0%, #00875a 100%);
+            color: #fff;
+        }
+
+        .confirm-modal-btn.confirm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(1, 169, 130, 0.4);
+        }
+
+        /* Time's Up Spinner */
+        .time-up-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            border-top: 4px solid #01a982;
+            border-radius: 50%;
+            animation: timeUpSpin 1s linear infinite;
+            margin: 20px auto 0;
+        }
+
+        @keyframes timeUpSpin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 2rem;
+        }
+
+        .button-group .btn-primary {
+            flex: 2;
+            margin-top: 0;
+        }
+
+        .btn-secondary {
+            padding: 14px 24px;
+            background: #f3f4f6;
+            color: #374151;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+            color: #111827;
+        }
+
+        .btn-back {
+            flex: 1;
+        }
+
+        .confirm-modal-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        /* Thank You Overlay */
+        .thank-you-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(145deg, #0d1117 0%, #161b22 100%);
+            z-index: 10001;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .thank-you-overlay.active {
+            display: flex;
+        }
+
+        .thank-you-content {
+            text-align: center;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .thank-you-icon {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 30px;
+            background: linear-gradient(135deg, #01a982 0%, #00875a 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            animation: checkmarkPop 0.5s ease-out 0.3s both;
+        }
+
+        @keyframes checkmarkPop {
+            0% {
+                transform: scale(0);
+            }
+
+            50% {
+                transform: scale(1.2);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .thank-you-content h1 {
+            color: #fff;
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+
+        .thank-you-content p {
+            color: #9ca3af;
+            font-size: 1.1rem;
+            margin-bottom: 40px;
+            max-width: 400px;
+        }
+
+        .thank-you-stats {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+
+        .thank-you-stat {
+            text-align: center;
+        }
+
+        .thank-you-stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #01a982;
+        }
+
+        .thank-you-stat-label {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .thank-you-btn {
+            padding: 14px 32px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .thank-you-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Left Panel - Contest Info (Fixed) -->
+        <div class="left-panel">
+            <div class="logo">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor"
+                        stroke-width="2" fill="none" />
+                </svg>
+            </div>
+
+            <div class="contest-info">
+                <h1 class="welcome-text">
+                    Welcome to<br>{{ contest.name }}
+                </h1>
+
+                <div class="info-badges">
+                    <div class="info-badge">
+                        <span class="info-label">Test duration</span>
+                        <span class="info-value">{{ duration_display }}</span>
+                    </div>
+                    <div class="info-badge">
+                        <span class="info-label">No. of questions</span>
+                        <span class="info-value">{{ total_questions }} questions</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer-links">
+                <a href="#">Platform Help</a>
+                <span>|</span>
+                <a href="#">Execution Environment</a>
+                <span>|</span>
+                <a href="#">FAQ</a>
+            </div>
+        </div>
+
+        <!-- Right Panel - Sliding Steps -->
+        <div class="right-panel">
+            <div class="slides-container" data-step="1" id="slidesContainer">
+
+                <!-- Step 1: Login -->
+                <div class="slide" id="step-login">
+                    <div class="slide-content">
+                        <div class="form-header">
+                            <h2>Sign In to Continue</h2>
+                            <p>Use the Google account associated with your contest invitation email.</p>
+                        </div>
+
+                        {% if request.user.is_authenticated %}
+                        {% if error %}
+                        <!-- User logged in but doesn't have permission -->
+                        <div class="auth-status error-status">
+                            <div class="auth-icon error">🚫</div>
+                            <p><strong>Access Denied</strong></p>
+                            <p class="error-detail">{{ error }}</p>
+                            <p class="error-hint">Make sure you're using the Google account that received the contest
+                                invitation.</p>
+                            <a href="/hpe/contest/{{ contest.key }}/logout/" class="btn-switch-account">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" />
+                                </svg>
+                                Login with different account
+                            </a>
+                        </div>
+                        {% else %}
+                        <!-- User is logged in and has permission -->
+                        <div class="auth-status success">
+                            <div class="auth-icon">✓</div>
+                            <p>Signed in as <strong>{{ request.user.email or request.user.username }}</strong></p>
+                            <p class="logged-in-hint">You are logged in with this account. If you want to use a
+                                different account, click below.</p>
+                            <a href="/hpe/contest/{{ contest.key }}/logout/" class="btn-switch-account">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3" />
+                                </svg>
+                                Use different account
+                            </a>
+                            <button type="button" class="btn-primary" id="continueAfterLogin">Continue with this
+                                account</button>
+                        </div>
+                        {% endif %}
+                        {% else %}
+                        <!-- Google OAuth Sign-In Button -->
+                        <a href="/login/google-oauth2/?next={{ request.path }}" class="btn-google" id="googleSignInBtn">
+                            <svg class="google-icon-svg" viewBox="0 0 24 24" width="24" height="24">
+                                <path fill="#4285F4"
+                                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                <path fill="#34A853"
+                                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                <path fill="#FBBC05"
+                                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                <path fill="#EA4335"
+                                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                            </svg>
+                            <span>Sign in with Google</span>
+                        </a>
+
+                        <div class="error-message" id="loginError" style="display: none;"></div>
+
+                        <p class="oauth-hint">
+                            Use the Google account associated with your contest invitation email.
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+
+
+                <!-- Step 2: Permission Checks -->
+                <div class="slide" id="step-permissions">
+                    <div class="slide-content">
+                        <div class="form-header">
+                            <h2>System Permissions</h2>
+                            <p>Complete each check to proceed</p>
+                        </div>
+
+                        <div class="check-list">
+                            <div class="check-item" id="check-camera">
+                                <div class="check-icon">📷</div>
+                                <div class="check-info">
+                                    <h4>Camera Access</h4>
+                                    <p>Required for proctoring</p>
+                                </div>
+                                <button type="button" class="check-btn" id="btn-camera">Enable</button>
+                            </div>
+
+                            <div class="check-item" id="check-fullscreen">
+                                <div class="check-icon">⛶</div>
+                                <div class="check-info">
+                                    <h4>Fullscreen Mode</h4>
+                                    <p>Exam must be in fullscreen</p>
+                                </div>
+                                <button type="button" class="check-btn" id="btn-fullscreen">Enable</button>
+                            </div>
+
+                            <div class="check-item" id="check-internet">
+                                <div class="check-icon">📶</div>
+                                <div class="check-info">
+                                    <h4>Internet Connection</h4>
+                                    <p>Stable connection required</p>
+                                </div>
+                                <button type="button" class="check-btn" id="btn-internet">Check</button>
+                            </div>
+                        </div>
+
+                        <div class="video-preview" id="videoPreview">
+                            <video id="cameraPreview" autoplay muted playsinline></video>
+                        </div>
+
+                        <div class="button-group">
+                            <button type="button" class="btn-secondary btn-back" onclick="cleanupAndGoBack()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                                </svg>
+                                Back
+                            </button>
+                            <button type="button" class="btn-primary" id="continueToInfoBtn" disabled>Continue</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Contest Info & Questions -->
+                <div class="slide" id="step-info">
+                    <div class="slide-content">
+                        <div class="form-header">
+                            <h2>Contest Overview</h2>
+                            <p>Review the questions and scoring before you begin</p>
+                        </div>
+
+                        <div class="summary-stats">
+                            <div class="stat-item">
+                                <div class="stat-value">{{ total_questions }}</div>
+                                <div class="stat-label">Questions</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ total_points }}</div>
+                                <div class="stat-label">Total Points</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ duration_display }}</div>
+                                <div class="stat-label">Duration</div>
+                            </div>
+                        </div>
+
+                        <div class="question-list">
+                            {% for q in questions %}
+                            <div class="question-item">
+                                <div class="q-info">
+                                    <span class="q-type {{ q.type }}">{{ q.type }}</span>
+                                    <span class="q-name">{{ q.name }}</span>
+                                </div>
+                                <span class="q-points">{{ q.points }} pts</span>
+                            </div>
+                            {% else %}
+                            <div class="question-item">
+                                <span class="q-name">No questions added yet</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="button-group">
+                            <button type="button" class="btn-secondary btn-back" onclick="goToStep(2)">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M19 12H5M12 19l-7-7 7-7" />
+                                </svg>
+                                Back
+                            </button>
+                            <button type="button" class="btn-primary" id="startExamBtn">Start Exam</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Submit Confirmation Modal -->
+    <div class="confirm-modal-overlay" id="submitConfirmModal">
+        <div class="confirm-modal">
+            <div class="confirm-modal-icon">⚠️</div>
+            <h3>Submit Your Test?</h3>
+            <p>Are you sure you want to finish and submit your test? This action cannot be undone.</p>
+            <div class="confirm-modal-buttons">
+                <button class="confirm-modal-btn cancel" id="cancelSubmitBtn">Cancel</button>
+                <button class="confirm-modal-btn confirm" id="confirmSubmitBtn">Yes, Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Modal (for rejoin errors, etc.) -->
+    <div class="confirm-modal-overlay" id="errorModal">
+        <div class="confirm-modal">
+            <div class="confirm-modal-icon">🚫</div>
+            <h3 id="errorModalTitle">Cannot Join</h3>
+            <p id="errorModalMessage">You have already submitted this contest and cannot rejoin.</p>
+            <div class="confirm-modal-buttons">
+                <button class="confirm-modal-btn confirm" id="errorModalOkBtn">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Time's Up Modal -->
+    <div class="confirm-modal-overlay" id="timeUpModal">
+        <div class="confirm-modal">
+            <div class="confirm-modal-icon">⏰</div>
+            <h3>Time's Up!</h3>
+            <p>Your exam time has ended. Submitting your test...</p>
+            <div class="time-up-spinner"></div>
+        </div>
+    </div>
+
+    <!-- Thank You Overlay -->
+    <div class="thank-you-overlay" id="thankYouOverlay">
+        <div class="thank-you-content">
+            <div class="thank-you-icon">✓</div>
+            <h1>Thank You!</h1>
+            <p>Your test has been successfully submitted. You can now close this window.</p>
+            <div class="thank-you-stats">
+                <div class="thank-you-stat">
+                    <div class="thank-you-stat-value" id="final-tab-count">0</div>
+                    <div class="thank-you-stat-label">Tab Switches</div>
+                </div>
+                <div class="thank-you-stat">
+                    <div class="thank-you-stat-value" id="final-time-away">0s</div>
+                    <div class="thank-you-stat-label">Time Away</div>
+                </div>
+            </div>
+            <button class="thank-you-btn" onclick="window.location.href='/'">Return to Home</button>
+        </div>
+    </div>
+
+    <!-- Connection Error Modal -->
+    <div class="confirm-modal-overlay" id="connectionErrorModal">
+        <div class="confirm-modal">
+            <div class="confirm-modal-icon">⚠️</div>
+            <h3>Connection Error</h3>
+            <p>There was a problem connecting to the proctoring server. Please go back and try again.</p>
+            <div class="confirm-modal-buttons">
+                <button class="confirm-modal-btn confirm" id="goBackBtn">Go Back</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Monitor Module - must be before main script -->
+
+    {% include "hpe_admin/proctor/tab_monitor.html" %}
+    {% include "hpe_admin/proctor/video_utils.html" %}
+    {% include "hpe_admin/hpe_clipboard_guard.html" %}
+
+    <script>
+        (function () {
+            const slidesContainer = document.getElementById('slidesContainer');
+            let currentStep = 1;
+            let mediaStream = null;
+
+            // Proctoring session management
+            const PROCTOR_API_URL = "http://127.0.0.1:8001";
+            const HPE_BACKEND_CONNECT = {{ hpe_backend_connect| lower
+        }};  // Toggle from debug.py
+        const ALLOW_COPY_PASTE = {{ allow_copy_paste| lower }};  // Toggle from debug.py
+        let proctoringSessionId = null;
+        let validatedSessionId = null;  // Stores session ID from connection validation
+        let videoManager = null;
+
+        // Permission check states
+        const checks = {
+            camera: false,
+            fullscreen: false,
+            internet: false
+        };
+
+        function goToStep(step) {
+            currentStep = step;
+            slidesContainer.setAttribute('data-step', step);
+        }
+        window.goToStep = goToStep; // Expose to global scope for inline onclick handlers
+
+        // Cleanup function when going back from Step 2 to Step 1
+        async function cleanupAndGoBack() {
+            console.log('[HPE-PROCTOR] Cleaning up before going back...');
+
+            // 1. Stop camera stream
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => {
+                    track.stop();
+                    console.log('[HPE-PROCTOR] Camera track stopped');
+                });
+                mediaStream = null;
+            }
+
+            // 2. Hide video preview
+            const videoPreview = document.getElementById('videoPreview');
+            if (videoPreview) {
+                videoPreview.classList.remove('show');
+            }
+            const cameraPreview = document.getElementById('cameraPreview');
+            if (cameraPreview) {
+                cameraPreview.srcObject = null;
+            }
+
+            // 3. Close WebSocket connection
+            if (window.proctorSocket) {
+                window.proctorSocket.close();
+                window.proctorSocket = null;
+                console.log('[HPE-PROCTOR] WebSocket closed');
+            }
+
+            // 4. Delete temp session from backend
+            if (validatedSessionId && HPE_BACKEND_CONNECT) {
+                try {
+                    const response = await fetch(`${PROCTOR_API_URL}/delete-temp-session/${validatedSessionId}`, {
+                        method: 'DELETE',
+                        headers: { 'ngrok-skip-browser-warning': 'true' }
+                    });
+                    console.log('[HPE-PROCTOR] Temp session deleted:', validatedSessionId);
+                } catch (err) {
+                    console.warn('[HPE-PROCTOR] Failed to delete temp session:', err);
+                }
+                validatedSessionId = null;
+            }
+
+            // 5. Reset check states
+            checks.camera = false;
+            checks.fullscreen = false;
+            checks.internet = false;
+
+            // 6. Reset button states
+            const btnCamera = document.getElementById('btn-camera');
+            const btnFullscreen = document.getElementById('btn-fullscreen');
+            const btnInternet = document.getElementById('btn-internet');
+            const continueBtn = document.getElementById('continueToInfoBtn');
+
+            if (btnCamera) {
+                btnCamera.classList.remove('success', 'error');
+                btnCamera.textContent = 'Enable';
+                btnCamera.disabled = false;
+            }
+            if (btnFullscreen) {
+                btnFullscreen.classList.remove('success', 'error');
+                btnFullscreen.textContent = 'Enable';
+                btnFullscreen.disabled = false;
+            }
+            if (btnInternet) {
+                btnInternet.classList.remove('success', 'error');
+                btnInternet.textContent = 'Check';
+                btnInternet.disabled = false;
+            }
+            if (continueBtn) {
+                continueBtn.disabled = true;
+            }
+
+            // 7. Reset check item visual states
+            ['check-camera', 'check-fullscreen', 'check-internet'].forEach(id => {
+                const item = document.getElementById(id);
+                if (item) {
+                    item.classList.remove('checking', 'success', 'error');
+                }
+            });
+
+            // 8. Exit fullscreen if active
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(err => console.log('Exit fullscreen error:', err));
+            }
+
+            console.log('[HPE-PROCTOR] Cleanup complete, going to step 1');
+            goToStep(1);
+        }
+        window.cleanupAndGoBack = cleanupAndGoBack; // Expose to global scope
+        const continueAfterLoginBtn = document.getElementById('continueAfterLogin');
+        const loginError = document.getElementById('loginError');
+
+        // If user is already authenticated, handle the continue button
+        if (continueAfterLoginBtn) {
+            continueAfterLoginBtn.addEventListener('click', () => {
+                goToStep(2);
+            });
+        }
+
+        // Check URL for OAuth error (in case Google auth failed or user not permitted)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('error')) {
+            if (loginError) {
+                loginError.textContent = decodeURIComponent(urlParams.get('error'));
+                loginError.style.display = 'block';
+            }
+        }
+
+
+        // ===== Step 2: Permission Checks =====
+        const btnCamera = document.getElementById('btn-camera');
+        const btnFullscreen = document.getElementById('btn-fullscreen');
+        const btnInternet = document.getElementById('btn-internet');
+        const continueToInfoBtn = document.getElementById('continueToInfoBtn');
+        const videoPreview = document.getElementById('videoPreview');
+        const cameraPreview = document.getElementById('cameraPreview');
+
+        function updateButtonState(btn, status, text) {
+            btn.classList.remove('success', 'error');
+            if (status === 'success') {
+                btn.classList.add('success');
+                btn.textContent = text || '✓ Done';
+                btn.disabled = true;
+            } else if (status === 'error') {
+                btn.classList.add('error');
+                btn.textContent = text || 'Retry';
+            } else {
+                btn.textContent = text || 'Enable';
+            }
+        }
+
+        function updateCheckItem(id, status) {
+            const item = document.getElementById(id);
+            item.classList.remove('checking', 'success', 'error');
+            item.classList.add(status);
+        }
+
+        function checkAllPassed() {
+            if (checks.camera && checks.fullscreen && checks.internet) {
+                continueToInfoBtn.disabled = false;
+            }
+        }
+
+        // Camera Check
+        btnCamera.addEventListener('click', async () => {
+            btnCamera.textContent = 'Checking...';
+            btnCamera.disabled = true;
+            updateCheckItem('check-camera', 'checking');
+
+            // Skip actual camera access in offline mode
+            if (!HPE_BACKEND_CONNECT) {
+                console.log('[HPE-PROCTOR] Offline mode - skipping camera access');
+                checks.camera = true;
+                updateCheckItem('check-camera', 'success');
+                updateButtonState(btnCamera, 'success', '✓ Skipped (Offline)');
+                checkAllPassed();
+                return;
+            }
+
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                cameraPreview.srcObject = mediaStream;
+                videoPreview.classList.add('show');
+                checks.camera = true;
+                updateCheckItem('check-camera', 'success');
+                updateButtonState(btnCamera, 'success', '✓ Enabled');
+            } catch (err) {
+                checks.camera = false;
+                updateCheckItem('check-camera', 'error');
+                updateButtonState(btnCamera, 'error', 'Retry');
+                btnCamera.disabled = false;
+            }
+            checkAllPassed();
+        });
+
+        // Fullscreen Check - Actually enters fullscreen
+        btnFullscreen.addEventListener('click', async () => {
+            btnFullscreen.textContent = 'Enabling...';
+            btnFullscreen.disabled = true;
+            updateCheckItem('check-fullscreen', 'checking');
+
+            try {
+                const docEl = document.documentElement;
+                if (docEl.requestFullscreen) {
+                    await docEl.requestFullscreen();
+                } else if (docEl.webkitRequestFullscreen) {
+                    await docEl.webkitRequestFullscreen();
+                } else if (docEl.mozRequestFullScreen) {
+                    await docEl.mozRequestFullScreen();
+                } else {
+                    throw new Error('Fullscreen not supported');
+                }
+                checks.fullscreen = true;
+                updateCheckItem('check-fullscreen', 'success');
+                updateButtonState(btnFullscreen, 'success', '✓ Enabled');
+            } catch (err) {
+                checks.fullscreen = false;
+                updateCheckItem('check-fullscreen', 'error');
+                updateButtonState(btnFullscreen, 'error', 'Retry');
+                btnFullscreen.disabled = false;
+            }
+            checkAllPassed();
+        });
+
+        // Internet Check - Full backend validation
+        btnInternet.addEventListener('click', () => {
+            btnInternet.textContent = 'Checking...';
+            btnInternet.disabled = true;
+            updateCheckItem('check-internet', 'checking');
+            validateBackendConnection();
+        });
+
+        async function validateBackendConnection() {
+            // Skip backend connection if toggle is disabled (frontend-only mode)
+            if (!HPE_BACKEND_CONNECT) {
+                console.log('[HPE-PROCTOR] Backend connection disabled - running in frontend-only mode');
+                // Simulate successful connection for frontend-only mode
+                validatedSessionId = 'frontend-only-' + Date.now();
+                checks.internet = true;
+                updateCheckItem('check-internet', 'success');
+                updateButtonState(btnInternet, 'success', '✓ Offline Mode');
+                checkAllPassed();
+                return;
+            }
+
+            try {
+                // Step 1: Create temp session in DB with user info
+                const tempFormData = new FormData();
+                tempFormData.append('dmoj_user_id', '{{ request.user.id }}');
+                tempFormData.append('dmoj_user_name', '{{ request.user.username }}');
+
+                const tempResponse = await fetch(`${PROCTOR_API_URL}/generate-temp-session`, {
+                    method: 'POST',
+                    body: tempFormData,
+                    headers: { 'ngrok-skip-browser-warning': 'true' }
+                });
+
+                if (!tempResponse.ok) {
+                    throw new Error('Failed to connect to proctoring server');
+                }
+
+                const tempData = await tempResponse.json();
+                if (tempData.error) {
+                    throw new Error(tempData.error);
+                }
+                const sessionId = tempData.session_id;
+                console.log('[HPE-PROCTOR] Temp session created:', sessionId);
+
+
+                // Step 2: Establish WebSocket connection (keep open for exam)
+                const wsUrl = PROCTOR_API_URL.replace('http', 'ws') + `/ws?session_id=${sessionId}`;
+                const socket = new WebSocket(wsUrl);
+                let testComplete = false;
+
+                socket.onopen = () => {
+                    console.log('[HPE-PROCTOR] WebSocket connected - keeping open for exam');
+                    // Step 3: Capture and send one test frame
+                    const video = document.getElementById('cameraPreview');
+                    if (video && video.readyState >= 2) {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth || 320;
+                        canvas.height = video.videoHeight || 240;
+                        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const base64Data = canvas.toDataURL('image/jpeg', 0.5).split(',')[1];
+                        socket.send(base64Data);
+                        console.log('[HPE-PROCTOR] Test frame sent for analysis');
+                    } else {
+                        console.warn('[HPE-PROCTOR] Camera not ready, sending test ping');
+                        socket.send('test_connection');
+                    }
+                };
+
+                socket.onmessage = (event) => {
+                    try {
+                        const response = JSON.parse(event.data);
+                        console.log('[HPE-PROCTOR] Server response:', response);
+
+                        // Check for valid response (has timestamp or is_compliant field)
+                        if (response.timestamp !== undefined || response.is_compliant !== undefined) {
+                            testComplete = true;
+                            validatedSessionId = sessionId;  // Store session ID
+                            window.proctorSocket = socket;   // Store WebSocket globally (keep open!)
+                            checks.internet = true;
+                            updateCheckItem('check-internet', 'success');
+                            updateButtonState(btnInternet, 'success', '✓ Connected');
+                            console.log('[HPE-PROCTOR] ✅ Backend validation successful');
+                            console.log('[HPE-PROCTOR] 📡 WebSocket kept open - session:', validatedSessionId);
+                        }
+                    } catch (e) {
+                        // Non-JSON response, might still be valid
+                        testComplete = true;
+                        validatedSessionId = sessionId;
+                        window.proctorSocket = socket;
+                        checks.internet = true;
+                        updateCheckItem('check-internet', 'success');
+                        updateButtonState(btnInternet, 'success', '✓ Connected');
+                    }
+                    // DO NOT close the WebSocket - keep it open for the exam!
+                    checkAllPassed();
+                };
+
+                socket.onerror = (error) => {
+                    console.error('[HPE-PROCTOR] WebSocket error:', error);
+                    if (!testComplete) {
+                        handleConnectionError();
+                    }
+                };
+
+                socket.onclose = () => {
+                    console.log('[HPE-PROCTOR] WebSocket closed');
+                    // If closed unexpectedly before exam starts, allow retry
+                    if (!testComplete && !checks.internet) {
+                        handleConnectionError();
+                    }
+                };
+
+                // Timeout after 10 seconds
+                setTimeout(() => {
+                    if (!testComplete && !checks.internet) {
+                        console.error('[HPE-PROCTOR] Connection validation timeout');
+                        socket.close();
+                        handleConnectionError();
+                    }
+                }, 10000);
+
+            } catch (err) {
+                console.error('[HPE-PROCTOR] Connection validation error:', err);
+                handleConnectionError();
+            }
+        }
+
+
+        function handleConnectionError() {
+            checks.internet = false;
+            validatedSessionId = null;
+            updateCheckItem('check-internet', 'error');
+            updateButtonState(btnInternet, 'error', 'Retry');
+            btnInternet.disabled = false;
+            checkAllPassed();
+        }
+
+
+        continueToInfoBtn.addEventListener('click', () => {
+            goToStep(3);
+        });
+
+
+        // ===== Step 3: Start Exam =====
+        const startExamBtn = document.getElementById('startExamBtn');
+
+        startExamBtn.addEventListener('click', async () => {
+            // Check if connection was validated
+            if (!validatedSessionId) {
+                document.getElementById('connectionErrorModal').classList.add('active');
+                return;
+            }
+
+            startExamBtn.disabled = true;
+            startExamBtn.innerHTML = '<span class="spinner"></span> Starting session...';
+
+            try {
+                // Step 0: Join the contest (creates ContestParticipation)
+                const joinResponse = await fetch(`/hpe/contest/{{ contest.key }}/join/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const joinData = await joinResponse.json();
+                if (!joinData.success) {
+                    throw new Error(joinData.error || 'Failed to join contest');
+                }
+                console.log('[HPE-CONTEST] Joined contest:', joinData);
+
+                // Only connect to backend if toggle is enabled
+                if (HPE_BACKEND_CONNECT) {
+                    // Step 1: Start proctoring session with backend (persists to DB)
+                    const sessionFormData = new FormData();
+                    sessionFormData.append('dmoj_user_id', '{{ request.user.id }}');
+                    sessionFormData.append('dmoj_user_name', '{{ request.user.username }}');
+                    sessionFormData.append('dmoj_contest_name', '{{ contest.key }}');
+                    sessionFormData.append('validated_session_id', validatedSessionId);  // Pass validated ID
+
+
+                    const sessionResponse = await fetch(`${PROCTOR_API_URL}/start-session`, {
+                        method: 'POST',
+                        body: sessionFormData,
+                        headers: {
+                            'ngrok-skip-browser-warning': 'true'
+                        }
+                    });
+
+                    if (!sessionResponse.ok) {
+                        throw new Error('Failed to start proctoring session');
+                    }
+
+                    const sessionData = await sessionResponse.json();
+                    if (sessionData.error) {
+                        throw new Error(sessionData.error);
+                    }
+
+                    // Use the VALIDATED session ID (same as WebSocket), not the DB ID
+                    proctoringSessionId = validatedSessionId;
+                    console.log(`[HPE-PROCTOR] Session persisted to DB. Using session: ${proctoringSessionId}`);
+                } else {
+                    // Frontend-only mode: use the fake session ID
+                    proctoringSessionId = validatedSessionId;
+                    console.log('[HPE-PROCTOR] Frontend-only mode - skipping backend session creation');
+                }
+
+
+                // Step 2: Load exam content
+                startExamBtn.innerHTML = '<span class="spinner"></span> Loading exam...';
+
+                const response = await fetch("{{ url('hpe_exam_content', contest.key) }}", {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load exam content');
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Store DMOJ data globally
+                    window.dmojData = data.dmoj_data;
+                    window.dmojData.proctoringSessionId = proctoringSessionId;
+
+                    // Store exam end time (participation-aware, considers time_limit)
+                    window.examEndTime = data.exam_end_time;
+
+                    // Hide the landing page container
+                    document.querySelector('.container').style.display = 'none';
+
+                    // Create exam container
+                    const examContainer = document.createElement('div');
+                    examContainer.id = 'exam-container';
+                    examContainer.innerHTML = data.html;
+                    document.body.appendChild(examContainer);
+
+                    // Initialize the exam (proctoring, editor, etc.)
+                    initializeExam(mediaStream);
+                } else {
+                    throw new Error(data.error || 'Failed to load exam');
+                }
+            } catch (err) {
+                console.error('[HPE-CONTEST] Error:', err);
+                // Show custom error modal
+                showErrorModal('Cannot Join', err.message);
+                startExamBtn.disabled = false;
+                startExamBtn.innerHTML = 'Start Exam';
+            }
+        });
+
+        // Helper function to show error modal
+        function showErrorModal(title, message) {
+            document.getElementById('errorModalTitle').textContent = title;
+            document.getElementById('errorModalMessage').textContent = message;
+            document.getElementById('errorModal').classList.add('active');
+        }
+
+        // Error modal OK button handler
+        document.getElementById('errorModalOkBtn').addEventListener('click', function () {
+            document.getElementById('errorModal').classList.remove('active');
+        });
+
+        // ===== Exam Initialization =====
+        async function initializeExam(stream) {
+            // Load required scripts dynamically
+            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/ace/1.23.4/ace.js');
+
+            // Initialize ACE Editor
+            window.editor = ace.edit("ace-editor");
+            window.editor.setTheme("ace/theme/monokai");
+            window.editor.session.setMode("ace/mode/python");
+            window.editor.setOptions({
+                fontSize: "14px",
+                showPrintMargin: false,
+                highlightActiveLine: true
+            });
+
+            // Initialize clipboard guard to prevent external copy-paste
+            if (window.HPEClipboardGuard) {
+                window.HPEClipboardGuard.initialize(window.editor, ALLOW_COPY_PASTE);
+            }
+
+            // Initialize proctoring with existing stream
+            initProctoringWithStream(stream);
+
+            // Initialize timer
+            initTimer();
+
+            // Initialize resize handle
+            initResize();
+
+            // Show proctoring status
+            document.getElementById('proctor-status').style.display = 'flex';
+
+            // Setup fullscreen monitoring
+            setupFullscreenMonitor();
+        }
+
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                if (document.querySelector(`script[src="${src}"]`)) {
+                    resolve();
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        function initProctoringWithStream(stream) {
+            console.log("[HPE-PROCTOR] Initializing proctoring with stream");
+
+            const video = document.getElementById('webcam');
+            const debugVideo = document.getElementById('debug-video-feed');
+
+            if (video && stream) {
+                video.srcObject = stream;
+                // IMPORTANT: Explicitly play video like old working code
+                video.play().then(() => {
+                    console.log("[HPE-PROCTOR] ✅ Video element playing");
+                }).catch(err => {
+                    console.error("[HPE-PROCTOR] Video play error:", err);
+                });
+                console.log("[HPE-PROCTOR] Video element connected to stream");
+            } else {
+                console.error("[HPE-PROCTOR] ❌ Video element not found or no stream!");
+            }
+            if (debugVideo && stream) {
+                debugVideo.srcObject = stream;
+            }
+
+            // Setup WebSocket for proctoring - reuse connection from validation
+            let socket = window.proctorSocket;  // Get existing WebSocket from validation
+            let isConnected = socket && socket.readyState === WebSocket.OPEN;
+            let frameCount = 0;
+            const FRAME_INTERVAL_MS = 500; // 500ms = 2fps
+
+            // Enhanced message handler for exam proctoring
+            function setupExamMessageHandler(ws) {
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        console.log('[HPE-PROCTOR] Server response:', data);
+
+                        // Handle tab switch acknowledgment
+                        if (data.type === 'tab_switch_ack') {
+                            console.log('[HPE-PROCTOR] Tab switch acknowledged:', data);
+                            return;
+                        }
+
+                        // Handle violation detection
+                        let violationMessage = 'Pattern detected';
+                        if (Array.isArray(data.violations) && data.violations.length > 0) {
+                            violationMessage = data.violations[0]?.message || 'Pattern detected';
+                            console.log('[HPE-PROCTOR] 🚨 VIOLATION:', violationMessage);
+                        }
+
+                        const statusEl = document.getElementById('debug-status');
+                        if (statusEl) {
+                            statusEl.textContent = data.is_compliant ? 'Compliant' : 'VIOLATION';
+                        }
+
+                        // Trigger video upload if violation detected
+                        if (data.trigger_pattern_upload && videoManager) {
+                            console.log('[HPE-PROCTOR] 📹 Triggering violation video upload');
+                            videoManager.triggerViolationUpload();
+                        }
+                    } catch (e) {
+                        // Non-JSON message, ignore
+                    }
+                };
+
+                ws.onclose = (event) => {
+                    isConnected = false;
+                    console.log("[HPE-PROCTOR] WebSocket closed:", event.code, event.reason);
+                    // Only reconnect if exam is NOT submitted
+                    if (!window.examSubmitted) {
+                        const status = document.getElementById('debug-status');
+                        if (status) status.textContent = "Reconnecting...";
+                        setTimeout(() => initWebSocket(), 3000);
+                    } else {
+                        console.log("[HPE-PROCTOR] Exam submitted - not reconnecting");
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    console.error("[HPE-PROCTOR] WebSocket error:", error);
+                };
+            }
+
+            function initWebSocket() {
+                // Skip WebSocket if backend is disabled (frontend-only mode)
+                if (!HPE_BACKEND_CONNECT) {
+                    console.log("[HPE-PROCTOR] Frontend-only mode - skipping WebSocket connection");
+                    const status = document.getElementById('debug-status');
+                    if (status) status.textContent = "Offline Mode";
+                    return;
+                }
+
+                // Block all WebSocket connections if exam is submitted
+                if (window.examSubmitted) {
+                    console.log("[HPE-PROCTOR] Exam submitted - blocking WebSocket connection");
+                    return;
+                }
+
+                // Check if we already have an open WebSocket from validation
+                if (window.proctorSocket && window.proctorSocket.readyState === WebSocket.OPEN) {
+                    console.log("[HPE-PROCTOR] ✅ Reusing existing WebSocket from validation");
+                    socket = window.proctorSocket;
+                    isConnected = true;
+                    setupExamMessageHandler(socket);
+                    const status = document.getElementById('debug-status');
+                    if (status) status.textContent = "Active";
+                    return;
+                }
+
+                // If no existing socket, create new one (fallback)
+                console.log("[HPE-PROCTOR] Creating new WebSocket connection...");
+                const WS_URL = PROCTOR_API_URL.replace('http', 'ws') + `/ws?session_id=${proctoringSessionId}`;
+                socket = new WebSocket(WS_URL);
+
+                socket.onopen = () => {
+                    isConnected = true;
+                    window.proctorSocket = socket;
+                    console.log("[HPE-PROCTOR] ✅ New WebSocket connected");
+                    setupExamMessageHandler(socket);
+                    const status = document.getElementById('debug-status');
+                    if (status) status.textContent = "Active";
+                };
+
+                socket.onerror = (error) => {
+                    console.error("[HPE-PROCTOR] WebSocket error:", error);
+                    socket.close();
+                };
+            }
+
+            initWebSocket();
+
+
+            // Capture and send frames periodically (1fps) - only if backend is enabled
+            const canvas = document.getElementById('canvas');
+            if (canvas && video && HPE_BACKEND_CONNECT) {
+                console.log(`[HPE-PROCTOR] Starting frame capture at ${1000 / FRAME_INTERVAL_MS}fps`);
+            } else if (!HPE_BACKEND_CONNECT) {
+                console.log("[HPE-PROCTOR] Frontend-only mode - skipping frame capture");
+            }
+
+            if (canvas && video && HPE_BACKEND_CONNECT) {
+
+                window.frameIntervalId = setInterval(() => {
+                    // Stop if exam is submitted
+                    if (window.examSubmitted) {
+                        clearInterval(window.frameIntervalId);
+                        console.log("[HPE-PROCTOR] Frame sending stopped - exam submitted");
+                        return;
+                    }
+                    if (video.readyState !== 4) return;
+
+                    canvas.width = video.videoWidth || 320;
+                    canvas.height = video.videoHeight || 240;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                    // Send Base64 encoded JPEG (same format as old working code)
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+                    const base64Data = dataUrl.split(',')[1];  // Remove "data:image/jpeg;base64," prefix
+
+                    if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(base64Data);
+                        frameCount++;
+
+                        // Log every 30 frames (every 30 seconds at 1fps)
+                        if (frameCount % 30 === 0) {
+                            console.log(`[HPE-PROCTOR] Frames sent: ${frameCount}, Size: ${(base64Data.length / 1024).toFixed(1)}KB`);
+                        }
+                    }
+                }, FRAME_INTERVAL_MS);
+
+            }
+
+            // Tab switch detection using HPETabSwitchDetector
+            if (window.HPETabSwitchDetector) {
+                window.HPETabSwitchDetector.initialize({
+                    onTabSwitch: (count, time) => {
+                        console.log(`[HPE-PROCTOR] Tab Switch: ${count}, Time: ${time}s`);
+                        const tabCountEl = document.getElementById('debug-tab-count');
+                        if (tabCountEl) tabCountEl.textContent = count;
+                        if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
+                            socket.send(JSON.stringify({ type: "tab_switch", count: count, time_outside: time }));
+                        }
+                    },
+                    onTimeUpdate: (count, time) => {
+                        const timeAwayEl = document.getElementById('debug-time-away');
+                        if (timeAwayEl) timeAwayEl.textContent = time.toFixed(1) + 's';
+                    },
+                    onBackendUpdate: (count, time) => {
+                        console.log(`[HPE-PROCTOR] Backend update: count=${count}, time=${time}s`);
+                        if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
+                            socket.send(JSON.stringify({ type: "tab_switch", count: count, time_outside: time }));
+                        }
+                    }
+                });
+                console.log("[HPE-PROCTOR] HPETabSwitchDetector initialized");
+            } else {
+                // Fallback to basic detection if module not loaded
+                console.warn("[HPE-PROCTOR] HPETabSwitchDetector not available, using fallback");
+                let tabSwitchCount = 0;
+                document.addEventListener("visibilitychange", () => {
+                    if (document.hidden) {
+                        tabSwitchCount++;
+                        console.log(`[HPE-PROCTOR] Fallback tab switch: ${tabSwitchCount}`);
+                        const tabCountEl = document.getElementById('debug-tab-count');
+                        if (tabCountEl) tabCountEl.textContent = tabSwitchCount;
+                        if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
+                            socket.send(JSON.stringify({ type: "tab_switch", count: tabSwitchCount }));
+                        }
+                    }
+                });
+            }
+
+            // Initialize HPEProctoringVideoManager for continuous video recording - only if backend is enabled
+            if (window.HPEProctoringVideoManager && HPE_BACKEND_CONNECT) {
+                videoManager = new window.HPEProctoringVideoManager(null, null, {
+                    apiBaseUrl: PROCTOR_API_URL,
+                    bufferDuration: 20,  // 20 second rolling buffer
+                    chunkInterval: 1000  // 1 second chunks
+                });
+
+                // Initialize video manager with stream and user data
+                videoManager.initialize(stream, {
+                    userId: window.dmojData?.userId || '{{ request.user.id }}',
+                    username: window.dmojData?.username || '{{ request.user.username }}',
+                    contestName: window.dmojData?.contestName || '{{ contest.key }}',
+                    proctoringSessionId: proctoringSessionId
+                });
+                console.log('[HPE-PROCTOR] ✅ Video manager initialized - 20s buffer, continuous recording');
+            } else if (!HPE_BACKEND_CONNECT) {
+                console.log('[HPE-PROCTOR] Frontend-only mode - video recording disabled');
+            } else {
+                console.warn('[HPE-PROCTOR] HPEProctoringVideoManager not available');
+            }
+        }
+
+
+        function setupFullscreenMonitor() {
+            const fullscreenModal = document.getElementById('fullscreen-warning-modal');
+            const btnReturnFullscreen = document.getElementById('btn-return-fullscreen');
+
+            function isFullscreen() {
+                return !!(document.fullscreenElement ||
+                    document.webkitFullscreenElement ||
+                    document.mozFullScreenElement ||
+                    document.msFullscreenElement);
+            }
+
+            async function requestFullscreen() {
+                const element = document.documentElement;
+                const rfs = element.requestFullscreen ||
+                    element.webkitRequestFullscreen ||
+                    element.mozRequestFullScreen ||
+                    element.msRequestFullscreen;
+                if (rfs) return rfs.call(element);
+            }
+
+            function checkFullscreen() {
+                // Skip fullscreen check if exam has been submitted
+                if (window.examSubmitted) return;
+
+                const isViolation = !isFullscreen() || document.hidden;
+                if (fullscreenModal) {
+                    fullscreenModal.style.display = isViolation ? 'flex' : 'none';
+                }
+            }
+
+            document.addEventListener('fullscreenchange', checkFullscreen);
+            document.addEventListener('webkitfullscreenchange', checkFullscreen);
+            document.addEventListener('visibilitychange', checkFullscreen);
+
+            if (btnReturnFullscreen) {
+                btnReturnFullscreen.addEventListener('click', async () => {
+                    try {
+                        await requestFullscreen();
+                    } catch (e) {
+                        console.error("Fullscreen request failed:", e);
+                    }
+                });
+            }
+
+            // Initial check
+            checkFullscreen();
+        }
+
+        let timerInterval = null;
+        let autoSubmitTriggered = false;
+
+        function initTimer() {
+            // Use participation-aware end time if available (considers time_limit)
+            // Falls back to contest end time for backward compatibility
+            const endTimeStr = window.examEndTime || "{{ contest.end_time.isoformat() }}";
+            const endTime = new Date(endTimeStr);
+
+            function updateTimer() {
+                const now = new Date();
+                const diff = endTime - now;
+
+                if (diff <= 0) {
+                    document.getElementById('countdown').textContent = 'Time Up!';
+
+                    // Prevent multiple auto-submit triggers
+                    if (!autoSubmitTriggered && !window.examSubmitted) {
+                        autoSubmitTriggered = true;
+                        clearInterval(timerInterval);
+                        triggerAutoSubmit();
+                    }
+                    return;
+                }
+
+                const hours = Math.floor(diff / 3600000);
+                const mins = Math.floor((diff % 3600000) / 60000);
+                const secs = Math.floor((diff % 60000) / 1000);
+
+                document.getElementById('countdown').textContent =
+                    String(hours).padStart(2, '0') + ':' +
+                    String(mins).padStart(2, '0') + ':' +
+                    String(secs).padStart(2, '0');
+            }
+
+            updateTimer();
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        // Auto-submit when time is up
+        function triggerAutoSubmit() {
+            console.log('[HPE-CONTEST] Time is up! Triggering auto-submit...');
+
+            // Show the Time's Up modal
+            const timeUpModal = document.getElementById('timeUpModal');
+            if (timeUpModal) {
+                timeUpModal.classList.add('active');
+            }
+
+            // Auto-submit after 2 seconds
+            setTimeout(() => {
+                // Trigger the same submit flow as clicking "Yes, Submit"
+                const confirmBtn = document.getElementById('confirmSubmitBtn');
+                if (confirmBtn) {
+                    confirmBtn.click();
+                }
+            }, 2000);
+        }
+
+        function initResize() {
+            const handle = document.getElementById('resize-handle');
+            const problemPanel = document.getElementById('problem-panel');
+            if (!handle || !problemPanel) return;
+
+            let isResizing = false;
+
+            handle.addEventListener('mousedown', () => {
+                isResizing = true;
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isResizing) return;
+                const editorView = document.getElementById('editor-view');
+                if (!editorView) return;
+                const rect = editorView.getBoundingClientRect();
+                const newWidth = ((e.clientX - rect.left) / rect.width) * 100;
+                if (newWidth >= 25 && newWidth <= 75) {
+                    problemPanel.style.width = newWidth + '%';
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                isResizing = false;
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                if (window.editor) window.editor.resize();
+            });
+        }
+
+        // ===== Exam Navigation Functions (Global) =====
+        window.showDashboard = function () {
+            document.getElementById('dashboard-view').style.display = 'block';
+            document.getElementById('editor-view').classList.remove('active');
+            const mcqView = document.getElementById('mcq-view');
+            if (mcqView) mcqView.classList.remove('active');
+            document.getElementById('btn-dashboard').classList.add('active');
+        };
+
+        window.toggleDebugPanel = function () {
+            const panel = document.getElementById('proctor-debug-panel');
+            if (panel) panel.classList.toggle('active');
+        };
+
+        window.toggleResults = function (show) {
+            const panel = document.getElementById('results-panel');
+            if (!panel) return;
+            if (show === false) panel.classList.remove('open');
+            else if (show === true) panel.classList.add('open');
+            else panel.classList.toggle('open');
+        };
+
+        window.confirmSubmit = function () {
+            // Show custom confirmation modal instead of browser dialog
+            const modal = document.getElementById('submitConfirmModal');
+            modal.classList.add('active');
+        };
+
+        // Handle modal buttons (set up after DOM is ready)
+        document.addEventListener('DOMContentLoaded', function () {
+            const modal = document.getElementById('submitConfirmModal');
+            const cancelBtn = document.getElementById('cancelSubmitBtn');
+            const confirmBtn = document.getElementById('confirmSubmitBtn');
+
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function () {
+                    modal.classList.remove('active');
+                });
+            }
+
+            // Connection Error Modal - Go Back button
+            const goBackBtn = document.getElementById('goBackBtn');
+            const connectionErrorModal = document.getElementById('connectionErrorModal');
+            if (goBackBtn) {
+                goBackBtn.addEventListener('click', function () {
+                    connectionErrorModal.classList.remove('active');
+                    goToStep(2);  // Return to permissions step
+                });
+            }
+
+
+
+
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', async function () {
+                    // IMMEDIATELY disable fullscreen warnings before any async operations
+                    window.examSubmitted = true;
+                    const fullscreenModal = document.getElementById('fullscreen-warning-modal');
+                    if (fullscreenModal) {
+                        fullscreenModal.style.display = 'none';
+                    }
+
+                    // Disable button to prevent double-click
+                    confirmBtn.disabled = true;
+                    confirmBtn.textContent = 'Submitting...';
+
+                    // Get tab switch data before any operations
+                    const savedCount = window.HPETabSwitchDetector ? window.HPETabSwitchDetector.tabSwitchCount : 0;
+                    const savedTime = window.HPETabSwitchDetector ? window.HPETabSwitchDetector.totalTimeOutside : 0;
+
+                    try {
+                        // Clear frame sending interval immediately
+                        if (window.frameIntervalId) {
+                            clearInterval(window.frameIntervalId);
+                            console.log('[HPE-PROCTOR] Frame interval cleared');
+                        }
+
+                        // Send final tab switch data to backend before stopping
+                        if (window.proctorSocket && window.proctorSocket.readyState === WebSocket.OPEN) {
+                            window.proctorSocket.send(JSON.stringify({
+                                type: "tab_switch",
+                                count: savedCount,
+                                time_outside: savedTime
+                            }));
+                            console.log(`[HPE-PROCTOR] Final tab switch data sent: count=${savedCount}, time=${savedTime}s`);
+
+                            // Small delay to ensure message is sent before closing
+                            await new Promise(resolve => setTimeout(resolve, 200));
+
+                            // Close WebSocket connection
+                            window.proctorSocket.close();
+                        }
+
+                        // Send contest results to Proctor backend for plagiarism check and score dashboard
+                        if (proctoringSessionId) {
+                            try {
+                                // Fetch all submissions from DMOJ
+                                const submissionsResponse = await fetch(`/hpe/contest/{{ contest.key }}/submissions/`, {
+                                    method: 'GET',
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                });
+
+                                if (submissionsResponse.ok) {
+                                    const submissionsData = await submissionsResponse.json();
+                                    console.log('[HPE-PROCTOR] Fetched submissions:', submissionsData);
+
+                                    // Prepare payload for Proctor backend (3NF schema)
+                                    const proctorPayload = {
+                                        session_id: proctoringSessionId,
+                                        contest_key: '{{ contest.key }}',
+                                        contest_name: '{{ contest.name }}',
+                                        problem_score: submissionsData.problem_score || 0,
+                                        mcq_score: submissionsData.mcq_score || 0,
+                                        total_score: submissionsData.total_score || 0,
+                                        format_data: submissionsData.format_data || {},
+                                        submissions: submissionsData.submissions || []
+                                    };
+
+                                    // Send to Proctor backend
+                                    const proctorResponse = await fetch(`${PROCTOR_API_URL}/submit-contest-results`, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'ngrok-skip-browser-warning': 'true'
+                                        },
+                                        body: JSON.stringify(proctorPayload)
+                                    });
+
+                                    const proctorResult = await proctorResponse.json();
+                                    console.log('[HPE-PROCTOR] Contest results sent to Proctor:', proctorResult);
+                                } else {
+                                    console.error('[HPE-PROCTOR] Failed to fetch submissions:', submissionsResponse.status);
+                                }
+                            } catch (err) {
+                                console.error('[HPE-PROCTOR] Error sending contest results to Proctor:', err);
+                            }
+                        }
+
+                        // Stop proctoring session
+                        if (proctoringSessionId) {
+                            const stopFormData = new FormData();
+                            stopFormData.append('dmoj_user_id', '{{ request.user.id }}');
+
+                            const response = await fetch(`${PROCTOR_API_URL}/stop-session`, {
+                                method: 'POST',
+                                body: stopFormData,
+                                headers: {
+                                    'ngrok-skip-browser-warning': 'true'
+                                }
+                            });
+
+                            const data = await response.json();
+                            console.log(`[HPE-PROCTOR] Session stopped:`, data);
+                        }
+
+                        // Cleanup video manager if initialized
+                        if (videoManager) {
+                            videoManager.cleanup();
+                            console.log('[HPE-PROCTOR] Video manager cleaned up');
+                        }
+
+                        // Stop the media stream (camera)
+                        if (mediaStream) {
+                            mediaStream.getTracks().forEach(track => {
+                                track.stop();
+                                console.log(`[HPE-PROCTOR] Stopped track: ${track.kind}`);
+                            });
+                            mediaStream = null;
+                            console.log('[HPE-PROCTOR] Media stream stopped');
+                        }
+
+                        // Stop tab switch detector
+                        if (window.HPETabSwitchDetector && window.HPETabSwitchDetector.cleanup) {
+                            window.HPETabSwitchDetector.cleanup();
+                            console.log('[HPE-PROCTOR] Tab switch detector stopped');
+                        }
+
+                        console.log('[HPE-PROCTOR] ✅ All proctoring services stopped');
+
+                    } catch (err) {
+                        console.error('[HPE-PROCTOR] Error stopping session:', err);
+                    }
+
+
+                    // Hide confirmation modal
+                    modal.classList.remove('active');
+
+                    // Leave the contest (sets has_exited=True, prevents rejoining)
+                    try {
+                        const leaveResponse = await fetch(`/hpe/contest/{{ contest.key }}/leave/`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCookie('csrftoken'),
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+                        const leaveData = await leaveResponse.json();
+                        console.log('[HPE-CONTEST] Left contest:', leaveData);
+                    } catch (err) {
+                        console.error('[HPE-CONTEST] Error leaving contest:', err);
+                    }
+
+                    // Show thank you overlay with stats
+                    const thankYouOverlay = document.getElementById('thankYouOverlay');
+                    document.getElementById('final-tab-count').textContent = savedCount;
+                    document.getElementById('final-time-away').textContent = Math.round(savedTime) + 's';
+                    thankYouOverlay.classList.add('active');
+
+                    // Exit fullscreen to show thank you page properly
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen().catch(() => { });
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    }
+                });
+            }
+        });
+
+        // Problem loading
+        const CONTEST_KEY = "{{ contest.key }}";
+        const PROBLEM_CODES = [{% for cp in contest.contest_problems.all() %}"{{ cp.problem.code }}"{% if not loop.last %}, {% endif %} {% endfor %}];
+        let currentProblemCode = null;
+        let currentProblemIndex = -1;
+
+        window.loadProblem = async function (problemCode) {
+            currentProblemCode = problemCode;
+            currentProblemIndex = PROBLEM_CODES.indexOf(problemCode);
+
+            document.getElementById('dashboard-view').style.display = 'none';
+            document.getElementById('editor-view').classList.add('active');
+            document.getElementById('btn-dashboard').classList.remove('active');
+
+            document.getElementById('problem-title').textContent = 'Loading...';
+            document.getElementById('problem-content').innerHTML = '<p style="text-align:center;padding:40px;"><span class="exam-spinner"></span> Loading...</p>';
+
+            try {
+                const response = await fetch(`/hpe/contest/${CONTEST_KEY}/problem/${problemCode}/content/`);
+                if (!response.ok) throw new Error('Failed to load problem');
+
+                const data = await response.json();
+
+                document.getElementById('problem-title').textContent = data.name;
+                document.getElementById('problem-points').textContent = data.points + ' points' + (data.partial ? ' (partial)' : '');
+                document.getElementById('problem-limits').textContent = 'Time: ' + data.time_limit + 's • Memory: ' + (data.memory_limit / 1024).toFixed(0) + 'MB';
+                document.getElementById('problem-content').innerHTML = data.description_html;
+                document.getElementById('problem-nav').textContent = 'Problem ' + (data.current_index + 1) + ' of ' + data.total_problems;
+
+                // MathJax
+                if (window.MathJax && MathJax.typesetPromise) {
+                    MathJax.typesetPromise([document.getElementById('problem-content')]);
+                }
+
+                // Update language selector
+                const langSelect = document.getElementById('language-select');
+                langSelect.innerHTML = '';
+                data.languages.forEach((lang, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = lang.id;
+                    opt.textContent = lang.name;
+                    opt.dataset.aceMode = lang.ace_mode;
+                    opt.dataset.template = lang.template;
+                    if (idx === 0) opt.selected = true;
+                    langSelect.appendChild(opt);
+                });
+
+                if (data.languages.length > 0) {
+                    const firstLang = data.languages[0];
+                    window.editor.session.setMode('ace/mode/' + firstLang.ace_mode);
+                    window.editor.setValue(firstLang.template || '', -1);
+                }
+
+                langSelect.onchange = function () {
+                    const opt = this.options[this.selectedIndex];
+                    window.editor.session.setMode('ace/mode/' + opt.dataset.aceMode);
+                    if (opt.dataset.template) {
+                        window.editor.setValue(opt.dataset.template, -1);
+                    }
+                };
+
+                toggleResults(false);
+            } catch (err) {
+                document.getElementById('problem-content').innerHTML = '<p style="color:#f44336;">Error: ' + err.message + '</p>';
+            }
+        };
+
+        // MCQ Functions
+        window.loadMCQ = async function (mcqId) {
+            document.getElementById('dashboard-view').style.display = 'none';
+            document.getElementById('editor-view').classList.remove('active');
+            document.getElementById('btn-dashboard').classList.remove('active');
+
+            let mcqView = document.getElementById('mcq-view');
+            if (!mcqView) {
+                mcqView = document.createElement('div');
+                mcqView.id = 'mcq-view';
+                mcqView.className = 'mcq-view';
+                document.querySelector('.content-area').appendChild(mcqView);
+            }
+            mcqView.classList.add('active');
+            mcqView.innerHTML = '<div style="text-align:center;padding:40px;"><span class="exam-spinner"></span> Loading MCQ...</div>';
+
+            try {
+                const response = await fetch(`/hpe/contest/${CONTEST_KEY}/mcq/${mcqId}/content/`);
+                if (!response.ok) throw new Error('Failed to load MCQ');
+
+                const data = await response.json();
+                const isMultiple = data.question_type === 'MULTIPLE';
+                const inputType = isMultiple ? 'checkbox' : 'radio';
+
+                let html = '<div class="mcq-container" data-question-type="' + data.question_type + '">';
+                html += '<div class="mcq-header"><h2>' + (data.title || 'MCQ Question') + '</h2>';
+                html += '<div class="mcq-meta">';
+                html += isMultiple ? '<span class="mcq-type-badge multiple">Multi-Correct</span>' : '<span class="mcq-type-badge single">Single Choice</span>';
+                html += '<span class="mcq-points">' + (data.points || '') + ' points</span></div></div>';
+                if (isMultiple) html += '<div class="mcq-hint"><i class="fa fa-info-circle"></i> Select all correct answers</div>';
+                html += '<div class="mcq-question">' + (data.question_text || data.question || '') + '</div>';
+                html += '<div class="mcq-options">';
+
+                if (data.options) {
+                    data.options.forEach((opt, idx) => {
+                        const optLabel = String.fromCharCode(65 + idx);
+                        html += '<label class="mcq-option"><input type="' + inputType + '" name="mcq_answer" value="' + (opt.id || idx) + '">';
+                        html += '<span class="option-label">' + optLabel + '</span>';
+                        html += '<span class="option-text">' + (opt.text || opt) + '</span></label>';
+                    });
+                }
+
+                html += '</div><div class="mcq-footer">';
+                html += '<button class="btn btn-back" onclick="showDashboard()"><i class="fa fa-arrow-left"></i>&nbsp; Back</button>';
+                html += '<button class="btn btn-submit" onclick="submitMCQ(' + mcqId + ')"><i class="fa fa-check"></i>&nbsp; Submit Answer</button>';
+                html += '</div></div>';
+
+                mcqView.innerHTML = html;
+            } catch (err) {
+                mcqView.innerHTML = '<div style="color:#f44336;padding:40px;">Error loading MCQ: ' + err.message + '</div>';
+            }
+        };
+
+        window.submitMCQ = async function (mcqId) {
+            const container = document.querySelector('.mcq-container');
+            const questionType = container ? container.dataset.questionType : 'SINGLE';
+            const selectedInputs = document.querySelectorAll('input[name="mcq_answer"]:checked');
+
+            if (selectedInputs.length === 0) {
+                alert('Please select an answer!');
+                return;
+            }
+
+            const answers = Array.from(selectedInputs).map(input => input.value);
+            const payload = questionType === 'MULTIPLE' ? { answers } : { answer: answers[0] };
+
+            try {
+                const response = await fetch(`/hpe/contest/${CONTEST_KEY}/mcq/${mcqId}/submit/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                // Silent save - don't show correct/incorrect during contest
+                // Just go back to dashboard, the selected options are already saved
+                if (data.success) {
+                    showDashboard();
+                } else if (data.error) {
+                    alert('Error: ' + data.error);
+                }
+            } catch (err) {
+                alert('Error submitting answer: ' + err.message);
+            }
+        };
+
+        // Code submission functions
+        window.runCode = async function () { await submitCodeInternal('sample'); };
+        window.runTest = async function () { await submitCodeInternal('test'); };
+        window.submitCode = async function () { await submitCodeInternal('submit'); };
+
+        async function submitCodeInternal(mode) {
+            const source = window.editor.getValue();
+            const langId = document.getElementById('language-select').value;
+
+            if (!source.trim()) {
+                alert('Please write some code first!');
+                return;
+            }
+
+            let loadingMessage = mode === 'test' ? 'Running all tests...' : mode === 'submit' ? 'Submitting...' : 'Running...';
+            showResults('<div class="result-item pending"><span class="exam-spinner"></span> ' + loadingMessage + '</div>');
+
+            try {
+                const formData = new FormData();
+                formData.append('language', langId);
+                formData.append('source', source);
+
+                // Add is_test_run parameter - only 'submit' mode is official submission
+                // 'sample' and 'test' modes are test runs and won't update contest table
+                formData.append('is_test_run', mode === 'submit' ? 'false' : 'true');
+
+                const response = await fetch(`/problem/${currentProblemCode}/submit`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                if (!response.ok) throw new Error('Server error: ' + response.status);
+
+                const data = await response.json();
+                if (data.error) {
+                    showResults('<div class="result-item fail">' + data.error + '</div>');
+                    return;
+                }
+
+                if (data.submission) {
+                    pollSubmissionStatus(data.submission, mode);
+                } else {
+                    showResults('<div class="result-item fail">Submission failed</div>');
+                }
+            } catch (err) {
+                showResults('<div class="result-item fail">Error: ' + err.message + '</div>');
+            }
+        }
+
+        async function pollSubmissionStatus(submissionId, mode) {
+            let attempts = 0;
+            const maxAttempts = 60;
+
+            const poll = async () => {
+                try {
+                    const response = await fetch(`/ajax/submission_status/?id=${submissionId}`);
+                    const data = await response.json();
+
+                    let html = '';
+                    if (!data.is_graded) {
+                        html = '<div class="result-item pending"><span class="exam-spinner"></span> Judging... (' + (data.status_display || data.status) + ')</div>';
+                    } else {
+                        const isAC = data.status === 'AC';
+                        html = '<div class="result-item ' + (isAC ? 'pass' : 'fail') + '"><strong>' + (data.status_display || data.status) + '</strong>';
+                        if (data.points != null) html += ' • ' + data.points + ' points';
+                        if (data.time) html += ' • ' + parseFloat(data.time).toFixed(3) + 's';
+                        if (data.memory) html += ' • ' + Math.round(parseFloat(data.memory)) + 'KB';
+                        html += '</div>';
+
+                        if (data.test_cases) {
+                            const maxCases = mode === 'sample' ? 2 : data.test_cases.length;
+                            data.test_cases.slice(0, maxCases).forEach((tc, idx) => {
+                                html += '<div class="result-item ' + (tc.status === 'AC' ? 'pass' : 'fail') + '">Test ' + (idx + 1) + ': ' + tc.status + '</div>';
+                            });
+                            if (mode === 'sample' && data.test_cases.length > 2) {
+                                html += '<div class="result-item" style="color:#888;">... and ' + (data.test_cases.length - 2) + ' more</div>';
+                            }
+                        }
+
+                        if (mode === 'submit' && isAC) {
+                            const nextIdx = currentProblemIndex + 1;
+                            if (nextIdx < PROBLEM_CODES.length) {
+                                html += '<div class="result-item pass" style="margin-top:10px;">✓ Correct! Loading next problem...</div>';
+                                setTimeout(() => loadProblem(PROBLEM_CODES[nextIdx]), 1500);
+                            } else {
+                                html += '<div class="result-item pass" style="margin-top:10px;">✓ All problems completed!</div>';
+                                setTimeout(() => showDashboard(), 1500);
+                            }
+                        }
+                    }
+
+                    showResults(html);
+
+                    if (!data.is_graded && attempts < maxAttempts) {
+                        attempts++;
+                        setTimeout(poll, 1000);
+                    }
+                } catch (err) {
+                    showResults('<div class="result-item fail">Polling error: ' + err.message + '</div>');
+                }
+            };
+
+            poll();
+        }
+
+        function showResults(html) {
+            document.getElementById('results-content').innerHTML = html;
+            document.getElementById('results-panel').classList.add('open');
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Always show step 1 - user will click continue to proceed
+        // (removed auto-skip for logged-in users)
+        }) ();
+    </script>
+</body>
+
+</html>

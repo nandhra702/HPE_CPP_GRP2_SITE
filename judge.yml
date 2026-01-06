@@ -1,7 +1,7 @@
 id: judge_test  
 key: Ci9+rYdd92y9rRa9uWKCDImDLTeGT+UnbMYHanYqz9D7v55ieXOc1QHQraQDOqaT41d24T1Gx3Zi2+cfxS38+nnl8lvOvv+lGzwW
 problem_storage_globs:
-  - /home/lalith/HPE/site/problems/*  
+  - /home/lalith/Desktop/Test_demoj_1/site/problems/*  
 
 runtime:
     as_x64: /usr/bin/x86_64-linux-gnu-as
@@ -18,5 +18,5 @@ runtime:
     ld_x64: /usr/bin/x86_64-linux-gnu-ld
     ld_x86: /usr/bin/ld
     perl: /usr/bin/perl
-    python3: /home/lalith/HPE/dmojsite/bin/python3
+    python3: /home/lalith/Desktop/Test_demoj_1/dmojsite/bin/python3
     sed: /usr/bin/sed

@@ -26,11 +26,6 @@
                         {% if has_public_editorial %} checked{% endif %}>
                 <label for="has_public_editorial">{{ _('Has editorial') }}</label>
             </div>
-            <div>
-                <input id="show_types" type="checkbox" name="show_types" value="1"
-                        {% if show_types %} checked{% endif %}>
-                <label for="show_types">{{ _('Show problem types') }}</label>
-            </div>
             <div class="filter-form-group">
                 <label for="category"><i>{{ _('Category') }}</i></label>
                 <select id="category" name="category">
@@ -46,18 +41,16 @@
                     {% endfor %}
                 </select>
             </div>
-            {% if show_types %}
-                <div class="filter-form-group">
-                    <label for="type"><i>{{ _('Problem types') }}</i></label>
-                    <select id="types" name="type" multiple>
-                        {% for type in problem_types %}
-                            <option value="{{ type.id }}"{% if type.id in selected_types %} selected{% endif %}>
-                                {{ user_trans(type.full_name) }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-            {% endif %}
+            <div class="filter-form-group">
+                <label for="type"><i>{{ _('Problem types') }}</i></label>
+                <select id="types" name="type" multiple>
+                    {% for type in problem_types %}
+                        <option value="{{ type.id }}"{% if type.id in selected_types %} selected{% endif %}>
+                            {{ user_trans(type.full_name) }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
             {% if point_values %}
                 <div class="form-label">{{ _('Point range') }}</div>
                 <div id="point-slider"></div>

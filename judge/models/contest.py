@@ -17,8 +17,8 @@ from judge.models.profile import Class, Organization, Profile
 from judge.models.submission import Submission
 from judge.ratings import rate_contest
 
-__all__ = ['Contest', 'ContestTag', 'ContestParticipation', 'ContestProblem', 'ContestSubmission', 'Rating', 
-           'ContestMCQ', 'ContestMCQResult']
+__all__ = ['Contest', 'ContestTag', 'ContestParticipation', 'ContestProblem', 'ContestSubmission', 
+           'ContestMCQSubmission', 'Rating', 'ContestMCQ', 'ContestMCQResult']
 
 
 class MinValueOrNoneValidator(MinValueValidator):
@@ -174,6 +174,10 @@ class Contest(models.Model):
                               help_text=_('A JSON object to serve as the configuration for the chosen contest format '
                                           'module. Leave empty to use None. Exact format depends on the contest format '
                                           'selected.'))
+    randomize = models.BooleanField(verbose_name=_('randomize problems'), default=False,
+                                    help_text=_('Randomly assign problems to users from the selected pool.'))
+    randomization_config = JSONField(verbose_name=_('randomization configuration'), default=dict, blank=True,
+                                     help_text=_('Configuration for random problem selection.'))
     problem_label_script = models.TextField(verbose_name=_('contest problem label script'), blank=True,
                                             help_text=_('A custom Lua function to generate problem labels. Requires a '
                                                         'single function with an integer parameter, the zero-indexed '
@@ -519,6 +523,10 @@ class ContestParticipation(models.Model):
     user = models.ForeignKey(Profile, verbose_name=_('user'), related_name='contest_history', on_delete=CASCADE)
     real_start = models.DateTimeField(verbose_name=_('start time'), default=timezone.now, db_column='start')
     score = models.FloatField(verbose_name=_('score'), default=0, db_index=True)
+    problem_score = models.FloatField(verbose_name=_('problem score'), default=0,
+                                      help_text=_('Total score from coding problems only.'))
+    mcq_score = models.FloatField(verbose_name=_('MCQ score'), default=0,
+                                  help_text=_('Total score from MCQ questions only.'))
     cumtime = models.PositiveIntegerField(verbose_name=_('cumulative time'), default=0)
     is_disqualified = models.BooleanField(verbose_name=_('is disqualified'), default=False,
                                           help_text=_('Whether this participation is disqualified.'))
@@ -649,6 +657,7 @@ class ContestSubmission(models.Model):
         verbose_name_plural = _('contest submissions')
 
 
+
 class Rating(models.Model):
     user = models.ForeignKey(Profile, verbose_name=_('user'), related_name='ratings', on_delete=CASCADE)
     contest = models.ForeignKey(Contest, verbose_name=_('contest'), related_name='ratings', on_delete=CASCADE)
@@ -703,6 +712,30 @@ class ContestMCQ(models.Model):
         ordering = ('order',)
 
 
+class ContestMCQSubmission(models.Model):
+    """
+    Links ONE MCQSubmission to a contest per user+question+participation.
+    Similar to ContestSubmission for code problems.
+    
+    - MCQSubmission stores all attempts (history)
+    - ContestMCQSubmission points to the latest/relevant one for scoring
+    """
+    submission = models.ForeignKey('MCQSubmission', verbose_name=_('MCQ submission'),
+                                   related_name='contest_entry', on_delete=CASCADE)
+    mcq = models.ForeignKey(ContestMCQ, verbose_name=_('contest MCQ'), on_delete=CASCADE,
+                            related_name='contest_submissions', related_query_name='contest_submission')
+    participation = models.ForeignKey(ContestParticipation, verbose_name=_('participation'), on_delete=CASCADE,
+                                      related_name='contest_mcq_submissions', related_query_name='contest_mcq_submission')
+    points = models.FloatField(default=0.0, verbose_name=_('points earned'))
+    is_correct = models.BooleanField(default=False, verbose_name=_('is correct'))
+
+    class Meta:
+        verbose_name = _('contest MCQ submission')
+        verbose_name_plural = _('contest MCQ submissions')
+        # Only ONE entry per user+question+participation
+        unique_together = ('mcq', 'participation')
+
+
 class ContestMCQResult(models.Model):
     """
     Stores the final calculated result for a user's MCQ performance in a contest.
@@ -748,7 +781,7 @@ class ContestMCQResult(models.Model):
         submissions = MCQSubmission.objects.filter(
             user=self.user,
             participation=self.participation,
-            contest_object__contest=self.contest
+            contest_object=self.contest
         ).select_related('question', 'contest_object').prefetch_related('selected_options')
         
         self.attempted = submissions.count()

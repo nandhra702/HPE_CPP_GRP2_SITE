@@ -1,0 +1,971 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls %}
+
+{% block object-tools-items %}
+{{ block.super }}
+{% if original %}
+<li>
+    <button type="button" id="send-invites-btn" class="historylink"
+        style="background: #417690; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 4px;">
+        {% trans "Send Invites" %}
+    </button>
+</li>
+{% endif %}
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    /* ========================================
+       PARTICIPANT UPLOAD MODAL STYLES
+       ======================================== */
+    .participant-add-btn {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 14px;
+        margin-left: 10px;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+    }
+
+    .participant-add-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+    }
+
+    .participant-add-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    /* ========================================
+       SEND INVITES MODAL - PREMIUM DESIGN
+       ======================================== */
+    /* Google Fonts Import */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    .send-invites-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.7);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .send-invites-overlay.active {
+        display: flex;
+        opacity: 1;
+    }
+
+    .send-invites-modal {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+        border-radius: 20px;
+        width: 90%;
+        max-width: 560px;
+        max-height: 85vh;
+        overflow: hidden;
+        box-shadow:
+            0 25px 50px -12px rgba(0, 0, 0, 0.25),
+            0 0 0 1px rgba(255, 255, 255, 0.1);
+        transform: translateY(20px) scale(0.95);
+        animation: modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes modalSlideIn {
+        to {
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .send-invites-header {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 50%, #3b82a0 100%);
+        color: white;
+        padding: 24px 28px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .send-invites-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 200px;
+        height: 200px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+        border-radius: 50%;
+    }
+
+    .send-invites-header-content {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        z-index: 1;
+    }
+
+    .send-invites-header-icon {
+        width: 44px;
+        height: 44px;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+    }
+
+    .send-invites-header-text h2 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: -0.3px;
+    }
+
+    .send-invites-header-text p {
+        margin: 4px 0 0;
+        font-size: 13px;
+        opacity: 0.8;
+        font-weight: 400;
+    }
+
+    .send-invites-close {
+        background: rgba(255, 255, 255, 0.1);
+        border: none;
+        color: white;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        transition: all 0.2s ease;
+        z-index: 1;
+    }
+
+    .send-invites-close:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: scale(1.05);
+    }
+
+    .send-invites-body {
+        padding: 24px;
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+
+    .send-invites-body::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .send-invites-body::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 3px;
+    }
+
+    .send-invites-body::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+    }
+
+    /* Loading State */
+    .send-invites-loading {
+        text-align: center;
+        padding: 48px 24px;
+    }
+
+    .send-invites-loading .spinner-container {
+        position: relative;
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 24px;
+    }
+
+    .send-invites-loading .spinner {
+        width: 64px;
+        height: 64px;
+        border: 4px solid #e2e8f0;
+        border-top-color: #3b82f6;
+        border-radius: 50%;
+        animation: spin 1s ease-in-out infinite;
+    }
+
+    .send-invites-loading .spinner-inner {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 24px;
+    }
+
+    .send-invites-loading h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .send-invites-loading p {
+        margin: 0;
+        color: #64748b;
+        font-size: 14px;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* Stats Cards */
+    .send-invites-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 16px;
+        text-align: center;
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+    }
+
+    .stat-card.success::before {
+        background: linear-gradient(90deg, #22c55e, #16a34a);
+    }
+
+    .stat-card.failed::before {
+        background: linear-gradient(90deg, #ef4444, #dc2626);
+    }
+
+    .stat-card.skipped::before {
+        background: linear-gradient(90deg, #f59e0b, #d97706);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 10px;
+        font-size: 18px;
+    }
+
+    .stat-card.success .stat-icon {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .stat-card.failed .stat-icon {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .stat-card.skipped .stat-icon {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .stat-number {
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 4px;
+    }
+
+    .stat-card.success .stat-number {
+        color: #16a34a;
+    }
+
+    .stat-card.failed .stat-number {
+        color: #dc2626;
+    }
+
+    .stat-card.skipped .stat-number {
+        color: #d97706;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        color: #64748b;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Email Sections */
+    .send-invites-section {
+        margin-bottom: 16px;
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+    }
+
+    .send-invites-section-header {
+        padding: 14px 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        cursor: pointer;
+        transition: background 0.2s ease;
+        user-select: none;
+    }
+
+    .send-invites-section-header:hover {
+        background: #f8fafc;
+    }
+
+    .section-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+
+    .section-success .section-icon {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .section-failed .section-icon {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .section-skipped .section-icon {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .section-title-text {
+        flex: 1;
+    }
+
+    .section-title-text h4 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .section-title-text span {
+        font-size: 12px;
+        color: #64748b;
+    }
+
+    .section-toggle {
+        color: #94a3b8;
+        font-size: 12px;
+        transition: transform 0.2s ease;
+    }
+
+    .section-toggle.expanded {
+        transform: rotate(180deg);
+    }
+
+    .send-invites-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        border-top: 1px solid #e2e8f0;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .send-invites-list li {
+        padding: 12px 18px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        transition: background 0.15s ease;
+        animation: fadeInUp 0.3s ease forwards;
+        opacity: 0;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .send-invites-list li:hover {
+        background: #f8fafc;
+    }
+
+    .send-invites-list li:last-child {
+        border-bottom: none;
+    }
+
+    .email-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    .section-success .email-icon {
+        background: #f0fdf4;
+        color: #16a34a;
+    }
+
+    .section-failed .email-icon {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+
+    .section-skipped .email-icon {
+        background: #fffbeb;
+        color: #d97706;
+    }
+
+    .email-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .email-address {
+        font-size: 14px;
+        font-weight: 500;
+        color: #1e293b;
+        word-break: break-all;
+    }
+
+    .email-reason {
+        color: #64748b;
+        font-size: 12px;
+        margin-top: 4px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .email-reason::before {
+        content: '→';
+        color: #94a3b8;
+    }
+
+    /* Empty State */
+    .send-invites-empty {
+        text-align: center;
+        padding: 48px 24px;
+    }
+
+    .empty-icon {
+        width: 80px;
+        height: 80px;
+        background: #f1f5f9;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        font-size: 36px;
+    }
+
+    .send-invites-empty h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .send-invites-empty p {
+        margin: 0;
+        color: #64748b;
+        font-size: 14px;
+    }
+
+    /* Error State */
+    .send-invites-error {
+        text-align: center;
+        padding: 48px 24px;
+    }
+
+    .error-icon {
+        width: 80px;
+        height: 80px;
+        background: #fee2e2;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        font-size: 36px;
+        color: #dc2626;
+    }
+
+    .send-invites-error h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+        font-weight: 600;
+        color: #dc2626;
+    }
+
+    .send-invites-error p {
+        margin: 0;
+        color: #64748b;
+        font-size: 14px;
+    }
+
+    /* Footer */
+    .send-invites-footer {
+        padding: 16px 24px;
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .btn-close-modal {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: inherit;
+    }
+
+    .btn-close-modal:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(30, 58, 95, 0.3);
+    }
+</style>
+
+<!-- Send Invites Modal -->
+<div id="send-invites-overlay" class="send-invites-overlay">
+    <div class="send-invites-modal">
+        <div class="send-invites-header">
+            <div class="send-invites-header-content">
+                <div class="send-invites-header-icon">✉️</div>
+                <div class="send-invites-header-text">
+                    <h2>{% trans "Send Invites Results" %}</h2>
+                    <p>{% trans "Email notification summary" %}</p>
+                </div>
+            </div>
+            <button type="button" class="send-invites-close" id="send-invites-close">×</button>
+        </div>
+        <div class="send-invites-body" id="send-invites-body">
+            <div class="send-invites-loading">
+                <div class="spinner-container">
+                    <div class="spinner"></div>
+                    <div class="spinner-inner">📨</div>
+                </div>
+                <h3>{% trans "Sending Invites" %}</h3>
+                <p>{% trans "Please wait while we process the invitations..." %}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Participant Upload Modal -->
+<div id="participant-upload-overlay" class="send-invites-overlay">
+    <div class="send-invites-modal">
+        <div class="send-invites-header"
+            style="background: linear-gradient(135deg, #28a745 0%, #20c997 50%, #17a2b8 100%);">
+            <div class="send-invites-header-content">
+                <div class="send-invites-header-icon">👥</div>
+                <div class="send-invites-header-text">
+                    <h2>{% trans "Add Participants" %}</h2>
+                    <p>{% trans "CSV upload results" %}</p>
+                </div>
+            </div>
+            <button type="button" class="send-invites-close" id="participant-upload-close">×</button>
+        </div>
+        <div class="send-invites-body" id="participant-upload-body">
+            <div class="send-invites-loading">
+                <div class="spinner-container">
+                    <div class="spinner" style="border-top-color: #28a745;"></div>
+                    <div class="spinner-inner">📋</div>
+                </div>
+                <h3>{% trans "Processing CSV" %}</h3>
+                <p>{% trans "Please wait while we process the participants..." %}</p>
+            </div>
+        </div>
+        <div class="send-invites-footer">
+            <button type="button" class="btn-close-modal" id="participant-upload-done"
+                style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">{% trans "Done" %}</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        // Wait for DOM to be ready
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log("HPE Admin CSV Script Loaded!");
+
+            // Send Invites Button Handler
+            var sendInvitesBtn = document.getElementById('send-invites-btn');
+            var overlay = document.getElementById('send-invites-overlay');
+            var closeBtn = document.getElementById('send-invites-close');
+            var body = document.getElementById('send-invites-body');
+
+            if (sendInvitesBtn) {
+                sendInvitesBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+
+                    // Show modal with loading state
+                    overlay.classList.add('active');
+                    body.innerHTML = '<div class="send-invites-loading"><div class="spinner-container"><div class="spinner"></div><div class="spinner-inner">📨</div></div><h3>Sending Invites</h3><p>Please wait while we process the invitations...</p></div>';
+
+                    // Get CSRF token
+                    var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+
+                    // Make AJAX request
+                    {% if original %}
+                        var url = "{% url 'hpe_admin:hpe_contest_send_invites' original.pk %}";
+                    {% else %}
+                        var url = "";
+                    {% endif %}
+
+                    fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        credentials: 'same-origin'
+                    })
+                        .then(function (response) {
+                            return response.json();
+                        })
+                        .then(function (data) {
+                            var html = '';
+
+                            // Stats Cards Section
+                            html += '<div class="send-invites-stats">';
+                            html += '<div class="stat-card success"><div class="stat-icon">✓</div><div class="stat-number">' + data.total_sent + '</div><div class="stat-label">Sent</div></div>';
+                            html += '<div class="stat-card failed"><div class="stat-icon">✗</div><div class="stat-number">' + data.total_failed + '</div><div class="stat-label">Failed</div></div>';
+                            html += '<div class="stat-card skipped"><div class="stat-icon">○</div><div class="stat-number">' + data.total_skipped + '</div><div class="stat-label">Skipped</div></div>';
+                            html += '</div>';
+
+                            // Success emails
+                            if (data.success_emails && data.success_emails.length > 0) {
+                                html += '<div class="send-invites-section section-success">';
+                                html += '<div class="send-invites-section-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === \'none\' ? \'block\' : \'none\'; this.querySelector(\'.section-toggle\').classList.toggle(\'expanded\');">';
+                                html += '<div class="section-icon">✓</div>';
+                                html += '<div class="section-title-text"><h4>Successfully Sent</h4><span>' + data.success_emails.length + ' email(s) delivered</span></div>';
+                                html += '<div class="section-toggle expanded">▼</div>';
+                                html += '</div>';
+                                html += '<ul class="send-invites-list">';
+                                data.success_emails.forEach(function (email, index) {
+                                    html += '<li style="animation-delay: ' + (index * 0.05) + 's"><div class="email-icon">✉</div><div class="email-content"><div class="email-address">' + email + '</div></div></li>';
+                                });
+                                html += '</ul></div>';
+                            }
+
+                            // Failed emails
+                            if (data.failed_emails && data.failed_emails.length > 0) {
+                                html += '<div class="send-invites-section section-failed">';
+                                html += '<div class="send-invites-section-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === \'none\' ? \'block\' : \'none\'; this.querySelector(\'.section-toggle\').classList.toggle(\'expanded\');">';
+                                html += '<div class="section-icon">✗</div>';
+                                html += '<div class="section-title-text"><h4>Failed to Send</h4><span>' + data.failed_emails.length + ' email(s) could not be delivered</span></div>';
+                                html += '<div class="section-toggle expanded">▼</div>';
+                                html += '</div>';
+                                html += '<ul class="send-invites-list">';
+                                data.failed_emails.forEach(function (item, index) {
+                                    html += '<li style="animation-delay: ' + (index * 0.05) + 's"><div class="email-icon">!</div><div class="email-content"><div class="email-address">' + item.email + '</div><div class="email-reason">' + item.reason + '</div></div></li>';
+                                });
+                                html += '</ul></div>';
+                            }
+
+                            // Skipped emails
+                            if (data.skipped_emails && data.skipped_emails.length > 0) {
+                                html += '<div class="send-invites-section section-skipped">';
+                                html += '<div class="send-invites-section-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === \'none\' ? \'block\' : \'none\'; this.querySelector(\'.section-toggle\').classList.toggle(\'expanded\');">';
+                                html += '<div class="section-icon">○</div>';
+                                html += '<div class="section-title-text"><h4>Skipped</h4><span>' + data.skipped_emails.length + ' participant(s) skipped</span></div>';
+                                html += '<div class="section-toggle expanded">▼</div>';
+                                html += '</div>';
+                                html += '<ul class="send-invites-list">';
+                                data.skipped_emails.forEach(function (item, index) {
+                                    html += '<li style="animation-delay: ' + (index * 0.05) + 's"><div class="email-icon">⊘</div><div class="email-content"><div class="email-address">' + item.username + '</div><div class="email-reason">' + item.reason + '</div></div></li>';
+                                });
+                                html += '</ul></div>';
+                            }
+
+                            // If nothing happened
+                            if (data.total_sent === 0 && data.total_failed === 0 && data.total_skipped === 0) {
+                                html = '<div class="send-invites-empty"><div class="empty-icon">📭</div><h3>No Participants Found</h3><p>There are no participants to send invites to for this contest.</p></div>';
+                            }
+
+                            body.innerHTML = html;
+                        })
+                        .catch(function (error) {
+                            body.innerHTML = '<div class="send-invites-error"><div class="error-icon">⚠</div><h3>Something Went Wrong</h3><p>' + error.message + '</p></div>';
+                        });
+                });
+            }
+
+            // Close modal
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function () {
+                    overlay.classList.remove('active');
+                });
+            }
+
+            // Close on overlay click
+            if (overlay) {
+                overlay.addEventListener('click', function (e) {
+                    if (e.target === overlay) {
+                        overlay.classList.remove('active');
+                    }
+                });
+            }
+
+            var csvInput = document.getElementById('id_participants_csv');
+            if (!csvInput) {
+                console.log("CSV input not found - may not be on this page");
+                return;
+            }
+            console.log("Found CSV input element");
+
+            // Store selected file for the Add button
+            var selectedFile = null;
+
+            // Create the Add button next to the file input
+            var addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.className = 'participant-add-btn';
+            addBtn.textContent = 'Add Participants';
+            addBtn.disabled = true;
+            csvInput.parentNode.insertBefore(addBtn, csvInput.nextSibling);
+
+            // Enable/disable Add button based on file selection
+            csvInput.addEventListener('change', function (e) {
+                selectedFile = this.files[0];
+                addBtn.disabled = !selectedFile;
+                if (selectedFile) {
+                    addBtn.textContent = 'Add Participants (' + selectedFile.name + ')';
+                } else {
+                    addBtn.textContent = 'Add Participants';
+                }
+            });
+
+            // Participant Upload Modal elements
+            var partOverlay = document.getElementById('participant-upload-overlay');
+            var partBody = document.getElementById('participant-upload-body');
+            var partCloseBtn = document.getElementById('participant-upload-close');
+            var partDoneBtn = document.getElementById('participant-upload-done');
+
+            // Close modal handlers
+            if (partCloseBtn) {
+                partCloseBtn.addEventListener('click', function () {
+                    partOverlay.classList.remove('active');
+                });
+            }
+            if (partDoneBtn) {
+                partDoneBtn.addEventListener('click', function () {
+                    partOverlay.classList.remove('active');
+                });
+            }
+            if (partOverlay) {
+                partOverlay.addEventListener('click', function (e) {
+                    if (e.target === partOverlay) {
+                        partOverlay.classList.remove('active');
+                    }
+                });
+            }
+
+            // Add button click handler
+            addBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                if (!selectedFile) return;
+
+                // Show modal with loading state
+                partOverlay.classList.add('active');
+                partBody.innerHTML = '<div class="send-invites-loading"><div class="spinner-container"><div class="spinner" style="border-top-color: #28a745;"></div><div class="spinner-inner">📋</div></div><h3>Processing CSV</h3><p>Please wait while we process the participants...</p></div>';
+
+                var formData = new FormData();
+                formData.append('participants_csv', selectedFile);
+
+                // Get CSRF token
+                var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+                if (csrfToken) {
+                    formData.append('csrfmiddlewaretoken', csrfToken.value);
+                }
+
+                // Make AJAX request to the new endpoint
+                var url = "{% url 'hpe_admin:hpe_process_participants_csv' %}";
+
+                fetch(url, {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                })
+                    .then(function (response) {
+                        return response.json();
+                    })
+                    .then(function (data) {
+                        if (data.error) {
+                            partBody.innerHTML = '<div class="send-invites-error"><div class="error-icon">⚠</div><h3>Error</h3><p>' + data.error + '</p></div>';
+                            return;
+                        }
+
+                        var html = '';
+
+                        // Stats Cards Section
+                        html += '<div class="send-invites-stats">';
+                        html += '<div class="stat-card success"><div class="stat-icon">✓</div><div class="stat-number">' + data.total_existing + '</div><div class="stat-label">Existing</div></div>';
+                        html += '<div class="stat-card" style="border-top: 4px solid #17a2b8;"><div class="stat-icon" style="background: #d1ecf1; color: #17a2b8;">+</div><div class="stat-number" style="color: #17a2b8;">' + data.total_new + '</div><div class="stat-label">Created</div></div>';
+                        html += '<div class="stat-card failed"><div class="stat-icon">✗</div><div class="stat-number">' + data.total_errors + '</div><div class="stat-label">Errors</div></div>';
+                        html += '</div>';
+
+                        // Existing users section
+                        if (data.existing_users && data.existing_users.length > 0) {
+                            html += '<div class="send-invites-section section-success">';
+                            html += '<div class="send-invites-section-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === \'none\' ? \'block\' : \'none\'; this.querySelector(\'.section-toggle\').classList.toggle(\'expanded\');">';
+                            html += '<div class="section-icon">✓</div>';
+                            html += '<div class="section-title-text"><h4>Already Existing</h4><span>' + data.existing_users.length + ' user(s) already in system</span></div>';
+                            html += '<div class="section-toggle expanded">▼</div>';
+                            html += '</div>';
+                            html += '<ul class="send-invites-list">';
+                            data.existing_users.forEach(function (user, index) {
+                                html += '<li style="animation-delay: ' + (index * 0.05) + 's"><div class="email-icon">👤</div><div class="email-content"><div class="email-address">' + user.username + '</div><div class="email-reason">' + user.email + '</div></div></li>';
+                            });
+                            html += '</ul></div>';
+                        }
+
+                        // Newly created users section
+                        if (data.new_users && data.new_users.length > 0) {
+                            html += '<div class="send-invites-section" style="border-color: #17a2b8;">';
+                            html += '<div class="send-invites-section-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === \'none\' ? \'block\' : \'none\'; this.querySelector(\'.section-toggle\').classList.toggle(\'expanded\');" style="border-top: 4px solid #17a2b8;">';
+                            html += '<div class="section-icon" style="background: #d1ecf1; color: #17a2b8;">+</div>';
+                            html += '<div class="section-title-text"><h4>Newly Created</h4><span>' + data.new_users.length + ' user(s) created with Kolkata timezone</span></div>';
+                            html += '<div class="section-toggle expanded">▼</div>';
+                            html += '</div>';
+                            html += '<ul class="send-invites-list">';
+                            data.new_users.forEach(function (user, index) {
+                                html += '<li style="animation-delay: ' + (index * 0.05) + 's"><div class="email-icon" style="background: #d1ecf1; color: #17a2b8;">🆕</div><div class="email-content"><div class="email-address">' + user.username + '</div><div class="email-reason">' + user.email + '</div></div></li>';
+                            });
+                            html += '</ul></div>';
+                        }
+
+                        // Errors section  
+                        if (data.errors && data.errors.length > 0) {
+                            html += '<div class="send-invites-section section-failed">';
+                            html += '<div class="send-invites-section-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === \'none\' ? \'block\' : \'none\'; this.querySelector(\'.section-toggle\').classList.toggle(\'expanded\');">';
+                            html += '<div class="section-icon">✗</div>';
+                            html += '<div class="section-title-text"><h4>Errors</h4><span>' + data.errors.length + ' could not be processed</span></div>';
+                            html += '<div class="section-toggle expanded">▼</div>';
+                            html += '</div>';
+                            html += '<ul class="send-invites-list">';
+                            data.errors.forEach(function (err, index) {
+                                html += '<li style="animation-delay: ' + (index * 0.05) + 's"><div class="email-icon">!</div><div class="email-content"><div class="email-address">' + err.email + '</div><div class="email-reason">' + err.error + '</div></div></li>';
+                            });
+                            html += '</ul></div>';
+                        }
+
+                        // If nothing processed
+                        if (data.total_existing === 0 && data.total_new === 0 && data.total_errors === 0) {
+                            html = '<div class="send-invites-empty"><div class="empty-icon">📭</div><h3>No Participants Found</h3><p>No valid email addresses were found in the CSV file.</p></div>';
+                        }
+
+                        partBody.innerHTML = html;
+
+                        // Add users to the select widget
+                        if (data.profile_data && data.profile_data.length > 0) {
+                            var selectEl = document.getElementById('id_private_contestants');
+                            if (selectEl) {
+                                data.profile_data.forEach(function (profile) {
+                                    // Check if already exists
+                                    var exists = false;
+                                    for (var i = 0; i < selectEl.options.length; i++) {
+                                        if (selectEl.options[i].value == profile.id) {
+                                            selectEl.options[i].selected = true;
+                                            exists = true;
+                                            break;
+                                        }
+                                    }
+                                    if (!exists) {
+                                        var opt = document.createElement('option');
+                                        opt.value = profile.id;
+                                        opt.text = profile.text;
+                                        opt.selected = true;
+                                        selectEl.appendChild(opt);
+                                    }
+                                });
+                                // Trigger change event for Select2
+                                if (window.django && window.django.jQuery) {
+                                    django.jQuery(selectEl).trigger('change');
+                                }
+                            }
+                        }
+
+                        // Reset file input
+                        csvInput.value = '';
+                        selectedFile = null;
+                        addBtn.disabled = true;
+                        addBtn.textContent = 'Add Participants';
+                    })
+                    .catch(function (error) {
+                        console.error("AJAX Error:", error);
+                        partBody.innerHTML = '<div class="send-invites-error"><div class="error-icon">⚠</div><h3>Something Went Wrong</h3><p>' + error.message + '</p></div>';
+                    });
+            });
+        });
+    })();
+</script>
+{% endblock %}

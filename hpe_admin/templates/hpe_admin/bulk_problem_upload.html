@@ -1,0 +1,122 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block extrahead %}
+{{ block.super }}
+<script src="{% static 'admin/js/vendor/jquery/jquery.min.js' %}"></script>
+<script src="{% url 'admin:jsi18n' %}"></script>
+{{ form.media }}
+{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" type="text/css" href="{% static 'admin/css/forms.css' %}">
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; <a href="{% url 'hpe_admin:index' %}">{% trans 'HPE Admin' %}</a>
+    &rsaquo; <a href="{% url 'hpe_admin:judge_problem_changelist' %}">{% trans 'Problems' %}</a>
+    &rsaquo; {% trans 'Bulk Upload' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <form action="" method="post" enctype="multipart/form-data">{% csrf_token %}
+        {% if form.errors %}
+        <p class="errornote">
+            {% if form.errors|length == 1 %}{% trans "Please correct the error below." %}{% else %}{% trans "Please
+            correct the errors below." %}{% endif %}
+        </p>
+        {{ form.non_field_errors }}
+        {% endif %}
+
+        <fieldset class="module aligned">
+            <h2>{% trans 'Authors & Settings' %}</h2>
+
+            <div class="form-row field-creators">
+                <div>
+                    <label for="{{ form.creators.id_for_label }}" class="required">{{ form.creators.label }}:</label>
+                    {{ form.creators }}
+                    {% if form.creators.help_text %}<p class="help">{{ form.creators.help_text|safe }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="form-row field-testers">
+                <div>
+                    <label for="{{ form.testers.id_for_label }}">{{ form.testers.label }}:</label>
+                    {{ form.testers }}
+                    {% if form.testers.help_text %}<p class="help">{{ form.testers.help_text|safe }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="form-row field-allowed_languages">
+                <div>
+                    <label for="{{ form.allowed_languages.id_for_label }}">{{ form.allowed_languages.label }}:</label>
+                    {{ form.allowed_languages }}
+                    {% if form.allowed_languages.help_text %}<p class="help">{{ form.allowed_languages.help_text|safe }}
+                    </p>{% endif %}
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset class="module aligned">
+            <h2>{% trans 'CSV Upload' %}</h2>
+
+            <div class="form-row field-csv_file">
+                <div>
+                    <label for="{{ form.csv_file.id_for_label }}" class="required">{{ form.csv_file.label }}:</label>
+                    {{ form.csv_file }}
+                    {% if form.csv_file.help_text %}<p class="help">{{ form.csv_file.help_text|safe }}</p>{% endif %}
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="submit-row">
+            <input type="submit" value="{% trans 'Upload Problems' %}" class="default" name="_save">
+        </div>
+    </form>
+
+    {% if upload_complete %}
+    <div style="margin-top: 20px;">
+        <h2>Upload Results</h2>
+
+        <div
+            style="background: #dff0d8; border: 1px solid #3c763d; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
+            <strong style="color: #3c763d;">✓ Successfully Created: {{ total_success }} problem{{
+                total_success|pluralize }}</strong>
+        </div>
+
+        {% if success_results %}
+        <details open style="margin-bottom: 15px;">
+            <summary style="cursor: pointer; font-weight: bold; color: #3c763d;">View Successful Problems</summary>
+            <ul style="margin-top: 10px; padding-left: 20px;">
+                {% for item in success_results %}
+                <li><strong>{{ item.name }}</strong> (code: <code>{{ item.code }}</code>)</li>
+                {% endfor %}
+            </ul>
+        </details>
+        {% endif %}
+
+        {% if error_results %}
+        <div
+            style="background: #f2dede; border: 1px solid #a94442; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
+            <strong style="color: #a94442;">✗ Errors: {{ total_errors }} row{{ total_errors|pluralize }}
+                skipped</strong>
+        </div>
+
+        <details open style="margin-bottom: 15px;">
+            <summary style="cursor: pointer; font-weight: bold; color: #a94442;">View Errors</summary>
+            <ul style="margin-top: 10px; padding-left: 20px;">
+                {% for item in error_results %}
+                <li><strong>{{ item.name }}</strong>: {{ item.error }}</li>
+                {% endfor %}
+            </ul>
+        </details>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

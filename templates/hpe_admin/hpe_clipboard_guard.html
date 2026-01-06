@@ -1,0 +1,93 @@
+<!-- HPE Clipboard Guard - Prevents pasting from external sources in code editor -->
+<script>
+    /**
+     * HPEClipboardGuard - Internal clipboard system for Ace editor
+     * Allows copy-paste within the editor but blocks external clipboard content
+     * When external paste is attempted, pastes the last internally copied content instead
+     * 
+     * Respects the ALLOW_COPY_PASTE toggle from debug.py
+     */
+    window.HPEClipboardGuard = {
+        internalClipboard: null,
+        initialized: false,
+        enabled: true,  // Will be set based on ALLOW_COPY_PASTE toggle
+
+        /**
+         * Normalize text for comparison
+         */
+        normalize: function (text) {
+            if (!text || typeof text !== 'string') return '';
+            return text.replace(/\r\n/g, '\n').trim();
+        },
+
+        /**
+         * Initialize clipboard guard on an Ace editor instance
+         * @param {Object} aceEditor - The Ace editor instance
+         * @param {boolean} allowCopyPaste - If true, bypass all blocking (for testing)
+         */
+        initialize: function (aceEditor, allowCopyPaste) {
+            if (!aceEditor || this.initialized) return;
+
+            // If ALLOW_COPY_PASTE is true, disable blocking
+            if (allowCopyPaste) {
+                this.enabled = false;
+                console.log("[HPE-CLIPBOARD] ⚠️ Clipboard guard DISABLED (ALLOW_COPY_PASTE=true)");
+                this.initialized = true;
+                return;
+            }
+
+            const self = this;
+
+            // Listen for copy events - store the copied text
+            aceEditor.on("copy", function (copyEvent) {
+                const text = aceEditor.getSelectedText();
+                if (text) {
+                    self.internalClipboard = self.normalize(text);
+                    console.log("[HPE-CLIPBOARD] ✅ Stored internal copy:", text.substring(0, 50) + (text.length > 50 ? "..." : ""));
+                }
+            });
+
+            // Listen for cut events
+            aceEditor.on("cut", function (cutEvent) {
+                const text = aceEditor.getSelectedText();
+                if (text) {
+                    self.internalClipboard = self.normalize(text);
+                    console.log("[HPE-CLIPBOARD] ✅ Stored internal cut:", text.substring(0, 50) + (text.length > 50 ? "..." : ""));
+                }
+            });
+
+            // Intercept paste events - replace external content with internal buffer
+            aceEditor.on("paste", function (pasteData) {
+                const pastedText = self.normalize(pasteData.text);
+
+                // If nothing was ever copied internally, block the paste
+                if (self.internalClipboard === null || self.internalClipboard === '') {
+                    console.warn("[HPE-CLIPBOARD] ⛔ BLOCKED: No internal copy exists yet");
+                    pasteData.text = "";
+                    return;
+                }
+
+                // If content matches internal clipboard, allow it
+                if (pastedText === self.internalClipboard) {
+                    console.log("[HPE-CLIPBOARD] ✅ Paste allowed (exact match)");
+                    return;
+                }
+
+                // External paste detected - replace with last internal buffer content
+                console.warn("[HPE-CLIPBOARD] 🔄 External paste detected - replacing with internal buffer");
+                pasteData.text = self.internalClipboard;
+            });
+
+            this.initialized = true;
+            console.log("[HPE-CLIPBOARD] ✅ Clipboard guard active - external pastes will use internal buffer");
+        },
+
+        /**
+         * Reset the internal clipboard
+         */
+        reset: function () {
+            this.internalClipboard = null;
+            console.log("[HPE-CLIPBOARD] Internal clipboard reset");
+        }
+    };
+</script>

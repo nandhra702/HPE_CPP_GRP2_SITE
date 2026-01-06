@@ -5,9 +5,12 @@ from django.db import models
 from django.db.models import CASCADE, SET_NULL, Max
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
+from django.utils.functional import cached_property
 
 from judge.models.profile import Organization, Profile
 from judge.models.problem import ProblemGroup, ProblemType, License, disallowed_characters_validator
+from operator import attrgetter
+from judge.user_translations import gettext as user_gettext
 
 __all__ = ['MCQQuestion', 'MCQOption', 'MCQSubmission']
 
@@ -16,16 +19,9 @@ class MCQQuestion(models.Model):
     """
     Model for Multiple Choice Questions
     """
-    DIFFICULTY_CHOICES = (
-        ('E', _('Easy')),
-        ('M', _('Medium')),
-        ('H', _('Hard')),
-    )
-
     QUESTION_TYPE_CHOICES = (
         ('SINGLE', _('Single Choice')),
         ('MULTIPLE', _('Multiple Choice')),
-        ('TRUE_FALSE', _('True/False')),
     )
 
     code = models.CharField(
@@ -35,13 +31,6 @@ class MCQQuestion(models.Model):
         validators=[RegexValidator('^[a-z0-9]+$', _('Question code must be ^[a-z0-9]+$'))],
         help_text=_('A short, unique code for the question, used in the URL after /mcq/')
     )
-    name = models.CharField(
-        max_length=200,
-        verbose_name=_('question title'),
-        db_index=True,
-        help_text=_('The title/summary of the question'),
-        validators=[disallowed_characters_validator]
-    )
     description = models.TextField(
         verbose_name=_('question text'),
         help_text=_('The full question text, supports markdown'),
@@ -49,17 +38,10 @@ class MCQQuestion(models.Model):
     )
     question_type = models.CharField(
         max_length=10,
-        verbose_name=_('question type'),
+        verbose_name=_('format'),
         choices=QUESTION_TYPE_CHOICES,
         default='SINGLE',
-        help_text=_('Type of MCQ question')
-    )
-    difficulty = models.CharField(
-        max_length=1,
-        verbose_name=_('difficulty'),
-        choices=DIFFICULTY_CHOICES,
-        default='M',
-        help_text=_('Difficulty level of the question')
+        help_text=_('Format of MCQ question')
     )
     points = models.FloatField(
         verbose_name=_('points'),
@@ -77,22 +59,6 @@ class MCQQuestion(models.Model):
         blank=True,
         help_text=_('Explanation shown after answering (optional)'),
         validators=[disallowed_characters_validator]
-    )
-    
-    # Categorization
-    types = models.ManyToManyField(
-        ProblemType,
-        verbose_name=_('question types'),
-        help_text=_("The type of question, similar to problem types"),
-        blank=True
-    )
-    group = models.ForeignKey(
-        ProblemGroup,
-        verbose_name=_('question group'),
-        on_delete=CASCADE,
-        help_text=_('The group/category of question'),
-        null=True,
-        blank=True
     )
     
     # Access control
@@ -141,6 +107,24 @@ class MCQQuestion(models.Model):
         verbose_name=_('license')
     )
     
+    # Difficulty group (Easy, Medium, Hard)
+    group = models.ForeignKey(
+        ProblemGroup,
+        null=True,
+        blank=True,
+        on_delete=SET_NULL,
+        verbose_name=_('difficulty'),
+        help_text=_('Difficulty level: Easy, Medium, or Hard')
+    )
+    
+    # Question types/categories (e.g., Data Structures, Algorithms, etc.)
+    types = models.ManyToManyField(
+        ProblemType,
+        verbose_name=_('question types'),
+        blank=True,
+        help_text=_("The type/category of question (e.g., Arrays, Graphs, etc.)")
+    )
+    
     # Statistics
     user_count = models.IntegerField(
         verbose_name=_('number of users'),
@@ -164,7 +148,7 @@ class MCQQuestion(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.code} - {self.name}"
+        return f"{self.code} - {self.description[:50]}..."
 
     def get_absolute_url(self):
         # URL pattern not yet implemented, return admin URL for now
@@ -248,11 +232,7 @@ class MCQOption(models.Model):
         unique_together = [['question', 'order']]
 
     def clean(self):
-        # Validate that TRUE_FALSE questions only have 2 options
-        if self.question.question_type == 'TRUE_FALSE':
-            existing_options = MCQOption.objects.filter(question=self.question).exclude(pk=self.pk).count()
-            if existing_options >= 2:
-                raise ValidationError(_('True/False questions can only have 2 options'))
+        pass
 
 
 class MCQSubmission(models.Model):
@@ -295,13 +275,13 @@ class MCQSubmission(models.Model):
         verbose_name=_('submission time')
     )
     contest_object = models.ForeignKey(
-        'ContestMCQ',
-        verbose_name=_('contest MCQ'),
+        'judge.Contest',  # Changed to point directly to Contest
+        verbose_name=_('contest'),
         null=True,
         blank=True,
         on_delete=CASCADE,
-        related_name='submissions',
-        help_text=_('Contest MCQ this submission belongs to (if in contest)')
+        related_name='mcq_submissions',
+        help_text=_('Contest this submission belongs to')
     )
     participation = models.ForeignKey(
         'ContestParticipation',
@@ -330,7 +310,7 @@ class MCQSubmission(models.Model):
         correct_options = set(self.question.options.filter(is_correct=True))
         selected = set(self.selected_options.all())
         
-        if self.question.question_type == 'SINGLE' or self.question.question_type == 'TRUE_FALSE':
+        if self.question.question_type == 'SINGLE':
             # For single choice, must select exactly the correct option
             if selected == correct_options and len(selected) == 1:
                 self.is_correct = True
