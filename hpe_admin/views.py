@@ -541,6 +541,29 @@ class HPEMCQContentView(HPEContestAccessMixin, View):
                 'text': opt.option_text,
             })
         
+        # Get previously saved answer (if any)
+        selected_option_ids = []
+        from judge.models import ContestParticipation
+        from judge.models.contest import ContestMCQSubmission
+        
+        participation = ContestParticipation.objects.filter(
+            contest=self.contest,
+            user=request.user.profile,
+            virtual=ContestParticipation.LIVE
+        ).first()
+        
+        if participation:
+            contest_mcq_submission = ContestMCQSubmission.objects.filter(
+                mcq=contest_mcq,
+                participation=participation
+            ).first()
+            
+            if contest_mcq_submission and contest_mcq_submission.submission:
+                # Get all selected option IDs from the latest submission
+                selected_option_ids = list(
+                    contest_mcq_submission.submission.selected_options.values_list('id', flat=True)
+                )
+        
         return JsonResponse({
             'id': mcq.id,
             'title': mcq.code,
@@ -548,6 +571,7 @@ class HPEMCQContentView(HPEContestAccessMixin, View):
             'question_type': mcq.question_type,  # 'SINGLE' or 'MULTIPLE'
             'points': contest_mcq.points,
             'options': options_data,
+            'selected_option_ids': selected_option_ids,  # NEW: previously saved answers
         })
 
 

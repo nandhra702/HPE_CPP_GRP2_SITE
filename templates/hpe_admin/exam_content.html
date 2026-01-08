@@ -64,6 +64,30 @@
         padding: 6px 14px;
         border-radius: 20px;
         font-size: 14px;
+        gap: 12px;
+    }
+
+    .debug-btn-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        color: #888;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .debug-btn-topbar:hover {
+        background: rgba(1, 169, 130, 0.2);
+        color: var(--hpe-green);
+    }
+
+    .debug-btn-topbar.active {
+        background: rgba(1, 169, 130, 0.3);
+        color: var(--hpe-green);
     }
 
     .user-menu {
@@ -112,6 +136,102 @@
     .side-btn:hover {
         background: #3c3c3c;
         color: #fff;
+    }
+
+    .nav-index {
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .problem-nav-btn {
+        border: 1px solid transparent;
+    }
+
+    .problem-nav-btn:hover {
+        border-color: #3794ff;
+    }
+
+    .problem-nav-btn.active {
+        background: rgba(55, 148, 255, 0.15);
+        color: #3794ff;
+        border-color: #3794ff;
+    }
+
+    .mcq-nav-btn {
+        border: 1px solid transparent;
+    }
+
+    .mcq-nav-btn:hover {
+        border-color: #9c27b0;
+    }
+
+    .mcq-nav-btn.active {
+        background: rgba(156, 39, 176, 0.15);
+        color: #9c27b0;
+        border-color: #9c27b0;
+    }
+
+    .sidebar-section-divider {
+        width: 36px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #9c27b0;
+        font-size: 10px;
+        font-weight: 700;
+        margin: 8px 0 4px 0;
+        border-top: 1px solid #404040;
+        padding-top: 8px;
+    }
+
+    .sidebar-section-divider.section-1-divider {
+        color: #01a982;
+        border-top: none;
+        margin-top: 4px;
+    }
+
+    .topbar-submit-btn {
+        background: linear-gradient(135deg, #01a982 0%, #00875a 100%);
+        color: white;
+        border: none;
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+    }
+
+    .topbar-submit-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(1, 169, 130, 0.3);
+    }
+
+    .topbar-submit-btn.hidden {
+        display: none;
+    }
+
+    .sidebar {
+        overflow-y: auto;
+        overflow-x: hidden;
+        max-height: calc(100vh - var(--header-height));
+    }
+
+    .sidebar::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .sidebar::-webkit-scrollbar-track {
+        background: #1e1e1e;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+        background: #404040;
+        border-radius: 2px;
     }
 
     /* --- Content Area --- */
@@ -686,34 +806,11 @@
         }
     }
 
-    /* Proctoring Status */
-    .proctor-status {
-        position: fixed;
-        bottom: 15px;
-        right: 15px;
-        background: rgba(0, 0, 0, 0.85);
-        color: white;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-size: 11px;
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .proctor-status .dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #00ff00;
-    }
-
     /* Debug Panel */
     #proctor-debug-panel {
         position: fixed;
         top: 70px;
-        left: 60px;
+        right: 20px;
         width: 300px;
         background: #252526;
         border: 1px solid #404040;
@@ -849,8 +946,14 @@
         </div>
         <div class="timer-area">
             <i class="fa fa-clock-o"></i>&nbsp;&nbsp;<span id="countdown">Loading...</span>
+            <div class="debug-btn-topbar" title="Proctor Debug" id="btn-debug" onclick="toggleDebugPanel()">
+                <i class="fa fa-bug"></i>
+            </div>
         </div>
         <div class="user-menu">
+            <button class="topbar-submit-btn" id="topbar-submit-btn" onclick="confirmSubmit()">
+                <i class="fa fa-check-circle"></i> Submit Test
+            </button>
             <span>{{ request.user.username }}</span>
         </div>
     </div>
@@ -858,12 +961,31 @@
     <div class="main-container">
         <!-- Sidebar -->
         <div class="sidebar">
-            <div class="side-btn active" id="btn-dashboard" onclick="showDashboard()">
-                <i class="fa fa-list-ul"></i>
+            <div class="side-btn active" id="btn-dashboard" onclick="showDashboard()" title="Dashboard">
+                <i class="fa fa-home"></i>
             </div>
-            <div class="side-btn" title="Proctor Debug" id="btn-debug" onclick="toggleDebugPanel()">
-                <i class="fa fa-bug"></i>
+            {% if filtered_contest_problems|length > 0 %}
+            <div class="sidebar-section-divider section-1-divider" title="Section 1 - Coding">
+                <span>S1</span>
             </div>
+            {% endif %}
+            {% for cp in filtered_contest_problems %}
+            <div class="side-btn problem-nav-btn" data-code="{{ cp.problem.code }}"
+                onclick="loadProblem('{{ cp.problem.code }}')" title="{{ cp.problem.name }}">
+                <span class="nav-index">{{ loop.index }}</span>
+            </div>
+            {% endfor %}
+            {% if filtered_contest_mcqs|length > 0 %}
+            <div class="sidebar-section-divider" title="Section 2 - MCQ">
+                <span>S2</span>
+            </div>
+            {% endif %}
+            {% for cm in filtered_contest_mcqs %}
+            <div class="side-btn mcq-nav-btn" data-mcq-id="{{ cm.mcq_question.id }}"
+                onclick="loadMCQ({{ cm.mcq_question.id }})" title="MCQ {{ loop.index }}">
+                <span class="nav-index">{{ loop.index + filtered_contest_problems|length }}</span>
+            </div>
+            {% endfor %}
         </div>
 
         <!-- Content Area -->
@@ -958,7 +1080,7 @@
                                 <i class="fa fa-check-square-o"></i>&nbsp; Run Test
                             </button>
                             <button class="btn btn-submit" id="btn-submit" onclick="submitCode()">
-                                <i class="fa fa-paper-plane"></i>&nbsp; Submit
+                                <i class="fa fa-paper-plane"></i>&nbsp; Submit & Next
                             </button>
                         </div>
                     </div>
@@ -1014,8 +1136,4 @@
     </div>
 </div>
 
-<!-- Proctoring Status Indicator -->
-<div class="proctor-status" id="proctor-status" style="display:none;">
-    <div class="dot"></div>
-    <span>Proctoring Active</span>
 </div>

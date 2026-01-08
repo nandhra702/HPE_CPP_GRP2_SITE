@@ -571,6 +571,32 @@
             color: #01a982;
         }
 
+        .section-header-overview {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #9c27b0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem 0;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .section-header-overview.section-1-header {
+            color: #01a982;
+            margin-top: 0;
+            border-top: none;
+        }
+
+        .mcq-summary-item {
+            border-left: 3px solid #9c27b0;
+        }
+
+        .mcq-summary-item .q-points {
+            color: #9c27b0;
+        }
+
         .summary-stats {
             display: flex;
             gap: 1.5rem;
@@ -1114,19 +1140,54 @@
                         </div>
 
                         <div class="question-list">
+                            <!-- Section 1: Coding Problems -->
+                            <div class="section-header-overview section-1-header">Section 1 - Coding</div>
+                            {% set q_num = namespace(value=0) %}
                             {% for q in questions %}
+                            {% if q.type == 'coding' %}
+                            {% set q_num.value = q_num.value + 1 %}
                             <div class="question-item">
                                 <div class="q-info">
                                     <span class="q-type {{ q.type }}">{{ q.type }}</span>
-                                    <span class="q-name">{{ q.name }}</span>
+                                    <span class="q-name">Q{{ q_num.value }}. {{ q.name }}</span>
                                 </div>
                                 <span class="q-points">{{ q.points }} pts</span>
                             </div>
-                            {% else %}
+                            {% endif %}
+                            {% endfor %}
+
+                            <!-- Section 2: MCQ Questions -->
+                            {% set mcq_count = namespace(value=0) %}
+                            {% set coding_count = namespace(value=0) %}
+                            {% set mcq_points = namespace(value=0) %}
+                            {% for q in questions %}
+                            {% if q.type == 'mcq' %}
+                            {% set mcq_count.value = mcq_count.value + 1 %}
+                            {% if mcq_count.value == 1 %}
+                            {% set mcq_points.value = q.points %}
+                            {% endif %}
+                            {% elif q.type == 'coding' %}
+                            {% set coding_count.value = coding_count.value + 1 %}
+                            {% endif %}
+                            {% endfor %}
+
+                            {% if mcq_count.value > 0 %}
+                            <div class="section-header-overview">Section 2 - MCQ</div>
+                            <div class="question-item mcq-summary-item">
+                                <div class="q-info">
+                                    <span class="q-type mcq">MCQ</span>
+                                    <span class="q-name">Q{{ coding_count.value + 1 }} - Q{{ coding_count.value +
+                                        mcq_count.value }}</span>
+                                </div>
+                                <span class="q-points">{{ mcq_points.value }} pts each</span>
+                            </div>
+                            {% endif %}
+
+                            {% if questions|length == 0 %}
                             <div class="question-item">
                                 <span class="q-name">No questions added yet</span>
                             </div>
-                            {% endfor %}
+                            {% endif %}
                         </div>
 
                         <div class="button-group">
@@ -1750,11 +1811,11 @@
             // Initialize resize handle
             initResize();
 
-            // Show proctoring status
-            document.getElementById('proctor-status').style.display = 'flex';
-
             // Setup fullscreen monitoring
             setupFullscreenMonitor();
+
+            // Build combined question list from DOM (problems + MCQs)
+            buildAllQuestionsList();
         }
 
         function loadScript(src) {
@@ -2146,12 +2207,24 @@
         }
 
         // ===== Exam Navigation Functions (Global) =====
-        window.showDashboard = function () {
+        window.showDashboard = async function () {
+            // Save current MCQ before navigating away
+            const mcqView = document.getElementById('mcq-view');
+            if (mcqView && mcqView.classList.contains('active')) {
+                const mcqId = mcqView.dataset.currentMcqId;
+                if (mcqId) {
+                    await saveMCQImmediately(parseInt(mcqId));
+                }
+            }
+
             document.getElementById('dashboard-view').style.display = 'block';
             document.getElementById('editor-view').classList.remove('active');
-            const mcqView = document.getElementById('mcq-view');
             if (mcqView) mcqView.classList.remove('active');
             document.getElementById('btn-dashboard').classList.add('active');
+
+            // Show submit button in top bar when on dashboard
+            const submitBtn = document.getElementById('topbar-submit-btn');
+            if (submitBtn) submitBtn.classList.remove('hidden');
         };
 
         window.toggleDebugPanel = function () {
@@ -2214,6 +2287,13 @@
                     // Get tab switch data before any operations
                     const savedCount = window.HPETabSwitchDetector ? window.HPETabSwitchDetector.tabSwitchCount : 0;
                     const savedTime = window.HPETabSwitchDetector ? window.HPETabSwitchDetector.totalTimeOutside : 0;
+
+                    // Save all pending MCQ answers before submission
+                    try {
+                        await saveAllMCQs();
+                    } catch (err) {
+                        console.error('[MCQ] Failed to save answers before submission:', err);
+                    }
 
                     try {
                         // Clear frame sending interval immediately
@@ -2369,16 +2449,64 @@
         // Problem loading
         const CONTEST_KEY = "{{ contest.key }}";
         const PROBLEM_CODES = [{% for cp in contest.contest_problems.all() %}"{{ cp.problem.code }}"{% if not loop.last %}, {% endif %} {% endfor %}];
+
+        // MCQ_IDS will be populated from DOM after exam content loads
+        let MCQ_IDS = [];
+        let ALL_QUESTIONS = [];
+
+        // Build combined question list from DOM (called after exam content is loaded)
+        function buildAllQuestionsList() {
+            // Get problem codes from question cards
+            const problemCards = document.querySelectorAll('.question-card[data-type="problem"]');
+            const problemCodes = Array.from(problemCards).map(card => card.dataset.code);
+
+            // Get MCQ IDs from question cards
+            const mcqCards = document.querySelectorAll('.question-card[data-type="mcq"]');
+            MCQ_IDS = Array.from(mcqCards).map(card => parseInt(card.dataset.mcqId));
+
+            // Build combined list: problems first, then MCQs
+            ALL_QUESTIONS = [
+                ...problemCodes.map(code => ({ type: 'problem', id: code })),
+                ...MCQ_IDS.map(id => ({ type: 'mcq', id: id }))
+            ];
+
+            console.log('[HPE-NAVIGATION] Built ALL_QUESTIONS:', ALL_QUESTIONS.length, 'items');
+        }
+
         let currentProblemCode = null;
         let currentProblemIndex = -1;
+        let currentQuestionIndex = -1;  // Index in ALL_QUESTIONS array
+
+        // Navigate to next question (problem or MCQ)
+        function navigateToNextQuestion() {
+            const nextIdx = currentQuestionIndex + 1;
+            if (nextIdx < ALL_QUESTIONS.length) {
+                const nextQ = ALL_QUESTIONS[nextIdx];
+                if (nextQ.type === 'problem') {
+                    loadProblem(nextQ.id);
+                } else {
+                    loadMCQ(nextQ.id);
+                }
+                return true;  // Has next question
+            } else {
+                showDashboard();
+                return false;  // Was last question
+            }
+        }
 
         window.loadProblem = async function (problemCode) {
             currentProblemCode = problemCode;
             currentProblemIndex = PROBLEM_CODES.indexOf(problemCode);
+            // Update combined index
+            currentQuestionIndex = ALL_QUESTIONS.findIndex(q => q.type === 'problem' && q.id === problemCode);
 
             document.getElementById('dashboard-view').style.display = 'none';
             document.getElementById('editor-view').classList.add('active');
             document.getElementById('btn-dashboard').classList.remove('active');
+
+            // Hide submit button when not on dashboard
+            const submitBtn = document.getElementById('topbar-submit-btn');
+            if (submitBtn) submitBtn.classList.add('hidden');
 
             document.getElementById('problem-title').textContent = 'Loading...';
             document.getElementById('problem-content').innerHTML = '<p style="text-align:center;padding:40px;"><span class="exam-spinner"></span> Loading...</p>';
@@ -2439,6 +2567,10 @@
             document.getElementById('editor-view').classList.remove('active');
             document.getElementById('btn-dashboard').classList.remove('active');
 
+            // Hide submit button when not on dashboard
+            const submitBtn = document.getElementById('topbar-submit-btn');
+            if (submitBtn) submitBtn.classList.add('hidden');
+
             let mcqView = document.getElementById('mcq-view');
             if (!mcqView) {
                 mcqView = document.createElement('div');
@@ -2447,6 +2579,8 @@
                 document.querySelector('.content-area').appendChild(mcqView);
             }
             mcqView.classList.add('active');
+            // Track current MCQ index in combined questions
+            currentQuestionIndex = ALL_QUESTIONS.findIndex(q => q.type === 'mcq' && q.id === mcqId);
             mcqView.innerHTML = '<div style="text-align:center;padding:40px;"><span class="exam-spinner"></span> Loading MCQ...</div>';
 
             try {
@@ -2477,10 +2611,24 @@
 
                 html += '</div><div class="mcq-footer">';
                 html += '<button class="btn btn-back" onclick="showDashboard()"><i class="fa fa-arrow-left"></i>&nbsp; Back</button>';
-                html += '<button class="btn btn-submit" onclick="submitMCQ(' + mcqId + ')"><i class="fa fa-check"></i>&nbsp; Submit Answer</button>';
+                html += '<button class="btn btn-submit" onclick="submitMCQ(' + mcqId + ')"><i class="fa fa-check"></i>&nbsp; Submit \& Next</button>';
                 html += '</div></div>';
 
                 mcqView.innerHTML = html;
+                mcqView.dataset.currentMcqId = mcqId;  // Track current MCQ ID
+
+                // Restore previously selected answers
+                if (data.selected_option_ids && data.selected_option_ids.length > 0) {
+                    data.selected_option_ids.forEach(optionId => {
+                        const input = mcqView.querySelector(`input[value="${optionId}"]`);
+                        if (input) input.checked = true;
+                    });
+                }
+
+                // Add change listeners for debounced auto-save
+                mcqView.querySelectorAll('input[name="mcq_answer"]').forEach(input => {
+                    input.addEventListener('change', () => debouncedSaveMCQ(mcqId));
+                });
             } catch (err) {
                 mcqView.innerHTML = '<div style="color:#f44336;padding:40px;">Error loading MCQ: ' + err.message + '</div>';
             }
@@ -2510,16 +2658,105 @@
                 });
 
                 const data = await response.json();
-                // Silent save - don't show correct/incorrect during contest
-                // Just go back to dashboard, the selected options are already saved
                 if (data.success) {
-                    showDashboard();
+                    // Navigate to next question (problem or MCQ) instead of dashboard
+                    navigateToNextQuestion();
                 } else if (data.error) {
                     alert('Error: ' + data.error);
                 }
             } catch (err) {
                 alert('Error submitting answer: ' + err.message);
             }
+        };
+
+        // Modern debounced auto-save system
+        let saveTimers = {};        // Debounce timers
+        let saveInProgress = {};    // Track ongoing saves
+        let pendingSaves = {};      // Queue saves during ongoing requests
+
+        // Debounced save - triggers 2 seconds after last change
+        window.debouncedSaveMCQ = function (mcqId) {
+            // Clear existing timer
+            if (saveTimers[mcqId]) {
+                clearTimeout(saveTimers[mcqId]);
+            }
+
+            // Set new timer for 2 seconds
+            saveTimers[mcqId] = setTimeout(() => {
+                saveMCQSilently(mcqId);
+            }, 2000);
+        };
+
+        // Silent save function with request coalescing
+        window.saveMCQSilently = async function (mcqId) {
+            // If save already in progress, queue this save
+            if (saveInProgress[mcqId]) {
+                pendingSaves[mcqId] = true;
+                return;
+            }
+
+            const container = document.querySelector('.mcq-container');
+            const questionType = container ? container.dataset.questionType : 'SINGLE';
+            const selectedInputs = document.querySelectorAll('input[name="mcq_answer"]:checked');
+
+            // Nothing selected - don't save
+            if (selectedInputs.length === 0) {
+                return;
+            }
+
+            const answers = Array.from(selectedInputs).map(input => input.value);
+            const payload = questionType === 'MULTIPLE' ? { answers } : { answer: answers[0] };
+
+            // Mark save in progress
+            saveInProgress[mcqId] = true;
+
+            try {
+                const response = await fetch(`/hpe/contest/${CONTEST_KEY}/mcq/${mcqId}/submit/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                await response.json();
+                // Silent - no user feedback needed
+
+            } catch (err) {
+                console.error('MCQ save failed:', err);
+                // Silent failure - will retry on next change or navigation
+            } finally {
+                saveInProgress[mcqId] = false;
+
+                // If another save was queued, execute it now
+                if (pendingSaves[mcqId]) {
+                    delete pendingSaves[mcqId];
+                    saveMCQSilently(mcqId);
+                }
+            }
+        };
+
+        // Save immediately (for critical events like navigation)
+        window.saveMCQImmediately = async function (mcqId) {
+            // Clear any pending debounce timer
+            if (saveTimers[mcqId]) {
+                clearTimeout(saveTimers[mcqId]);
+                delete saveTimers[mcqId];
+            }
+
+            // Save now
+            await saveMCQSilently(mcqId);
+        };
+
+        // Save all MCQs (for final submission)
+        window.saveAllMCQs = async function () {
+            // Get all MCQ IDs that have been interacted with
+            const mcqIds = Object.keys(saveTimers).concat(Object.keys(saveInProgress));
+            const uniqueIds = [...new Set(mcqIds)];
+
+            // Save all in parallel
+            await Promise.all(uniqueIds.map(id => saveMCQImmediately(parseInt(id))));
         };
 
         // Code submission functions
@@ -2605,13 +2842,18 @@
                             }
                         }
 
-                        if (mode === 'submit' && isAC) {
-                            const nextIdx = currentProblemIndex + 1;
-                            if (nextIdx < PROBLEM_CODES.length) {
-                                html += '<div class="result-item pass" style="margin-top:10px;">✓ Correct! Loading next problem...</div>';
-                                setTimeout(() => loadProblem(PROBLEM_CODES[nextIdx]), 1500);
+                        if (mode === 'submit') {
+                            // Navigate to next question in combined list (problems + MCQs)
+                            const nextIdx = currentQuestionIndex + 1;
+                            const hasMore = nextIdx < ALL_QUESTIONS.length;
+                            const nextQ = hasMore ? ALL_QUESTIONS[nextIdx] : null;
+                            const nextType = nextQ ? (nextQ.type === 'mcq' ? 'MCQ' : 'problem') : null;
+
+                            if (hasMore) {
+                                html += '<div class="result-item ' + (isAC ? 'pass' : 'pending') + '" style="margin-top:10px;">' + (isAC ? '✓ Correct!' : 'Submitted.') + ' Loading next ' + nextType + '...</div>';
+                                setTimeout(() => navigateToNextQuestion(), 1500);
                             } else {
-                                html += '<div class="result-item pass" style="margin-top:10px;">✓ All problems completed!</div>';
+                                html += '<div class="result-item ' + (isAC ? 'pass' : 'pending') + '" style="margin-top:10px;">' + (isAC ? '✓ All questions completed!' : 'Last question submitted.') + ' Returning to dashboard...</div>';
                                 setTimeout(() => showDashboard(), 1500);
                             }
                         }
@@ -2650,6 +2892,31 @@
             }
             return cookieValue;
         }
+
+        // Save MCQ on page unload (browser close, refresh, etc.)
+        window.addEventListener('beforeunload', (e) => {
+            const mcqView = document.getElementById('mcq-view');
+            if (mcqView && mcqView.classList.contains('active')) {
+                const mcqId = mcqView.dataset.currentMcqId;
+                if (mcqId && saveTimers[mcqId]) {
+                    // Use sendBeacon for guaranteed delivery on unload
+                    const container = document.querySelector('.mcq-container');
+                    const questionType = container?.dataset.questionType || 'SINGLE';
+                    const selectedInputs = document.querySelectorAll('input[name="mcq_answer"]:checked');
+
+                    if (selectedInputs.length > 0) {
+                        const answers = Array.from(selectedInputs).map(input => input.value);
+                        const payload = questionType === 'MULTIPLE' ? { answers } : { answer: answers[0] };
+
+                        const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+                        navigator.sendBeacon(
+                            `/hpe/contest/${CONTEST_KEY}/mcq/${mcqId}/submit/`,
+                            blob
+                        );
+                    }
+                }
+            }
+        });
 
         // Always show step 1 - user will click continue to proceed
         // (removed auto-skip for logged-in users)
