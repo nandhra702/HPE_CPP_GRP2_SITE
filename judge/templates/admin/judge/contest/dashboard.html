@@ -283,6 +283,73 @@
         cursor: not-allowed;
     }
 
+    /* Save Feedback Styles */
+    .save-feedback {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 30px 40px;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        z-index: 10000;
+        display: none;
+        text-align: center;
+        min-width: 300px;
+    }
+
+    .save-feedback.active {
+        display: block;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translate(-50%, -60%);
+        }
+
+        to {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+        }
+    }
+
+    .save-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid #f3f3f3;
+        border-top-color: #2980B9;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .save-success {
+        color: #27ae60;
+        font-size: 48px;
+        margin-bottom: 15px;
+    }
+
+    .save-feedback h3 {
+        margin: 0 0 10px;
+        font-size: 18px;
+        color: #333;
+    }
+
+    .save-feedback p {
+        margin: 0;
+        color: #666;
+        font-size: 14px;
+    }
+
     /* Inputs */
     input[type="text"],
     select {
@@ -494,6 +561,9 @@
             </div>
         </div>
     </div>
+
+    <!-- PHASE 2: Save Feedback Modal -->
+    <div id="save-feedback" class="save-feedback"></div>
 </div>
 
 <script>
@@ -520,7 +590,8 @@
             Easy: 10,
             Medium: 20,
             Hard: 30
-        }
+        },
+        isDirty: false  // PHASE 2: Track unsaved changes
     };
 
     // Get current difficulty score from input
@@ -579,6 +650,16 @@
             }
             updateSummary();
         }
+
+        // PHASE 2: Warn before closing with unsaved changes
+        window.addEventListener('beforeunload', (e) => {
+            if (state.isDirty) {
+                const message = 'You have unsaved changes. Are you sure you want to leave?';
+                e.preventDefault();
+                e.returnValue = message;
+                return message;
+            }
+        });
     });
 
     function switchTab(tab) {
@@ -659,14 +740,20 @@
             if (field === 'partial' || field === 'is_pretested') value = value; // boolean passed directly
             item[field] = value;
             map.set(id, item);
+            state.isDirty = true;  // PHASE 2: Mark as changed
         }
     }
 
     function removeItem(type, id) {
         const map = type === 'regular' ? state.selectedProblems : state.selectedMCQs;
+        const item = map.get(id);
+        if (!item) return;
+
+        // Removed confirmation dialog as per user request
         map.delete(id);
         renderSelected(type);
         updateSummary();
+        state.isDirty = true;
     }
 
     async function loadMetadata() {
@@ -789,6 +876,7 @@
             state.selectedProblems.delete(id);
         }
         updateSummary();
+        state.isDirty = true;  // PHASE 2: Mark as changed
     }
 
     function toggleSelectAll(category, checked) {
@@ -806,28 +894,41 @@
         const category = document.getElementById('random-col').value;
         const items = state.regular[category].items;
 
-        if (items.length === 0) return;
+        if (items.length === 0 || count <= 0) return;
 
-        const unselected = items.filter(i => !state.selectedProblems.has(i.id));
+        // FIX: First, remove ALL previously selected items from this category
+        const itemsToRemove = [];
+        state.selectedProblems.forEach((item, id) => {
+            if (item.group === category || (item.group && item.group.toLowerCase().includes(category.toLowerCase()))) {
+                itemsToRemove.push(id);
+            }
+        });
+        itemsToRemove.forEach(id => {
+            state.selectedProblems.delete(id);
+            const cb = document.getElementById(`p-${id}`);
+            if (cb) cb.checked = false;
+        });
+
+        // Now select exactly 'count' random items from this category
+        const availableItems = [...items]; // Clone array
         const toSelect = [];
 
-        for (let i = 0; i < count && unselected.length > 0; i++) {
-            const idx = Math.floor(Math.random() * unselected.length);
-            toSelect.push(unselected[idx]);
-            unselected.splice(idx, 1);
+        const actualCount = Math.min(count, availableItems.length);
+        for (let i = 0; i < actualCount; i++) {
+            const idx = Math.floor(Math.random() * availableItems.length);
+            toSelect.push(availableItems[idx]);
+            availableItems.splice(idx, 1);
         }
 
         toSelect.forEach(item => {
-            // Get the difficulty score for this category
             const difficultyScore = getDifficultyScore(category);
 
-            // Add to state manually to ensure object creation
             state.selectedProblems.set(item.id, {
                 id: item.id,
                 code: item.code,
                 name: item.name,
-                points: difficultyScore, // Use difficulty-based score
-                group: item.group || category, // Use API group or fallback to column category
+                points: difficultyScore,
+                group: item.group || category,
                 partial: true,
                 is_pretested: false,
                 max_submissions: null,
@@ -837,7 +938,9 @@
             const cb = document.getElementById(`p-${item.id}`);
             if (cb) cb.checked = true;
         });
+
         updateSummary();
+        state.isDirty = true;
     }
 
     // MCQ Logic
@@ -920,15 +1023,18 @@
                 state.selectedMCQs.set(id, {
                     id: item.id,
                     code: item.code,
-                    name: item.name,
+                    name: item.description,
                     points: mcqScore,
-                    group: item.group
+                    group: item.group || 'Uncategorized'
                 });
+            } else {
+                console.error(`MCQ ${id} not found in loaded items`);
             }
         } else {
             state.selectedMCQs.delete(id);
         }
         updateSummary();
+        state.isDirty = true;  // PHASE 2: Mark as changed
     }
 
     function toggleSelectAllMCQ(checked) {
@@ -987,17 +1093,52 @@
     }
 
     function saveAndClose() {
+        // PHASE 2: Add save feedback with loading and success message
         if (window.opener && window.opener.updateContestSelections) {
+            // Show loading feedback
+            showSaveFeedback('loading');
+
             saveRandomConfigState();
-            window.opener.updateContestSelections(
-                Array.from(state.selectedProblems.values()),
-                Array.from(state.selectedMCQs.values()),
-                state.randomization
-            );
-            window.close();
+
+            // Simulate a brief delay for better UX (shows loading state)
+            setTimeout(() => {
+                window.opener.updateContestSelections(
+                    Array.from(state.selectedProblems.values()),
+                    Array.from(state.selectedMCQs.values()),
+                    state.randomization
+                );
+
+                // Show success message
+                showSaveFeedback('success');
+                state.isDirty = false;  // Changes saved
+
+                // Close window after showing success
+                setTimeout(() => {
+                    window.close();
+                }, 1000);
+            }, 300);
         } else {
             alert('Parent window not found or compatible. Cannot save.');
         }
+    }
+
+    // PHASE 2: Save feedback function
+    function showSaveFeedback(type) {
+        const feedbackDiv = document.getElementById('save-feedback');
+        if (type === 'loading') {
+            feedbackDiv.innerHTML = `
+                <div class="save-spinner"></div>
+                <h3>Saving Changes...</h3>
+                <p>Please wait</p>
+            `;
+        } else if (type === 'success') {
+            feedbackDiv.innerHTML = `
+                <div class="save-success">✓</div>
+                <h3>Changes Saved!</h3>
+                <p>Your contest has been updated</p>
+            `;
+        }
+        feedbackDiv.classList.add('active');
     }
 
     // Randomization Logic

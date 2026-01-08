@@ -4,19 +4,27 @@ problem_storage_globs:
   - /home/lalith/Desktop/Test_demoj_1/site/problems/*  
 
 runtime:
-    as_x64: /usr/bin/x86_64-linux-gnu-as
-    as_x86: /usr/bin/as
     awk: /usr/bin/mawk
     cat: /usr/bin/cat
     g++: /usr/bin/g++
     g++11: /usr/bin/g++
     g++14: /usr/bin/g++
     g++17: /usr/bin/g++
-    g++20: /usr/bin/g++
+    g++20: /usr/bin/g++-11
     gcc: /usr/bin/gcc
     gcc11: /usr/bin/gcc
-    ld_x64: /usr/bin/x86_64-linux-gnu-ld
-    ld_x86: /usr/bin/ld
     perl: /usr/bin/perl
-    python3: /home/lalith/Desktop/Test_demoj_1/dmojsite/bin/python3
+    python3: /usr/bin/python3
     sed: /usr/bin/sed
+    tclsh: /usr/bin/tclsh
+    java: /usr/bin/java
+    javac: /usr/bin/javac
+    python2: /usr/bin/python2
+    fpc: /usr/bin/fpc
+    mono: /usr/bin/mono
+    mcs: /usr/bin/mcs
+    rustc: /usr/bin/rustc
+    go: /usr/bin/go
+    node: /usr/bin/node
+    ruby: /usr/bin/ruby
+    php: /usr/bin/php

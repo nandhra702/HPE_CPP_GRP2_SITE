@@ -159,4 +159,4 @@ def contest_submission_update(sender, instance, **kwargs):
 @receiver(post_save, sender=User)
 def create_profile(sender, instance, created, **kwargs):
     if created:
-        Profile.objects.create(user=instance, language=Language.get_default_language())
+        Profile.objects.get_or_create(user=instance, defaults={'language': Language.get_default_language()})

@@ -241,7 +241,7 @@ class HPEContestAdmin(ContestAdmin):
         if not self._rescored and any(formset.has_changed() for formset in formsets):
             self._rescore(form.cleaned_data['key'])
 
-        # 3. JSON Logic (Non-destructive / Merging)
+        # 3. JSON Logic (Properly handle additions, updates, AND deletions)
         if 'contest_problems_json' in form.cleaned_data and form.cleaned_data['contest_problems_json']:
             try:
                 problems_data = json.loads(form.cleaned_data['contest_problems_json'])
@@ -252,6 +252,11 @@ class HPEContestAdmin(ContestAdmin):
                 
                 current_problems = {cp.problem_id: cp for cp in form.instance.contest_problems.all()}
                 
+                # CRITICAL FIX #1: Delete removed problems
+                new_ids = set(int(p['id']) for p in normalized_problems)
+                form.instance.contest_problems.filter(problem_id__in=set(current_problems.keys()) - new_ids).delete()
+                
+                # Add new or update existing
                 for i, p_item in enumerate(normalized_problems):
                     pid = int(p_item['id'])
                     points = p_item.get('points')
@@ -262,10 +267,28 @@ class HPEContestAdmin(ContestAdmin):
                     
                     if pid in current_problems:
                         cp = current_problems[pid]
+                        # CRITICAL FIX #2: Update ALL fields, not just order and points
                         changed = False
-                        if cp.order != i: cp.order = i; changed = True
-                        if points is not None and cp.points != points: cp.points = points; changed = True
-                        if changed: cp.save()
+                        if cp.order != i: 
+                            cp.order = i
+                            changed = True
+                        if points is not None and cp.points != points: 
+                            cp.points = points
+                            changed = True
+                        if cp.partial != partial:
+                            cp.partial = partial
+                            changed = True
+                        if cp.is_pretested != is_pretested:
+                            cp.is_pretested = is_pretested
+                            changed = True
+                        if cp.max_submissions != max_submissions:
+                            cp.max_submissions = max_submissions
+                            changed = True
+                        if cp.output_prefix_override != output_prefix_override:
+                            cp.output_prefix_override = output_prefix_override
+                            changed = True
+                        if changed: 
+                            cp.save()
                     else:
                         prob = Problem.objects.get(id=pid)
                         ContestProblem.objects.create(
@@ -290,15 +313,25 @@ class HPEContestAdmin(ContestAdmin):
 
                 current_mcqs = {cm.mcq_question_id: cm for cm in form.instance.contest_mcqs.all()}
                 
+                # CRITICAL FIX #3: Delete removed MCQs
+                new_ids = set(int(m['id']) for m in normalized_mcqs)
+                form.instance.contest_mcqs.filter(mcq_question_id__in=set(current_mcqs.keys()) - new_ids).delete()
+                
+                # Add new or update existing
                 for i, m_item in enumerate(normalized_mcqs):
                     mid = int(m_item['id'])
                     points = m_item.get('points')
                     if mid in current_mcqs:
                         cm = current_mcqs[mid]
                         changed = False
-                        if cm.order != i: cm.order = i; changed = True
-                        if points is not None and cm.points != points: cm.points = points; changed = True
-                        if changed: cm.save()
+                        if cm.order != i: 
+                            cm.order = i
+                            changed = True
+                        if points is not None and cm.points != points: 
+                            cm.points = points
+                            changed = True
+                        if changed: 
+                            cm.save()
                     else:
                         mcq = MCQQuestion.objects.get(id=mid)
                         ContestMCQ.objects.create(
@@ -308,6 +341,7 @@ class HPEContestAdmin(ContestAdmin):
                             order=i
                         )
             except Exception as e: pass
+
 
         # 4. JSON Logic for Randomization
         if 'contest_randomization_json' in form.cleaned_data and form.cleaned_data['contest_randomization_json']:
@@ -616,11 +650,27 @@ class HPEProblemAdmin(ProblemAdmin):
                     
                     # Expected format: Name, Body, Constraints, TL, ML, Difficulty, Solution, In1, Out1, In2, Out2...
                     
+                    # Get or create difficulty groups and map them
+                    from judge.models.problem import ProblemGroup
+                    
+                    easy_group, _created = ProblemGroup.objects.get_or_create(
+                        name='easy',
+                        defaults={'full_name': 'Easy'}
+                    )
+                    medium_group, _created = ProblemGroup.objects.get_or_create(
+                        name='medium',
+                        defaults={'full_name': 'Medium'}
+                    )
+                    hard_group, _created = ProblemGroup.objects.get_or_create(
+                        name='hard',
+                        defaults={'full_name': 'Hard'}
+                    )
+                    
                     # Map difficulty names to group IDs
                     difficulty_map = {
-                        'easy': 2,
-                        'medium': 3,
-                        'hard': 4,
+                        'easy': easy_group.id,
+                        'medium': medium_group.id,
+                        'hard': hard_group.id,
                     }
                     
                     count = 0
@@ -834,7 +884,21 @@ class HPEProblemAdmin(ProblemAdmin):
                         count += 1
                         success_results.append({'name': name, 'code': code})
                     
-                    # Stay on same page and show results
+                    # Check if this is an AJAX request
+                    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+                    
+                    if is_ajax:
+                        # Return JSON response for AJAX requests
+                        from django.http import JsonResponse
+                        return JsonResponse({
+                            'success': True,
+                            'total_success': count,
+                            'total_errors': len(error_results),
+                            'success_results': success_results,
+                            'error_results': error_results
+                        })
+                    
+                    # Stay on same page and show results (fallback for non-AJAX)
                     return render(request, 'hpe_admin/bulk_problem_upload.html', {
                         'form': HPEProblemBulkUploadForm(),  # Fresh form
                         'title': _('Bulk Upload Problems'),
@@ -847,6 +911,21 @@ class HPEProblemAdmin(ProblemAdmin):
                     
                 except Exception as e:
                     error_results = [{'name': 'File Error', 'error': str(e)}]
+                    
+                    # Check if AJAX request
+                    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+                    
+                    if is_ajax:
+                        from django.http import JsonResponse
+                        return JsonResponse({
+                            'success': False,
+                            'error': str(e),
+                            'total_success': 0,
+                            'total_errors': 1,
+                            'success_results': [],
+                            'error_results': error_results
+                        })
+                    
                     return render(request, 'hpe_admin/bulk_problem_upload.html', {
                         'form': HPEProblemBulkUploadForm(),
                         'title': _('Bulk Upload Problems'),
@@ -1045,7 +1124,7 @@ class HPEMCQQuestionAdmin(MCQQuestionAdmin):
                             description=question_text,  # Full question text
                             question_type=question_type,
                             points=1.0,
-                            is_public=False,
+                            is_public=True,
                             date=timezone.now(),  # Set published date to current time
                             group=uncategorized_group  # Default to uncategorized difficulty
                         )
@@ -1067,7 +1146,21 @@ class HPEMCQQuestionAdmin(MCQQuestionAdmin):
                         count += 1
                         success_results.append({'name': question_text[:50] + '...', 'code': code})
                     
-                    # Stay on same page and show results
+                    # Check if this is an AJAX request
+                    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+                    
+                    if is_ajax:
+                        # Return JSON response for AJAX requests
+                        from django.http import JsonResponse
+                        return JsonResponse({
+                            'success': True,
+                            'total_success': count,
+                            'total_errors': len(error_results),
+                            'success_results': success_results,
+                            'error_results': error_results
+                        })
+                    
+                    # Stay on same page and show results (fallback for non-AJAX)
                     return render(request, 'hpe_admin/bulk_mcq_upload.html', {
                         'form': HPEMCQBulkUploadForm(),  # Fresh form
                         'title': _('Bulk Upload MCQ Questions'),
@@ -1080,6 +1173,21 @@ class HPEMCQQuestionAdmin(MCQQuestionAdmin):
                     
                 except Exception as e:
                     error_results = [{'name': 'File Error', 'error': str(e)}]
+                    
+                    # Check if AJAX request
+                    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+                    
+                    if is_ajax:
+                        from django.http import JsonResponse
+                        return JsonResponse({
+                            'success': False,
+                            'error': str(e),
+                            'total_success': 0,
+                            'total_errors': 1,
+                            'success_results': [],
+                            'error_results': error_results
+                        })
+                    
                     return render(request, 'hpe_admin/bulk_mcq_upload.html', {
                         'form': HPEMCQBulkUploadForm(),
                         'title': _('Bulk Upload MCQ Questions'),

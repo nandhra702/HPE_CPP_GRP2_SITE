@@ -11,6 +11,511 @@
 {% block extrastyle %}
 {{ block.super }}
 <link rel="stylesheet" type="text/css" href="{% static 'admin/css/forms.css' %}">
+
+<style>
+    /* Modal Overlay & Container */
+    .upload-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.75);
+        backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .upload-modal-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .upload-modal {
+        background: #ffffff;
+        border-radius: 20px;
+        width: 90%;
+        max-width: 700px;
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        transform: scale(0.9) translateY(20px);
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .upload-modal-overlay.active .upload-modal {
+        transform: scale(1) translateY(0);
+    }
+
+    /* Modal Header */
+    .upload-modal-header {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        padding: 24px 28px;
+        border-radius: 20px 20px 0 0;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .upload-modal-header-content {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex: 1;
+    }
+
+    .upload-modal-header-icon {
+        width: 48px;
+        height: 48px;
+        background: rgba(255, 255, 255, 0.25);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+    }
+
+    .upload-modal-header-text h2 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 700;
+        color: white;
+    }
+
+    .upload-modal-header-text p {
+        margin: 4px 0 0;
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.85);
+    }
+
+    .upload-modal-close {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        font-size: 24px;
+        line-height: 1;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .upload-modal-close:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: rotate(90deg);
+    }
+
+    /* Modal Body */
+    .upload-modal-body {
+        padding: 24px;
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+
+    .upload-modal-body::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .upload-modal-body::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 3px;
+    }
+
+    .upload-modal-body::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+    }
+
+    /* Loading State */
+    .upload-loading {
+        text-align: center;
+        padding: 48px 24px;
+    }
+
+    .upload-loading .spinner-container {
+        position: relative;
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 24px;
+    }
+
+    .upload-loading .spinner {
+        width: 64px;
+        height: 64px;
+        border: 4px solid #e2e8f0;
+        border-top-color: #f5576c;
+        border-radius: 50%;
+        animation: spin 1s ease-in-out infinite;
+    }
+
+    .upload-loading .spinner-inner {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 24px;
+    }
+
+    .upload-loading h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .upload-loading p {
+        margin: 0;
+        color: #64748b;
+        font-size: 14px;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* Stats Cards */
+    .upload-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 16px;
+        text-align: center;
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+    }
+
+    .stat-card.success::before {
+        background: linear-gradient(90deg, #22c55e, #16a34a);
+    }
+
+    .stat-card.failed::before {
+        background: linear-gradient(90deg, #ef4444, #dc2626);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 10px;
+        font-size: 18px;
+    }
+
+    .stat-card.success .stat-icon {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .stat-card.failed .stat-icon {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .stat-number {
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 4px;
+    }
+
+    .stat-card.success .stat-number {
+        color: #16a34a;
+    }
+
+    .stat-card.failed .stat-number {
+        color: #dc2626;
+    }
+
+    .stat-label {
+        font-size: 12px;
+        color: #64748b;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Upload Sections */
+    .upload-section {
+        margin-bottom: 16px;
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+    }
+
+    .upload-section-header {
+        padding: 14px 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        cursor: pointer;
+        transition: background 0.2s ease;
+        user-select: none;
+    }
+
+    .upload-section-header:hover {
+        background: #f8fafc;
+    }
+
+    .section-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+
+    .section-success .section-icon {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .section-failed .section-icon {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .section-title-text {
+        flex: 1;
+    }
+
+    .section-title-text h4 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .section-title-text span {
+        font-size: 12px;
+        color: #64748b;
+    }
+
+    .section-toggle {
+        color: #94a3b8;
+        font-size: 12px;
+        transition: transform 0.2s ease;
+    }
+
+    .section-toggle.expanded {
+        transform: rotate(180deg);
+    }
+
+    .upload-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        border-top: 1px solid #e2e8f0;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .upload-list li {
+        padding: 12px 18px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        transition: background 0.15s ease;
+        animation: fadeInUp 0.3s ease forwards;
+        opacity: 0;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .upload-list li:hover {
+        background: #f8fafc;
+    }
+
+    .upload-list li:last-child {
+        border-bottom: none;
+    }
+
+    .item-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    .section-success .item-icon {
+        background: #f0fdf4;
+        color: #16a34a;
+    }
+
+    .section-failed .item-icon {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+
+    .item-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .item-name {
+        font-size: 14px;
+        font-weight: 500;
+        color: #1e293b;
+        word-break: break-word;
+    }
+
+    .item-detail {
+        color: #64748b;
+        font-size: 12px;
+        margin-top: 4px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .item-detail::before {
+        content: '→';
+        color: #94a3b8;
+    }
+
+    /* Empty State */
+    .upload-empty {
+        text-align: center;
+        padding: 48px 24px;
+    }
+
+    .empty-icon {
+        width: 80px;
+        height: 80px;
+        background: #f1f5f9;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        font-size: 36px;
+    }
+
+    .upload-empty h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .upload-empty p {
+        margin: 0;
+        color: #64748b;
+        font-size: 14px;
+    }
+
+    /* Error State */
+    .upload-error {
+        text-align: center;
+        padding: 48px 24px;
+    }
+
+    .error-icon {
+        width: 80px;
+        height: 80px;
+        background: #fee2e2;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        font-size: 36px;
+        color: #dc2626;
+    }
+
+    .upload-error h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+        font-weight: 600;
+        color: #dc2626;
+    }
+
+    .upload-error p {
+        margin: 0;
+        color: #64748b;
+        font-size: 14px;
+    }
+
+    /* Footer */
+    .upload-modal-footer {
+        padding: 16px 24px;
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    .btn-close-modal {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: inherit;
+    }
+
+    .btn-close-modal:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(245, 87, 108, 0.4);
+    }
+</style>
 {% endblock %}
 
 {% block breadcrumbs %}
@@ -24,7 +529,7 @@
 
 {% block content %}
 <div id="content-main">
-    <form action="" method="post" enctype="multipart/form-data">{% csrf_token %}
+    <form id="bulk-upload-form" action="" method="post" enctype="multipart/form-data">{% csrf_token %}
         {% if form.errors %}
         <p class="errornote">
             {% if form.errors|length == 1 %}{% trans "Please correct the error below." %}{% else %}{% trans "Please
@@ -82,45 +587,151 @@
             <input type="submit" value="{% trans 'Upload MCQ Questions' %}" class="default" name="_save">
         </div>
     </form>
-
-    {% if upload_complete %}
-    <div style="margin-top: 20px;">
-        <h2>Upload Results</h2>
-
-        <div
-            style="background: #dff0d8; border: 1px solid #3c763d; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
-            <strong style="color: #3c763d;">✓ Successfully Created: {{ total_success }} MCQ{{ total_success|pluralize
-                }}</strong>
-        </div>
-
-        {% if success_results %}
-        <details open style="margin-bottom: 15px;">
-            <summary style="cursor: pointer; font-weight: bold; color: #3c763d;">View Successful MCQs</summary>
-            <ul style="margin-top: 10px; padding-left: 20px;">
-                {% for item in success_results %}
-                <li><strong>{{ item.name }}</strong> (code: <code>{{ item.code }}</code>)</li>
-                {% endfor %}
-            </ul>
-        </details>
-        {% endif %}
-
-        {% if error_results %}
-        <div
-            style="background: #f2dede; border: 1px solid #a94442; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
-            <strong style="color: #a94442;">✗ Errors: {{ total_errors }} row{{ total_errors|pluralize }}
-                skipped</strong>
-        </div>
-
-        <details open style="margin-bottom: 15px;">
-            <summary style="cursor: pointer; font-weight: bold; color: #a94442;">View Errors</summary>
-            <ul style="margin-top: 10px; padding-left: 20px;">
-                {% for item in error_results %}
-                <li><strong>{{ item.name }}</strong>: {{ item.error }}</li>
-                {% endfor %}
-            </ul>
-        </details>
-        {% endif %}
-    </div>
-    {% endif %}
 </div>
+
+<!-- Upload Modal -->
+<div id="upload-modal-overlay" class="upload-modal-overlay">
+    <div class="upload-modal">
+        <div class="upload-modal-header">
+            <div class="upload-modal-header-content">
+                <div class="upload-modal-header-icon">❓</div>
+                <div class="upload-modal-header-text">
+                    <h2>{% trans "Bulk Upload Results" %}</h2>
+                    <p>{% trans "MCQ upload summary" %}</p>
+                </div>
+            </div>
+            <button type="button" class="upload-modal-close" id="upload-modal-close">×</button>
+        </div>
+        <div class="upload-modal-body" id="upload-modal-body">
+            <div class="upload-loading">
+                <div class="spinner-container">
+                    <div class="spinner"></div>
+                    <div class="spinner-inner">⏳</div>
+                </div>
+                <h3>{% trans "Processing Upload" %}</h3>
+                <p>{% trans "Please wait while we create the MCQ questions..." %}</p>
+            </div>
+        </div>
+        <div class="upload-modal-footer">
+            <button type="button" class="btn-close-modal" id="upload-modal-done">{% trans "Done" %}</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        document.addEventListener('DOMContentLoaded', function () {
+            var form = document.getElementById('bulk-upload-form');
+            var overlay = document.getElementById('upload-modal-overlay');
+            var closeBtn = document.getElementById('upload-modal-close');
+            var doneBtn = document.getElementById('upload-modal-done');
+            var body = document.getElementById('upload-modal-body');
+
+            if (form) {
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+
+                    // Show modal with loading state
+                    overlay.classList.add('active');
+                    body.innerHTML = '<div class="upload-loading"><div class="spinner-container"><div class="spinner"></div><div class="spinner-inner">⏳</div></div><h3>Processing Upload</h3><p>Please wait while we create the MCQ questions...</p></div>';
+
+                    // Prepare form data
+                    var formData = new FormData(form);
+
+                    // Make AJAX request
+                    fetch(form.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        credentials: 'same-origin'
+                    })
+                        .then(function (response) {
+                            return response.json();
+                        })
+                        .then(function (data) {
+                            if (data.error) {
+                                body.innerHTML = '<div class="upload-error"><div class="error-icon">⚠</div><h3>Error</h3><p>' + data.error + '</p></div>';
+                                return;
+                            }
+
+                            var html = '';
+
+                            // Stats Cards Section
+                            html += '<div class="upload-stats">';
+                            html += '<div class="stat-card success"><div class="stat-icon">✓</div><div class="stat-number">' + data.total_success + '</div><div class="stat-label">Created</div></div>';
+                            html += '<div class="stat-card failed"><div class="stat-icon">✗</div><div class="stat-number">' + data.total_errors + '</div><div class="stat-label">Errors</div></div>';
+                            html += '</div>';
+
+                            // Success section
+                            if (data.success_results && data.success_results.length > 0) {
+                                html += '<div class="upload-section section-success">';
+                                html += '<div class="upload-section-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === \'none\' ? \'block\' : \'none\'; this.querySelector(\'.section-toggle\').classList.toggle(\'expanded\');">';
+                                html += '<div class="section-icon">✓</div>';
+                                html += '<div class="section-title-text"><h4>Successfully Created</h4><span>' + data.success_results.length + ' MCQ(s) added to database</span></div>';
+                                html += '<div class="section-toggle expanded">▼</div>';
+                                html += '</div>';
+                                html += '<ul class="upload-list">';
+                                data.success_results.forEach(function (item, index) {
+                                    html += '<li style="animation-delay: ' + (index * 0.05) + 's"><div class="item-icon">❓</div><div class="item-content"><div class="item-name">' + item.name + '</div><div class="item-detail">Code: ' + item.code + '</div></div></li>';
+                                });
+                                html += '</ul></div>';
+                            }
+
+                            // Error section
+                            if (data.error_results && data.error_results.length > 0) {
+                                html += '<div class="upload-section section-failed">';
+                                html += '<div class="upload-section-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === \'none\' ? \'block\' : \'none\'; this.querySelector(\'.section-toggle\').classList.toggle(\'expanded\');">';
+                                html += '<div class="section-icon">✗</div>';
+                                html += '<div class="section-title-text"><h4>Errors</h4><span>' + data.error_results.length + ' row(s) could not be processed</span></div>';
+                                html += '<div class="section-toggle expanded">▼</div>';
+                                html += '</div>';
+                                html += '<ul class="upload-list">';
+                                data.error_results.forEach(function (item, index) {
+                                    html += '<li style="animation-delay: ' + (index * 0.05) + 's"><div class="item-icon">!</div><div class="item-content"><div class="item-name">' + item.name + '</div><div class="item-detail">' + item.error + '</div></div></li>';
+                                });
+                                html += '</ul></div>';
+                            }
+
+                            // If nothing happened
+                            if (data.total_success === 0 && data.total_errors === 0) {
+                                html = '<div class="upload-empty"><div class="empty-icon">📭</div><h3>No MCQs Processed</h3><p>No valid MCQ questions were found in the uploaded file.</p></div>';
+                            }
+
+                            body.innerHTML = html;
+
+                            // Reset form
+                            form.reset();
+                        })
+                        .catch(function (error) {
+                            body.innerHTML = '<div class="upload-error"><div class="error-icon">⚠</div><h3>Something Went Wrong</h3><p>' + error.message + '</p></div>';
+                        });
+                });
+            }
+
+            // Close modal handlers
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function () {
+                    overlay.classList.remove('active');
+                });
+            }
+
+            if (doneBtn) {
+                doneBtn.addEventListener('click', function () {
+                    // Redirect to MCQ questions list page
+                    window.location.href = "{% url 'hpe_admin:judge_mcqquestion_changelist' %}";
+                });
+            }
+
+            if (overlay) {
+                overlay.addEventListener('click', function (e) {
+                    if (e.target === overlay) {
+                        overlay.classList.remove('active');
+                    }
+                });
+            }
+        });
+    })();
+</script>
 {% endblock %}
