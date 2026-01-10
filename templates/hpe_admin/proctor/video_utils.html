@@ -20,6 +20,321 @@
         log("Module loading...");
 
         /**
+         * Fix WebM duration metadata
+         * Chrome's MediaRecorder creates "live" WebM without Duration element.
+         * This function patches existing Duration OR injects one if missing.
+         */
+        async function fixWebmDuration(blob, durationMs) {
+            if (!blob || blob.size === 0 || durationMs <= 0) return blob;
+
+            try {
+                const buffer = await blob.arrayBuffer();
+                const bytes = new Uint8Array(buffer);
+                const maxSearch = Math.min(500, bytes.length);
+
+                // First, try to find and patch existing Duration element (0x44 0x89)
+                for (let i = 0; i < maxSearch; i++) {
+                    if (bytes[i] === 0x44 && bytes[i + 1] === 0x89) {
+                        const sizeIndicator = bytes[i + 2];
+                        const view = new DataView(buffer);
+
+                        if (sizeIndicator === 0x88) {
+                            view.setFloat64(i + 3, durationMs, false);
+                            log(`📼 Fixed WebM duration: ${(durationMs / 1000).toFixed(1)}s at byte ${i}`);
+                            return new Blob([buffer], { type: blob.type });
+                        } else if (sizeIndicator === 0x84) {
+                            view.setFloat32(i + 3, durationMs, false);
+                            log(`📼 Fixed WebM duration (32-bit): ${(durationMs / 1000).toFixed(1)}s`);
+                            return new Blob([buffer], { type: blob.type });
+                        }
+                    }
+                }
+
+                // Duration not found - inject after TimecodeScale (0x2A 0xD7 0xB1)
+                for (let i = 0; i < maxSearch; i++) {
+                    if (bytes[i] === 0x2A && bytes[i + 1] === 0xD7 && bytes[i + 2] === 0xB1) {
+                        // Skip TimecodeScale element ID (3 bytes) + size (1 byte) + data
+                        const tcSize = bytes[i + 3] & 0x7F;
+                        const insertPos = i + 4 + tcSize;
+
+                        // Create Duration element: ID(2) + Size(1) + float64(8) = 11 bytes
+                        const durationBytes = new Uint8Array(11);
+                        durationBytes[0] = 0x44; // Duration ID high
+                        durationBytes[1] = 0x89; // Duration ID low  
+                        durationBytes[2] = 0x88; // Size: 8 bytes
+                        new DataView(durationBytes.buffer).setFloat64(3, durationMs, false);
+
+                        // Build new buffer with injected Duration
+                        const newBuffer = new Uint8Array(bytes.length + 11);
+                        newBuffer.set(bytes.subarray(0, insertPos));
+                        newBuffer.set(durationBytes, insertPos);
+                        newBuffer.set(bytes.subarray(insertPos), insertPos + 11);
+
+                        log(`📼 Injected WebM duration: ${(durationMs / 1000).toFixed(1)}s at byte ${insertPos}`);
+                        return new Blob([newBuffer], { type: blob.type });
+                    }
+                }
+
+                log("ℹ️ Could not fix WebM duration - video may show incorrect length");
+                return blob;
+            } catch (err) {
+                error("Failed to fix WebM duration:", err);
+                return blob;
+            }
+        }
+
+        /**
+         * Phase 5: IndexedDB Persistence for Failed Uploads
+         * Stores failed video uploads locally for background retry
+         */
+        class HPEUploadPersistence {
+            constructor() {
+                this.dbName = 'HPEProctoringEvidence';
+                this.storeName = 'pendingUploads';
+                this.db = null;
+                this.isAvailable = false;
+                this.maxRetries = 10;
+                this.retryIntervalMs = 5 * 60 * 1000; // 5 minutes
+                this.maxStorageMB = 500; // 500MB quota
+                this._retryWorker = null;
+
+                // Check IndexedDB availability
+                if (!window.indexedDB) {
+                    warn("IndexedDB not available - upload persistence disabled");
+                    return;
+                }
+
+                this._initDB();
+            }
+
+            async _initDB() {
+                try {
+                    const request = indexedDB.open(this.dbName, 1);
+
+                    request.onerror = (event) => {
+                        warn("IndexedDB open failed:", event.target.error);
+                        this.isAvailable = false;
+                    };
+
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+
+                        if (!db.objectStoreNames.contains(this.storeName)) {
+                            const store = db.createObjectStore(this.storeName, {
+                                keyPath: 'id',
+                                autoIncrement: true
+                            });
+
+                            store.createIndex('timestamp', 'timestamp', { unique: false });
+                            store.createIndex('status', 'status', { unique: false });
+                            log("IndexedDB store created:", this.storeName);
+                        }
+                    };
+
+                    request.onsuccess = (event) => {
+                        this.db = event.target.result;
+                        this.isAvailable = true;
+                        log("IndexedDB initialized successfully");
+                    };
+                } catch (err) {
+                    warn("IndexedDB initialization error:", err);
+                    this.isAvailable = false;
+                }
+            }
+
+            async saveFailedUpload(blob, metadata) {
+                if (!this.isAvailable || !this.db) {
+                    warn("IndexedDB not available - cannot persist failed upload");
+                    return null;
+                }
+
+                try {
+                    // Convert blob to ArrayBuffer for storage
+                    const arrayBuffer = await blob.arrayBuffer();
+
+                    const record = {
+                        blobData: arrayBuffer,
+                        blobType: blob.type,
+                        metadata: metadata,
+                        timestamp: Date.now(),
+                        retryCount: 0,
+                        lastError: null,
+                        status: 'pending'
+                    };
+
+                    return new Promise((resolve, reject) => {
+                        const transaction = this.db.transaction([this.storeName], 'readwrite');
+                        const store = transaction.objectStore(this.storeName);
+                        const request = store.add(record);
+
+                        request.onsuccess = () => {
+                            log(`Saved failed upload to IndexedDB (id=${request.result})`);
+                            this._checkQuota();
+                            resolve(request.result);
+                        };
+
+                        request.onerror = (event) => {
+                            error("Failed to save upload to IndexedDB:", event.target.error);
+                            reject(event.target.error);
+                        };
+                    });
+                } catch (err) {
+                    error("Error saving failed upload:", err);
+                    return null;
+                }
+            }
+
+            async getPendingUploads() {
+                if (!this.isAvailable || !this.db) return [];
+
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction([this.storeName], 'readonly');
+                    const store = transaction.objectStore(this.storeName);
+                    const index = store.index('status');
+                    const request = index.getAll('pending');
+
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = (event) => {
+                        error("Failed to get pending uploads:", event.target.error);
+                        resolve([]);
+                    };
+                });
+            }
+
+            async updateUploadStatus(id, status, lastError = null) {
+                if (!this.isAvailable || !this.db) return false;
+
+                return new Promise((resolve) => {
+                    const transaction = this.db.transaction([this.storeName], 'readwrite');
+                    const store = transaction.objectStore(this.storeName);
+                    const request = store.get(id);
+
+                    request.onsuccess = () => {
+                        const record = request.result;
+                        if (record) {
+                            record.status = status;
+                            record.retryCount++;
+                            record.lastError = lastError;
+                            store.put(record);
+                            resolve(true);
+                        } else {
+                            resolve(false);
+                        }
+                    };
+
+                    request.onerror = () => resolve(false);
+                });
+            }
+
+            async deleteUpload(id) {
+                if (!this.isAvailable || !this.db) return false;
+
+                return new Promise((resolve) => {
+                    const transaction = this.db.transaction([this.storeName], 'readwrite');
+                    const store = transaction.objectStore(this.storeName);
+                    const request = store.delete(id);
+
+                    request.onsuccess = () => {
+                        log(`Deleted upload from IndexedDB (id=${id})`);
+                        resolve(true);
+                    };
+                    request.onerror = () => resolve(false);
+                });
+            }
+
+            async _checkQuota() {
+                if (!this.isAvailable || !this.db) return;
+
+                const pending = await this.getPendingUploads();
+                let totalSize = 0;
+
+                for (const record of pending) {
+                    totalSize += record.blobData?.byteLength || 0;
+                }
+
+                const sizeMB = totalSize / (1024 * 1024);
+
+                if (sizeMB > this.maxStorageMB) {
+                    warn(`IndexedDB quota exceeded (${sizeMB.toFixed(2)}MB > ${this.maxStorageMB}MB)`);
+
+                    // Remove oldest abandoned entries first
+                    const abandoned = pending.filter(r => r.status === 'abandoned').sort((a, b) => a.timestamp - b.timestamp);
+                    for (const record of abandoned) {
+                        if (sizeMB <= this.maxStorageMB * 0.8) break;
+                        await this.deleteUpload(record.id);
+                        log(`Removed abandoned upload to free quota (id=${record.id})`);
+                    }
+                }
+            }
+
+            startRetryWorker(uploadFunction) {
+                if (this._retryWorker) return;
+
+                log("Starting IndexedDB retry worker");
+
+                this._retryWorker = setInterval(async () => {
+                    if (!this.isAvailable) return;
+
+                    const pending = await this.getPendingUploads();
+
+                    for (const record of pending) {
+                        if (record.retryCount >= this.maxRetries) {
+                            warn(`Upload exceeded max retries (id=${record.id}), marking as abandoned`);
+                            await this.updateUploadStatus(record.id, 'abandoned');
+                            continue;
+                        }
+
+                        try {
+                            // Reconstruct blob from stored data
+                            const blob = new Blob([record.blobData], { type: record.blobType });
+
+                            log(`Retrying failed upload (id=${record.id}, attempt=${record.retryCount + 1})`);
+                            await uploadFunction(blob, record.metadata);
+
+                            // Success - delete from IndexedDB
+                            await this.deleteUpload(record.id);
+                            log(`IndexedDB retry successful (id=${record.id})`);
+
+                        } catch (err) {
+                            error(`IndexedDB retry failed (id=${record.id}):`, err);
+                            await this.updateUploadStatus(record.id, 'pending', err.message);
+                        }
+                    }
+                }, this.retryIntervalMs);
+            }
+
+            stopRetryWorker() {
+                if (this._retryWorker) {
+                    clearInterval(this._retryWorker);
+                    this._retryWorker = null;
+                    log("IndexedDB retry worker stopped");
+                }
+            }
+
+            async getMetrics() {
+                if (!this.isAvailable || !this.db) return { available: false };
+
+                const pending = await this.getPendingUploads();
+                let totalSize = 0;
+
+                for (const record of pending) {
+                    totalSize += record.blobData?.byteLength || 0;
+                }
+
+                return {
+                    available: true,
+                    pendingCount: pending.length,
+                    totalSizeMB: (totalSize / (1024 * 1024)).toFixed(2),
+                    maxStorageMB: this.maxStorageMB
+                };
+            }
+        }
+
+        // Global persistence instance
+        const uploadPersistence = new HPEUploadPersistence();
+        window.HPEUploadPersistence = uploadPersistence;
+
+        /**
          * SlidingVideoBuffer - Maintains a rolling 20-second video buffer
          * for violation evidence capture.
          */
@@ -42,8 +357,26 @@
                 this._currentStream = null;
                 this._currentCallback = null;
 
+                // Sliding window improvements
+                this.maxChunks = 50;  // Hard limit regardless of timing
+                this._restartDelay = 200;  // Increased from 100ms
+
+                // WebM initialization chunk - CRITICAL for playable videos
+                // The first chunk after each recorder start contains EBML header
+                this._initChunk = null;
+
+                // Health metrics for monitoring
+                this._metrics = {
+                    chunksDropped: 0,
+                    uploadAttempts: 0,
+                    uploadSuccesses: 0,
+                    uploadFailures: 0,
+                    errorsRecovered: 0,
+                    bufferOverflows: 0
+                };
+
                 log(
-                    `Buffer initialized - Max: ${maxDurationSeconds}s, Interval: ${chunkIntervalMs}ms, Reset: ${this._resetIntervalMs / 60000}min`
+                    `Buffer initialized - Max: ${maxDurationSeconds}s, Interval: ${chunkIntervalMs}ms, MaxChunks: ${this.maxChunks}`
                 );
             }
 
@@ -74,6 +407,9 @@
                     this.mediaRecorder = null;
                 }
 
+                // Reset init chunk - new recorder will generate new WebM header
+                this._initChunk = null;
+
                 // Create video-only stream (NO AUDIO)
                 const videoOnlyStream = new MediaStream(
                     this._currentStream.getVideoTracks()
@@ -97,6 +433,13 @@
 
                 this.mediaRecorder.ondataavailable = (event) => {
                     if (event.data && event.data.size > 0) {
+                        // Capture first chunk as initialization chunk (contains EBML header)
+                        // This is CRITICAL for creating playable WebM files
+                        if (!this._initChunk) {
+                            this._initChunk = event.data;
+                            log(`📦 Captured initialization chunk: ${(event.data.size / 1024).toFixed(1)}KB (contains WebM header)`);
+                        }
+
                         // Set actual codec from first chunk
                         if (!this._lastCodec) {
                             this._lastCodec = event.data.type;
@@ -137,23 +480,39 @@
                     // Only upload if triggered by violation, not by periodic reset
                     if (this._uploadTriggered && this._currentCallback) {
                         this._uploadTriggered = false; // Reset flag
-                        const videoBlob = this.createVideoBlob();
+                        this._metrics.uploadAttempts++;
+
+                        // Get buffer duration BEFORE creating blob (uses chunk timestamps)
+                        const actualDurationMs = this.getBufferDuration();
+                        let videoBlob = this.createVideoBlob();
 
                         if (videoBlob.size === 0) {
                             warn("Empty blob created, skipping upload");
                             this.clearBuffer();
                         } else {
+                            // CRITICAL: Fix WebM duration metadata before upload
+                            // Without this, videos appear as 1 second instead of actual duration
+                            if (actualDurationMs > 0) {
+                                videoBlob = await fixWebmDuration(videoBlob, actualDurationMs);
+                            }
+
                             log(
                                 `Created violation blob: ${(videoBlob.size / 1024 / 1024).toFixed(2)}MB from ${this.chunks.length} chunks`
                             );
 
-                            // Upload with the blob (chunks still in memory)
-                            await this._currentCallback(videoBlob);
+                            // Upload with the blob - returns true if upload or IndexedDB save succeeded
+                            const success = await this._currentCallback(videoBlob);
 
-                            // Clear buffer AFTER upload completes
-                            const chunksCleared = this.chunks.length;
-                            this.clearBuffer();
-                            log(`Upload complete - cleared ${chunksCleared} chunks`);
+                            // Only clear buffer if upload/IndexedDB save confirmed
+                            if (success !== false) {
+                                const chunksCleared = this.chunks.length;
+                                this.clearBuffer();
+                                this._metrics.uploadSuccesses++;
+                                log(`Upload complete - cleared ${chunksCleared} chunks`);
+                            } else {
+                                this._metrics.uploadFailures++;
+                                warn("Upload failed and IndexedDB unavailable - retaining buffer");
+                            }
                         }
                     }
 
@@ -168,13 +527,13 @@
                             ) {
                                 try {
                                     this.mediaRecorder.start(this.chunkInterval);
-                                    log("Recording restarted with empty buffer");
+                                    log("Recording restarted");
                                 } catch (err) {
                                     error("Failed to restart recording:", err);
                                 }
                             }
                             this._restarting = false;
-                        }, 100);
+                        }, this._restartDelay);  // Use configurable delay
                     }
                 };
 
@@ -310,6 +669,7 @@
 
                 let removedCount = 0;
 
+                // Remove chunks older than maxDuration
                 while (
                     this.chunks.length > 0 &&
                     this.chunks[0].timestamp < cutoffTime
@@ -319,17 +679,25 @@
                         removedChunk.data = null;
                     }
                     removedCount++;
+                    this._metrics.chunksDropped++;
                 }
 
                 if (removedCount > 0) {
                     log(`Removed ${removedCount} old chunks from buffer`);
                 }
 
-                const maxChunks = Math.ceil(this.maxDuration / this.chunkInterval) + 2;
-                while (this.chunks.length > maxChunks) {
-                    const removedChunk = this.chunks.shift();
-                    if (removedChunk.data) {
-                        removedChunk.data = null;
+                // Hard limit: never exceed maxChunks (emergency cap)
+                if (this.chunks.length > this.maxChunks) {
+                    const overflow = this.chunks.length - this.maxChunks;
+                    this._metrics.bufferOverflows++;
+                    warn(`Buffer overflow! Dropping ${overflow} chunks to enforce ${this.maxChunks} limit`);
+
+                    while (this.chunks.length > this.maxChunks) {
+                        const removedChunk = this.chunks.shift();
+                        if (removedChunk.data) {
+                            removedChunk.data = null;
+                        }
+                        this._metrics.chunksDropped++;
                     }
                 }
             }
@@ -375,11 +743,32 @@
                     warn("Multiple codecs detected:", Array.from(types));
                 }
 
-                const mimeType = dataChunks[0].type || "video/webm;codecs=vp9";
-                const blob = new Blob(dataChunks, { type: mimeType });
+                const mimeType = this._initChunk?.type || dataChunks[0].type || "video/webm;codecs=vp9";
+
+                // CRITICAL: Check if we need to prepend the initialization chunk
+                // WebM files require the EBML header/segment info from the first chunk
+                let finalChunks = dataChunks;
+
+                if (this._initChunk) {
+                    // Check if the first data chunk is different from init chunk
+                    // (meaning the original first chunk was evicted by sliding window)
+                    const firstChunkIsDifferent = dataChunks.length > 0 &&
+                        dataChunks[0] !== this._initChunk &&
+                        dataChunks[0].size !== this._initChunk.size;
+
+                    if (firstChunkIsDifferent) {
+                        // Prepend the init chunk to ensure valid WebM structure
+                        finalChunks = [this._initChunk, ...dataChunks];
+                        log(`📦 Prepended init chunk (${(this._initChunk.size / 1024).toFixed(1)}KB) for valid WebM header`);
+                    }
+                } else {
+                    warn("⚠️ No initialization chunk available - video may be corrupted");
+                }
+
+                const blob = new Blob(finalChunks, { type: mimeType });
 
                 log(
-                    `Created blob from ${dataChunks.length}/${this.chunks.length} chunks, ` +
+                    `Created blob from ${finalChunks.length} chunks (${dataChunks.length} data + ${finalChunks.length > dataChunks.length ? 1 : 0} init), ` +
                     `size: ${(blob.size / 1024 / 1024).toFixed(2)}MB, ` +
                     `duration: ${(this.getBufferDuration() / 1000).toFixed(1)}s, ` +
                     `type: ${mimeType}`
@@ -470,8 +859,23 @@
                     nextResetIn: this._resetIntervalMs - (Date.now() - this._lastResetTime),
                     codecConsistency:
                         this.chunks.length > 0
-                            ? new Set(this.chunks.map((c) => c.data?.type)).size === 1
+                            ? new Set(this.chunks.filter(c => c.data).map(c => c.data.type)).size <= 1
                             : true,
+                };
+            }
+
+            /**
+             * Get health metrics for monitoring and debugging
+             */
+            getHealthMetrics() {
+                return {
+                    ...this._metrics,
+                    currentChunkCount: this.chunks.length,
+                    maxChunks: this.maxChunks,
+                    bufferUtilization: ((this.chunks.length / this.maxChunks) * 100).toFixed(1) + '%',
+                    bufferHealthy: this.chunks.length < this.maxChunks * 0.8,
+                    isRecording: this.isRecording,
+                    uptimeMinutes: ((Date.now() - this._lastResetTime) / 60000).toFixed(1)
                 };
             }
 
@@ -548,14 +952,44 @@
                 if (this.status) {
                     this.status.textContent = "Video buffer initialized - recording started";
                 }
+
+                // Phase 5: Start IndexedDB retry worker
+                if (uploadPersistence.isAvailable) {
+                    uploadPersistence.startRetryWorker(this._retryUpload.bind(this));
+                }
+
                 log("Video buffer system initialized");
+            }
+
+            // Phase 5: Retry upload function for IndexedDB worker
+            async _retryUpload(videoBlob, metadata) {
+                const formData = new FormData();
+                formData.append("file", videoBlob, `violation_${Date.now()}.webm`);
+                formData.append("dmoj_user_id", parseInt(metadata.userId || 0));
+                formData.append("dmoj_user_name", String(metadata.username || ""));
+                formData.append("dmoj_contest_name", String(metadata.contestName || ""));
+                formData.append("timestamp", metadata.timestamp || new Date().toISOString());
+                formData.append("source", "indexeddb_retry");  // Mark as retry
+
+                const response = await fetch(this.apiBaseUrl + "/upload-clip", {
+                    method: "POST",
+                    body: formData,
+                    headers: { "ngrok-skip-browser-warning": "true" }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                return await response.json();
             }
 
             async handleViolationUpload(videoBlob) {
                 // Prevent concurrent uploads
                 if (this.isUploading) {
                     log("Upload already in progress, skipping");
-                    return;
+                    return true;  // Don't clear buffer in this case
                 }
 
                 this.isUploading = true;
@@ -580,7 +1014,7 @@
 
                         this.isUploading = false;
                         this._scheduleStatusReset();
-                        return;
+                        return true;  // Success - safe to clear buffer
                     } catch (err) {
                         lastError = err;
                         error(`Upload attempt ${attempt} failed:`, err);
@@ -597,11 +1031,36 @@
                 // All retries failed
                 error("All upload attempts failed:", lastError);
                 if (this.status) {
-                    this.status.textContent = "Failed to upload evidence - continuing monitoring";
+                    this.status.textContent = "Failed to upload evidence - saving locally";
+                }
+
+                // Phase 5: Persist to IndexedDB for background retry
+                let savedToIndexedDB = false;
+                if (uploadPersistence.isAvailable) {
+                    const metadata = {
+                        userId: this.userData?.userId || window.dmojData?.userId,
+                        username: this.userData?.username || window.dmojData?.username,
+                        contestName: this.userData?.contestName || window.dmojData?.contestName,
+                        timestamp: new Date().toISOString(),
+                        lastError: lastError?.message
+                    };
+
+                    const saveResult = await uploadPersistence.saveFailedUpload(videoBlob, metadata);
+                    savedToIndexedDB = saveResult !== null;
+
+                    if (savedToIndexedDB) {
+                        log("Failed upload saved to IndexedDB for later retry");
+                        if (this.status) {
+                            this.status.textContent = "Evidence saved locally - will retry automatically";
+                        }
+                    }
                 }
 
                 this.isUploading = false;
                 this._scheduleStatusReset();
+
+                // Return true if saved to IndexedDB (safe to clear buffer), false otherwise
+                return savedToIndexedDB;
             }
 
             async _uploadWithTimeout(videoBlob) {
@@ -699,6 +1158,9 @@
                 log("Cleaning up video manager");
                 this.cancelUpload();
                 this.buffer.cleanup();
+
+                // Phase 5: Stop IndexedDB retry worker
+                uploadPersistence.stopRetryWorker();
             }
         }
 

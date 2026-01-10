@@ -1535,20 +1535,76 @@
                 return;
             }
 
+            // Step -1: Browser compatibility check
+            if (!window.WebSocket) {
+                handleConnectionError('Your browser does not support WebSockets. Please use Chrome, Firefox, Edge, or Safari.', true);
+                return;
+            }
+
+            if (!window.fetch) {
+                handleConnectionError('Your browser does not support modern network features. Please update your browser.', true);
+                return;
+            }
+
+            // Step 0: Ad blocker / extension detection
+            console.log('[HPE-PROCTOR] Checking for ad blockers or network extensions...');
             try {
+                // Try a preflight request to detect blocking
+                const testUrl = PROCTOR_API_URL + '/health';
+                const adBlockTest = await Promise.race([
+                    fetch(testUrl, {
+                        method: 'HEAD',
+                        mode: 'cors',
+                        headers: { 'ngrok-skip-browser-warning': 'true' }
+                    }).then(() => 'ok').catch(() => 'blocked'),
+                    new Promise(resolve => setTimeout(() => resolve('timeout'), 3000))
+                ]);
+
+                if (adBlockTest === 'blocked' || adBlockTest === 'timeout') {
+                    console.warn('[HPE-PROCTOR] ⚠️ Request may be blocked by ad blocker or extension');
+                    handleConnectionError(
+                        'Connection blocked! Please disable ad blockers (uBlock, AdBlock, Privacy Badger, etc.) for this site and refresh the page.',
+                        true
+                    );
+                    return;
+                }
+            } catch (e) {
+                console.warn('[HPE-PROCTOR] Ad blocker detection failed:', e);
+                // Continue anyway - actual health check will catch real issues
+            }
+
+            try {
+                // Step 0: Pre-check - verify API server is reachable via health endpoint
+                console.log('[HPE-PROCTOR] Checking backend health...');
+                const healthResponse = await Promise.race([
+                    fetch(`${PROCTOR_API_URL}/health`, {
+                        method: 'GET',
+                        headers: { 'ngrok-skip-browser-warning': 'true' }
+                    }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Health check timeout')), 5000))
+                ]);
+
+                if (!healthResponse.ok) {
+                    throw new Error(`Backend unhealthy (HTTP ${healthResponse.status})`);
+                }
+                console.log('[HPE-PROCTOR] ✓ Backend health check passed');
+
                 // Step 1: Create temp session in DB with user info
                 const tempFormData = new FormData();
                 tempFormData.append('dmoj_user_id', '{{ request.user.id }}');
                 tempFormData.append('dmoj_user_name', '{{ request.user.username }}');
 
-                const tempResponse = await fetch(`${PROCTOR_API_URL}/generate-temp-session`, {
-                    method: 'POST',
-                    body: tempFormData,
-                    headers: { 'ngrok-skip-browser-warning': 'true' }
-                });
+                const tempResponse = await Promise.race([
+                    fetch(`${PROCTOR_API_URL}/generate-temp-session`, {
+                        method: 'POST',
+                        body: tempFormData,
+                        headers: { 'ngrok-skip-browser-warning': 'true' }
+                    }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Session creation timeout')), 10000))
+                ]);
 
                 if (!tempResponse.ok) {
-                    throw new Error('Failed to connect to proctoring server');
+                    throw new Error(`Failed to create session (HTTP ${tempResponse.status})`);
                 }
 
                 const tempData = await tempResponse.json();
@@ -1556,7 +1612,7 @@
                     throw new Error(tempData.error);
                 }
                 const sessionId = tempData.session_id;
-                console.log('[HPE-PROCTOR] Temp session created:', sessionId);
+                console.log('[HPE-PROCTOR] ✓ Temp session created:', sessionId);
 
 
                 // Step 2: Establish WebSocket connection (keep open for exam)
@@ -1565,7 +1621,7 @@
                 let testComplete = false;
 
                 socket.onopen = () => {
-                    console.log('[HPE-PROCTOR] WebSocket connected - keeping open for exam');
+                    console.log('[HPE-PROCTOR] ✓ WebSocket connected');
                     // Step 3: Capture and send one test frame
                     const video = document.getElementById('cameraPreview');
                     if (video && video.readyState >= 2) {
@@ -1614,7 +1670,7 @@
                 socket.onerror = (error) => {
                     console.error('[HPE-PROCTOR] WebSocket error:', error);
                     if (!testComplete) {
-                        handleConnectionError();
+                        handleConnectionError('WebSocket connection failed. Please check your network.');
                     }
                 };
 
@@ -1622,32 +1678,67 @@
                     console.log('[HPE-PROCTOR] WebSocket closed');
                     // If closed unexpectedly before exam starts, allow retry
                     if (!testComplete && !checks.internet) {
-                        handleConnectionError();
+                        handleConnectionError('Connection closed unexpectedly. Please retry.');
                     }
                 };
 
-                // Timeout after 10 seconds
+                // Timeout after 15 seconds (increased for slow connections)
                 setTimeout(() => {
                     if (!testComplete && !checks.internet) {
                         console.error('[HPE-PROCTOR] Connection validation timeout');
                         socket.close();
-                        handleConnectionError();
+                        handleConnectionError('Connection timed out. Please check your network and retry.');
                     }
-                }, 10000);
+                }, 15000);
 
             } catch (err) {
                 console.error('[HPE-PROCTOR] Connection validation error:', err);
-                handleConnectionError();
+                handleConnectionError(err.message || 'Failed to connect to proctoring server');
             }
         }
 
 
-        function handleConnectionError() {
+        function handleConnectionError(errorMessage = 'Connection failed', showHelp = false) {
             checks.internet = false;
             validatedSessionId = null;
             updateCheckItem('check-internet', 'error');
-            updateButtonState(btnInternet, 'error', 'Retry');
+
+            // Show detailed error message
+            const checkItem = document.getElementById('check-internet');
+            const statusEl = checkItem.querySelector('.check-status');
+            if (statusEl) {
+                statusEl.innerHTML = errorMessage;
+                statusEl.style.color = '#e74c3c';
+
+                // Show troubleshooting tips for blocking issues
+                if (showHelp) {
+                    const helpDiv = document.createElement('div');
+                    helpDiv.className = 'connection-help';
+                    helpDiv.style.cssText = 'margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 5px; font-size: 12px; color: #856404;';
+                    helpDiv.innerHTML = `
+                        <strong>Troubleshooting:</strong><br>
+                        1. Disable ad blockers (uBlock Origin, AdBlock, etc.)<br>
+                        2. Disable privacy extensions (Privacy Badger, Ghostery)<br>
+                        3. Try using Chrome or Firefox<br>
+                        4. Check if your firewall is blocking connections<br>
+                        5. Ensure you're not on a restricted network
+                    `;
+
+                    // Remove existing help if present
+                    const existingHelp = checkItem.querySelector('.connection-help');
+                    if (existingHelp) existingHelp.remove();
+
+                    checkItem.appendChild(helpDiv);
+                }
+            }
+
+            updateButtonState(btnInternet, 'error', '⟳ Retry');
             btnInternet.disabled = false;
+
+            // Show alert to make it clear
+            console.error(`[HPE-PROCTOR] ❌ ${errorMessage}`);
+            console.error('[HPE-PROCTOR] ⚠️ You cannot start the exam until connection is established.');
+
             checkAllPassed();
         }
 
@@ -1858,18 +1949,128 @@
             let socket = window.proctorSocket;  // Get existing WebSocket from validation
             let isConnected = socket && socket.readyState === WebSocket.OPEN;
             let frameCount = 0;
-            const FRAME_INTERVAL_MS = 500; // 500ms = 2fps
+            const FRAME_INTERVAL_MS = 1000; // 1000ms = 1fps
+
+            // Exponential backoff configuration for reconnection
+            let wsReconnectAttempts = 0;
+            const WS_BASE_DELAY = 1000;  // 1 second base delay
+            const WS_MAX_DELAY = 30000;  // 30 second max delay
+
+            // Heartbeat timeout detection - Phase 1 Reliability
+            const HEARTBEAT_TIMEOUT_ENABLED = true;  // Feature flag
+            const HEARTBEAT_TIMEOUT_MS = 60000;      // 60 seconds (2x ping interval)
+            const HEARTBEAT_CHECK_INTERVAL_MS = 5000; // Check every 5 seconds
+            let lastPingReceived = Date.now();
+            let heartbeatCheckInterval = null;
+
+            function startHeartbeatMonitor() {
+                if (!HEARTBEAT_TIMEOUT_ENABLED || heartbeatCheckInterval) return;
+
+                heartbeatCheckInterval = setInterval(() => {
+                    if (!isConnected || !socket || socket.readyState !== WebSocket.OPEN) return;
+
+                    const timeSinceLastPing = Date.now() - lastPingReceived;
+                    if (timeSinceLastPing > HEARTBEAT_TIMEOUT_MS) {
+                        console.warn(`[HPE-PROCTOR] ⚠️ Heartbeat timeout - no ping for ${(timeSinceLastPing / 1000).toFixed(1)}s`);
+                        console.log('[HPE-PROCTOR] Forcing reconnection due to zombie connection');
+
+                        // Force close to trigger reconnection logic
+                        socket.close(4000, 'Heartbeat timeout');
+                    }
+                }, HEARTBEAT_CHECK_INTERVAL_MS);
+
+                console.log('[HPE-PROCTOR] Heartbeat monitor started');
+            }
+
+            function stopHeartbeatMonitor() {
+                if (heartbeatCheckInterval) {
+                    clearInterval(heartbeatCheckInterval);
+                    heartbeatCheckInterval = null;
+                    console.log('[HPE-PROCTOR] Heartbeat monitor stopped');
+                }
+            }
+
+            function resetHeartbeat() {
+                lastPingReceived = Date.now();
+            }
+
+            // Tab-switch event buffering - Phase 2 Reliability
+            const TAB_SWITCH_BUFFER_MAX = 100;  // Max events to buffer
+            let tabSwitchBuffer = [];
+            let pendingTabSwitchAck = false;
+
+            function bufferTabSwitchEvent(event) {
+                // Drop oldest if at capacity
+                if (tabSwitchBuffer.length >= TAB_SWITCH_BUFFER_MAX) {
+                    tabSwitchBuffer.shift();
+                    console.warn('[HPE-PROCTOR] Tab switch buffer full, dropped oldest event');
+                }
+                tabSwitchBuffer.push({
+                    ...event,
+                    buffered_at: Date.now()
+                });
+                console.log(`[HPE-PROCTOR] Buffered tab switch event (${tabSwitchBuffer.length} pending)`);
+            }
+
+            function sendTabSwitchEvent(event) {
+                if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify(event));
+                    return true;
+                } else {
+                    bufferTabSwitchEvent(event);
+                    return false;
+                }
+            }
+
+            function flushTabSwitchBuffer() {
+                if (tabSwitchBuffer.length === 0) return;
+                if (!isConnected || !socket || socket.readyState !== WebSocket.OPEN) return;
+
+                console.log(`[HPE-PROCTOR] Flushing ${tabSwitchBuffer.length} buffered tab switch events`);
+
+                // Send all buffered events
+                tabSwitchBuffer.forEach(event => {
+                    socket.send(JSON.stringify({
+                        type: event.type,
+                        count: event.count,
+                        time_outside: event.time_outside,
+                        buffered: true,  // Mark as buffered for server-side handling
+                        buffered_at: event.buffered_at
+                    }));
+                });
+
+                pendingTabSwitchAck = true;
+                console.log('[HPE-PROCTOR] Buffered events flushed, awaiting ACK');
+            }
+
+            function clearTabSwitchBuffer() {
+                const count = tabSwitchBuffer.length;
+                tabSwitchBuffer = [];
+                pendingTabSwitchAck = false;
+                if (count > 0) {
+                    console.log(`[HPE-PROCTOR] Cleared ${count} tab switch events from buffer`);
+                }
+            }
 
             // Enhanced message handler for exam proctoring
             function setupExamMessageHandler(ws) {
                 ws.onmessage = (event) => {
                     try {
                         const data = JSON.parse(event.data);
+
+                        // Handle heartbeat ping
+                        if (data.type === 'ping') {
+                            resetHeartbeat();  // Phase 1: Track last ping received
+                            socket.send(JSON.stringify({ type: 'pong' }));
+                            return;
+                        }
+
                         console.log('[HPE-PROCTOR] Server response:', data);
 
                         // Handle tab switch acknowledgment
                         if (data.type === 'tab_switch_ack') {
                             console.log('[HPE-PROCTOR] Tab switch acknowledged:', data);
+                            clearTabSwitchBuffer();  // Phase 2: Clear buffer on ACK
                             return;
                         }
 
@@ -1897,12 +2098,21 @@
 
                 ws.onclose = (event) => {
                     isConnected = false;
+                    stopHeartbeatMonitor();  // Phase 1: Stop heartbeat checks
                     console.log("[HPE-PROCTOR] WebSocket closed:", event.code, event.reason);
                     // Only reconnect if exam is NOT submitted
                     if (!window.examSubmitted) {
                         const status = document.getElementById('debug-status');
-                        if (status) status.textContent = "Reconnecting...";
-                        setTimeout(() => initWebSocket(), 3000);
+                        // Calculate delay with exponential backoff and jitter
+                        const delay = Math.min(WS_BASE_DELAY * Math.pow(2, wsReconnectAttempts), WS_MAX_DELAY);
+                        const jitter = delay * 0.2 * Math.random();
+                        const totalDelay = Math.round(delay + jitter);
+                        if (status) status.textContent = `Reconnecting in ${(totalDelay / 1000).toFixed(1)}s...`;
+                        console.log(`[HPE-PROCTOR] Reconnecting in ${totalDelay}ms (attempt ${wsReconnectAttempts + 1})`);
+                        setTimeout(() => {
+                            wsReconnectAttempts++;
+                            initWebSocket();
+                        }, totalDelay);
                     } else {
                         console.log("[HPE-PROCTOR] Exam submitted - not reconnecting");
                     }
@@ -1933,6 +2143,9 @@
                     console.log("[HPE-PROCTOR] ✅ Reusing existing WebSocket from validation");
                     socket = window.proctorSocket;
                     isConnected = true;
+                    resetHeartbeat();  // Phase 1: Initialize heartbeat tracking
+                    startHeartbeatMonitor();  // Phase 1: Start monitoring
+                    flushTabSwitchBuffer();  // Phase 2: Flush any buffered events
                     setupExamMessageHandler(socket);
                     const status = document.getElementById('debug-status');
                     if (status) status.textContent = "Active";
@@ -1946,8 +2159,31 @@
 
                 socket.onopen = () => {
                     isConnected = true;
+                    wsReconnectAttempts = 0;  // Reset backoff on successful connection
+
+                    // Sync state from server on reconnect
+                    if (window.dmojData?.userId) {
+                        fetch(`${PROCTOR_API_URL}/check-session/${window.dmojData.userId}`, {
+                            headers: { 'ngrok-skip-browser-warning': 'true' }
+                        })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.active && data.tab_switch_count !== undefined && window.HPETabSwitchDetector) {
+                                    window.HPETabSwitchDetector.tabSwitchCount = Math.max(
+                                        window.HPETabSwitchDetector.tabSwitchCount || 0,
+                                        data.tab_switch_count
+                                    );
+                                    console.log(`[HPE-PROCTOR] Synced tab count from server: ${data.tab_switch_count}`);
+                                }
+                            })
+                            .catch(e => console.warn('[HPE-PROCTOR] State sync failed:', e));
+                    }
+
                     window.proctorSocket = socket;
                     console.log("[HPE-PROCTOR] ✅ New WebSocket connected");
+                    resetHeartbeat();  // Phase 1: Initialize heartbeat tracking
+                    startHeartbeatMonitor();  // Phase 1: Start monitoring
+                    flushTabSwitchBuffer();  // Phase 2: Flush any buffered events
                     setupExamMessageHandler(socket);
                     const status = document.getElementById('debug-status');
                     if (status) status.textContent = "Active";
@@ -2010,9 +2246,8 @@
                         console.log(`[HPE-PROCTOR] Tab Switch: ${count}, Time: ${time}s`);
                         const tabCountEl = document.getElementById('debug-tab-count');
                         if (tabCountEl) tabCountEl.textContent = count;
-                        if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
-                            socket.send(JSON.stringify({ type: "tab_switch", count: count, time_outside: time }));
-                        }
+                        // Phase 2: Use sendTabSwitchEvent for buffering support
+                        sendTabSwitchEvent({ type: "tab_switch", count: count, time_outside: time });
                     },
                     onTimeUpdate: (count, time) => {
                         const timeAwayEl = document.getElementById('debug-time-away');
@@ -2020,9 +2255,8 @@
                     },
                     onBackendUpdate: (count, time) => {
                         console.log(`[HPE-PROCTOR] Backend update: count=${count}, time=${time}s`);
-                        if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
-                            socket.send(JSON.stringify({ type: "tab_switch", count: count, time_outside: time }));
-                        }
+                        // Phase 2: Use sendTabSwitchEvent for buffering support
+                        sendTabSwitchEvent({ type: "tab_switch", count: count, time_outside: time });
                     }
                 });
                 console.log("[HPE-PROCTOR] HPETabSwitchDetector initialized");
@@ -2036,9 +2270,8 @@
                         console.log(`[HPE-PROCTOR] Fallback tab switch: ${tabSwitchCount}`);
                         const tabCountEl = document.getElementById('debug-tab-count');
                         if (tabCountEl) tabCountEl.textContent = tabSwitchCount;
-                        if (isConnected && socket && socket.readyState === WebSocket.OPEN) {
-                            socket.send(JSON.stringify({ type: "tab_switch", count: tabSwitchCount }));
-                        }
+                        // Phase 2: Use sendTabSwitchEvent for buffering support
+                        sendTabSwitchEvent({ type: "tab_switch", count: tabSwitchCount });
                     }
                 });
             }
