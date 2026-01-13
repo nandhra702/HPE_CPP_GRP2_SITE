@@ -500,6 +500,7 @@ class ContestJoin(LoginRequiredMixin, ContestMixin, SingleObjectMixin, View):
                 'contestName': contest.name,
                 'disableBackend': get_proctoring_disable_backend(),
             },
+            'proctor_api_url': getattr(settings, 'PROCTOR_API_URL', 'http://127.0.0.1:8000'),
         })
 
     def join_contest(self, request, access_code=None):
@@ -626,6 +627,7 @@ class ContestProctoredJoin(LoginRequiredMixin, ContestMixin, SingleObjectMixin, 
                 'contestName': contest.name,
                 'disableBackend': get_proctoring_disable_backend(),
             },
+            'proctor_api_url': getattr(settings, 'PROCTOR_API_URL', 'http://127.0.0.1:8000'),
         })
 
     def post(self, request, *args, **kwargs):

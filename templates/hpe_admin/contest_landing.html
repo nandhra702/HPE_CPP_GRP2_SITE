@@ -1287,7 +1287,7 @@
             let mediaStream = null;
 
             // Proctoring session management
-            const PROCTOR_API_URL = "http://127.0.0.1:8001";
+            const PROCTOR_API_URL = "{{ proctor_api_url }}";
             const HPE_BACKEND_CONNECT = {{ hpe_backend_connect| lower
         }};  // Toggle from debug.py
         const ALLOW_COPY_PASTE = {{ allow_copy_paste| lower }};  // Toggle from debug.py
