@@ -166,3 +166,9 @@ INFO 2025-12-10 17:17:41,226 judge_handler Judge authenticated: ('172.23.64.1', 
 INFO 2025-12-10 17:17:41,227 judge_list Minimum tier changed from None to 1
 INFO 2025-12-18 08:51:34,099 daemon Exiting due to SIGINT
 INFO 2025-12-23 17:54:02,307 daemon Exiting due to SIGINT
+INFO 2025-12-23 18:37:43,855 daemon Exiting due to SIGINT
+INFO 2025-12-23 19:38:47,828 daemon Exiting due to SIGINT
+INFO 2025-12-24 17:10:34,270 daemon Exiting due to SIGINT
+INFO 2026-01-14 12:01:54,862 daemon Exiting due to SIGINT
+INFO 2026-01-14 12:02:52,399 daemon Exiting due to SIGINT
+INFO 2026-01-14 12:06:53,274 daemon Exiting due to SIGINT
