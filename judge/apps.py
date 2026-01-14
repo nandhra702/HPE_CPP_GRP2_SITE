@@ -6,6 +6,7 @@ from django.utils.translation import gettext_lazy
 class JudgeAppConfig(AppConfig):
     name = 'judge'
     verbose_name = gettext_lazy('Online Judge')
+    path = '/home/Lalith/HPE/Contest_hosting/site/judge'
 
     def ready(self):
         # WARNING: AS THIS IS NOT A FUNCTIONAL PROGRAMMING LANGUAGE,

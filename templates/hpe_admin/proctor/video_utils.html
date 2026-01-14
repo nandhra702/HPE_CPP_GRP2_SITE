@@ -623,11 +623,15 @@
             }
 
             getSupportedMimeType() {
+                // Prefer MP4 over WebM - MP4 has better chunked recording support
+                // and doesn't suffer from WebM's cluster structure issues
                 const types = [
-                    "video/webm; codecs=vp9",
+                    "video/mp4; codecs=avc1.42E01E",  // H.264 Baseline - best compatibility
+                    "video/mp4; codecs=avc1.4D001E",  // H.264 Main
+                    "video/mp4",
+                    "video/webm; codecs=vp9",  // Fallback to WebM if MP4 not supported
                     "video/webm; codecs=vp8",
                     "video/webm",
-                    "video/mp4",
                 ];
 
                 for (const type of types) {
@@ -961,10 +965,17 @@
                 log("Video buffer system initialized");
             }
 
+            // Helper to get file extension from MIME type
+            _getFileExtension(mimeType) {
+                if (mimeType && mimeType.includes('mp4')) return 'mp4';
+                return 'webm';
+            }
+
             // Phase 5: Retry upload function for IndexedDB worker
             async _retryUpload(videoBlob, metadata) {
                 const formData = new FormData();
-                formData.append("file", videoBlob, `violation_${Date.now()}.webm`);
+                const ext = this._getFileExtension(videoBlob.type);
+                formData.append("file", videoBlob, `violation_${Date.now()}.${ext}`);
                 formData.append("dmoj_user_id", parseInt(metadata.userId || 0));
                 formData.append("dmoj_user_name", String(metadata.username || ""));
                 formData.append("dmoj_contest_name", String(metadata.contestName || ""));
@@ -1065,7 +1076,8 @@
 
             async _uploadWithTimeout(videoBlob) {
                 const formData = new FormData();
-                formData.append("file", videoBlob, `violation_${Date.now()}.webm`);
+                const ext = this._getFileExtension(videoBlob.type);
+                formData.append("file", videoBlob, `violation_${Date.now()}.${ext}`);
 
                 // Ensure proper data types
                 const userId = parseInt(

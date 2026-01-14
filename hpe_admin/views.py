@@ -6,6 +6,7 @@ from django.views import View
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.core.exceptions import PermissionDenied
+from django.conf import settings
 from django.http import Http404
 
 from judge.models import Contest, ContestParticipation
@@ -123,6 +124,7 @@ class HPEContestLandingView(View):
             'total_points': total_points,
             'hpe_backend_connect': get_hpe_contest_backend_connect(),
             'allow_copy_paste': get_allow_copy_paste(),
+            'proctor_api_url': getattr(settings, 'PROCTOR_API_URL', 'http://127.0.0.1:8000'),
         }
 
     
