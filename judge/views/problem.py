@@ -893,8 +893,8 @@ class ProblemUnified(ProblemDetail):
         context['ACE_URL'] = settings.ACE_URL if hasattr(settings, 'ACE_URL') else '/static/ace'
         
         # Add debug setting for copy/paste blocking
-        from judge.debug import get_disable_copy_paste_blocking
-        context['DISABLE_COPY_PASTE_BLOCKING'] = get_disable_copy_paste_blocking()
+        from judge.debug import get_allow_copy_paste
+        context['DISABLE_COPY_PASTE_BLOCKING'] = get_allow_copy_paste()
         
         return context
 

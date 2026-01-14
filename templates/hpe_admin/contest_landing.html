@@ -1263,6 +1263,18 @@
         </div>
     </div>
 
+    <!-- No Code Warning Modal -->
+    <div class="confirm-modal-overlay" id="noCodeWarningModal">
+        <div class="confirm-modal">
+            <div class="confirm-modal-icon">⚠️</div>
+            <h3>Code Required</h3>
+            <p>Please write some code first!</p>
+            <div class="confirm-modal-buttons">
+                <button class="confirm-modal-btn confirm" id="noCodeWarningBtn">OK</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Tab Monitor Module - must be before main script -->
 
     {% include "hpe_admin/proctor/tab_monitor.html" %}
@@ -3117,7 +3129,15 @@
             const langId = document.getElementById('language-select').value;
 
             if (!source.trim()) {
-                alert('Please write some code first!');
+                // Show custom modal instead of alert
+                const modal = document.getElementById('noCodeWarningModal');
+                const btn = document.getElementById('noCodeWarningBtn');
+                modal.classList.add('active');
+
+                // One-time click handler to close
+                btn.onclick = function () {
+                    modal.classList.remove('active');
+                };
                 return;
             }
 

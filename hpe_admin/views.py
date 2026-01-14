@@ -10,7 +10,7 @@ from django.conf import settings
 from django.http import Http404
 
 from judge.models import Contest, ContestParticipation
-from judge.debug import get_hpe_contest_backend_connect, get_allow_copy_paste
+from judge.debug import get_hpe_backend_connect, get_allow_copy_paste
 from judge.views.contests import _handle_contest_randomization
 
 
@@ -122,9 +122,9 @@ class HPEContestLandingView(View):
             'mcq_count': expected_mcq_count,
             'questions': all_questions,
             'total_points': total_points,
-            'hpe_backend_connect': get_hpe_contest_backend_connect(),
+            'hpe_backend_connect': get_hpe_backend_connect(),
             'allow_copy_paste': get_allow_copy_paste(),
-            'proctor_api_url': getattr(settings, 'PROCTOR_API_URL', 'http://127.0.0.1:8000'),
+            'proctor_api_url': getattr(settings, 'PROCTOR_API_URL', 'http://127.0.0.1:8001'),
         }
 
     
@@ -312,7 +312,7 @@ class HPEExamContentView(HPEContestAccessMixin, View):
             'contest': self.contest,
             'dmoj_data': dmoj_data,
             'request': request,
-            'hpe_backend_connect': get_hpe_contest_backend_connect(),
+            'hpe_backend_connect': get_hpe_backend_connect(),
             'allow_copy_paste': get_allow_copy_paste(),
             'filtered_contest_problems': list(contest_problems),
             'filtered_contest_mcqs': list(contest_mcqs),

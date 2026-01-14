@@ -54,7 +54,7 @@ $(function () {
 
     // set the initial state (but only if browser supports the Page Visibility API)
     if (document[hidden] !== undefined)
-        onchange({type: document[hidden] ? 'blur' : 'focus'});
+        onchange({ type: document[hidden] ? 'blur' : 'focus' });
 });
 
 function register_toggle(link) {
@@ -182,7 +182,7 @@ function count_down(label) {
         var time = Math.round(initial - (Date.now() - start) / 1000);
         if (time <= 0) {
             clearInterval(timer);
-            setTimeout(function() {
+            setTimeout(function () {
                 window.location.reload();
             }, 2000);
         }
