@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Restricted</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+        }
+
+        .container {
+            text-align: center;
+            padding: 40px;
+            max-width: 450px;
+            width: 100%;
+        }
+
+        .icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 25px;
+            font-size: 40px;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 12px;
+            color: #fff;
+        }
+
+        .message {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .current-user {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+
+        .current-user span {
+            color: #2ecc71;
+            font-weight: 600;
+        }
+
+        /* Login Form */
+        .login-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+
+        .login-section h3 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 15px;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #2ecc71;
+        }
+
+        .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 14px 40px;
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(46, 204, 113, 0.3);
+        }
+
+        .btn-logout {
+            background: #e74c3c;
+            margin-top: 0;
+        }
+
+        .btn-logout:hover {
+            background: #c0392b;
+            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.3);
+        }
+
+        .error-message {
+            background: rgba(231, 76, 60, 0.2);
+            border: 1px solid rgba(231, 76, 60, 0.5);
+            color: #e74c3c;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .sub-text {
+            margin-top: 20px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .divider span {
+            padding: 0 15px;
+            font-size: 13px;
+        }
+
+        .btn-google {
+            background: #4285f4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 0;
+        }
+
+        .btn-google:hover {
+            background: #357abd;
+            box-shadow: 0 8px 25px rgba(66, 133, 244, 0.3);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="icon">🔒</div>
+        <h1>Access Restricted</h1>
+        <p class="message">You don't have any active test at this time. Access to this page is restricted.</p>
+
+        {% if request.user.is_authenticated %}
+        {# User is logged in but doesn't have access - show logout option only #}
+        <div class="current-user">
+            Currently logged in as: <span>{{ request.user.username }}</span>
+        </div>
+
+        <p class="message">Please logout and login with an admin account to access the full site.</p>
+
+        <form method="post" action="">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="logout">
+            <button type="submit" class="btn btn-logout">Logout</button>
+        </form>
+
+        {% else %}
+        {# User is not logged in - show login form #}
+        <div class="login-section">
+            <h3>Login with Admin Account</h3>
+
+            {% if error %}
+            <div class="error-message">{{ error }}</div>
+            {% endif %}
+
+            <form method="post" action="">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="login">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" placeholder="Enter username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter password" required>
+                </div>
+                <button type="submit" class="btn">Login</button>
+            </form>
+
+            <div class="divider">
+                <span>or</span>
+            </div>
+
+            <a href="/login/google-oauth2/?next={{ request.path }}" class="btn btn-google">
+                <svg width="18" height="18" viewBox="0 0 24 24" style="margin-right: 10px;">
+                    <path fill="#fff"
+                        d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z" />
+                </svg>
+                Sign in with Google
+            </a>
+        </div>
+        {% endif %}
+
+        <p class="sub-text">If you have a test scheduled, please use the direct contest link provided to you.</p>
+    </div>
+</body>
+
+</html>

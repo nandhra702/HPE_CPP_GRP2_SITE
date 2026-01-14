@@ -320,6 +320,7 @@ MIDDLEWARE = (
     'django.contrib.flatpages.middleware.FlatpageFallbackMiddleware',
     'judge.social_auth.SocialAuthExceptionMiddleware',
     'django.contrib.redirects.middleware.RedirectFallbackMiddleware',
+    'judge.middleware.HPEAccessRestrictionMiddleware',  # Restrict non-admin users to HPE contest pages
 )
 
 IMPERSONATE_REQUIRE_SUPERUSER = True
