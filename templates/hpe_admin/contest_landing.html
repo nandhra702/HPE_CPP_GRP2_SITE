@@ -1248,17 +1248,6 @@
             <div class="thank-you-icon">✓</div>
             <h1>Thank You!</h1>
             <p>Your test has been successfully submitted. You can now close this window.</p>
-            <div class="thank-you-stats">
-                <div class="thank-you-stat">
-                    <div class="thank-you-stat-value" id="final-tab-count">0</div>
-                    <div class="thank-you-stat-label">Tab Switches</div>
-                </div>
-                <div class="thank-you-stat">
-                    <div class="thank-you-stat-value" id="final-time-away">0s</div>
-                    <div class="thank-you-stat-label">Time Away</div>
-                </div>
-            </div>
-            <button class="thank-you-btn" onclick="window.location.href='/'">Return to Home</button>
         </div>
     </div>
 
@@ -1270,6 +1259,18 @@
             <p>There was a problem connecting to the proctoring server. Please go back and try again.</p>
             <div class="confirm-modal-buttons">
                 <button class="confirm-modal-btn confirm" id="goBackBtn">Go Back</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- No Code Warning Modal -->
+    <div class="confirm-modal-overlay" id="noCodeWarningModal">
+        <div class="confirm-modal">
+            <div class="confirm-modal-icon">⚠️</div>
+            <h3>Code Required</h3>
+            <p>Please write some code first!</p>
+            <div class="confirm-modal-buttons">
+                <button class="confirm-modal-btn confirm" id="noCodeWarningBtn">OK</button>
             </div>
         </div>
     </div>
@@ -2540,6 +2541,9 @@
                         console.error('[MCQ] Failed to save answers before submission:', err);
                     }
 
+                    // Clear saved code from localStorage (no longer needed after submission)
+                    clearContestCodeData();
+
                     try {
                         // Clear frame sending interval immediately
                         if (window.frameIntervalId) {
@@ -2675,10 +2679,8 @@
                         console.error('[HPE-CONTEST] Error leaving contest:', err);
                     }
 
-                    // Show thank you overlay with stats
+                    // Show thank you overlay
                     const thankYouOverlay = document.getElementById('thankYouOverlay');
-                    document.getElementById('final-tab-count').textContent = savedCount;
-                    document.getElementById('final-time-away').textContent = Math.round(savedTime) + 's';
                     thankYouOverlay.classList.add('active');
 
                     // Exit fullscreen to show thank you page properly
@@ -2766,21 +2768,35 @@
             }, CODE_SAVE_DELAY);
         }
 
+        // Clear all saved code for this contest from localStorage
+        function clearContestCodeData() {
+            const prefix = `hpe_code_${CONTEST_KEY}_`;
+            const keysToRemove = [];
+
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(prefix)) {
+                    keysToRemove.push(key);
+                }
+            }
+
+            keysToRemove.forEach(key => {
+                localStorage.removeItem(key);
+                console.log('[HPE-CODE] Cleared saved code:', key);
+            });
+
+            console.log('[HPE-CODE] Cleared', keysToRemove.length, 'saved code entries for contest', CONTEST_KEY);
+        }
+
         // ===== Question Submission Tracking =====
         function markQuestionAsSubmitted(type, id) {
-            // Mark in sidebar
+            // Mark in sidebar only (not in dashboard cards)
             if (type === 'problem') {
                 const sidebarBtn = document.querySelector(`.problem-nav-btn[data-code="${id}"]`);
                 if (sidebarBtn) sidebarBtn.classList.add('submitted');
-                // Mark in dashboard
-                const dashboardCard = document.querySelector(`.question-card[data-code="${id}"]`);
-                if (dashboardCard) dashboardCard.classList.add('submitted');
             } else if (type === 'mcq') {
                 const sidebarBtn = document.querySelector(`.mcq-nav-btn[data-mcq-id="${id}"]`);
                 if (sidebarBtn) sidebarBtn.classList.add('submitted');
-                // Mark in dashboard
-                const dashboardCard = document.querySelector(`.question-card[data-mcq-id="${id}"]`);
-                if (dashboardCard) dashboardCard.classList.add('submitted');
             }
             console.log('[HPE-SUBMIT] Marked as submitted:', type, id);
         }
@@ -3113,7 +3129,15 @@
             const langId = document.getElementById('language-select').value;
 
             if (!source.trim()) {
-                alert('Please write some code first!');
+                // Show custom modal instead of alert
+                const modal = document.getElementById('noCodeWarningModal');
+                const btn = document.getElementById('noCodeWarningBtn');
+                modal.classList.add('active');
+
+                // One-time click handler to close
+                btn.onclick = function () {
+                    modal.classList.remove('active');
+                };
                 return;
             }
 
@@ -3169,17 +3193,38 @@
                     if (!data.is_graded) {
                         html = '<div class="result-item pending"><span class="exam-spinner"></span> Judging... (' + (data.status_display || data.status) + ')</div>';
                     } else {
-                        const isAC = data.status === 'AC';
-                        html = '<div class="result-item ' + (isAC ? 'pass' : 'fail') + '"><strong>' + (data.status_display || data.status) + '</strong>';
-                        if (data.points != null) html += ' • ' + data.points + ' points';
-                        if (data.time) html += ' • ' + parseFloat(data.time).toFixed(3) + 's';
-                        if (data.memory) html += ' • ' + Math.round(parseFloat(data.memory)) + 'KB';
-                        html += '</div>';
+                        // Check if ALL test cases passed (not just overall status)
+                        let allTestsPassed = true;
+                        if (data.test_cases && data.test_cases.length > 0) {
+                            allTestsPassed = data.test_cases.every(tc => tc.status === 'AC');
+                        } else {
+                            allTestsPassed = data.status === 'AC';
+                        }
+                        const isAC = allTestsPassed;
 
-                        if (data.test_cases) {
+                        // Build status label based on result
+                        const statusLabel = isAC ? 'Completed' : (data.status_display || data.status);
+                        html = '<div class="result-item ' + (isAC ? 'pass' : 'fail') + '"><strong>' + statusLabel + '</strong></div>';
+
+                        // Show detailed error message for compile errors or other failures
+                        if (data.error && !isAC) {
+                            html += '<div class="error-details">';
+                            html += '<div class="error-label">Error Details:</div>';
+                            html += '<pre class="error-message">' + escapeHtml(data.error) + '</pre>';
+                            html += '</div>';
+                        }
+
+                        if (data.test_cases && data.test_cases.length > 0) {
                             const maxCases = mode === 'sample' ? 2 : data.test_cases.length;
                             data.test_cases.slice(0, maxCases).forEach((tc, idx) => {
-                                html += '<div class="result-item ' + (tc.status === 'AC' ? 'pass' : 'fail') + '">Test ' + (idx + 1) + ': ' + tc.status + '</div>';
+                                const tcPassed = tc.status === 'AC';
+                                const statusText = tcPassed ? 'Accepted' : (tc.status === 'WA' ? 'Wrong Answer' : (tc.status === 'TLE' ? 'Time Limit Exceeded' : (tc.status === 'MLE' ? 'Memory Limit Exceeded' : (tc.status === 'RTE' ? 'Runtime Error' : (tc.status === 'CE' ? 'Compile Error' : tc.status)))));
+                                let tcDetails = 'Test ' + (idx + 1) + ': ' + statusText;
+                                html += '<div class="result-item ' + (tcPassed ? 'pass' : 'fail') + '">' + tcDetails + '</div>';
+                                // Show feedback if available for failed test cases
+                                if (!tcPassed && tc.extended_feedback) {
+                                    html += '<div class="error-details"><pre class="error-message">' + escapeHtml(tc.extended_feedback) + '</pre></div>';
+                                }
                             });
                             if (mode === 'sample' && data.test_cases.length > 2) {
                                 html += '<div class="result-item" style="color:#888;">... and ' + (data.test_cases.length - 2) + ' more</div>';
@@ -3223,6 +3268,13 @@
         function showResults(html) {
             document.getElementById('results-content').innerHTML = html;
             document.getElementById('results-panel').classList.add('open');
+        }
+
+        // Helper function to escape HTML special characters
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         function getCookie(name) {

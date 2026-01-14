@@ -7,7 +7,6 @@
 *~
 *.swp
 <desired bridge log path>
-dmoj/settings.py
 uwsgi.ini
 judge.yml
 websocket/config.js

@@ -1,54 +1,57 @@
-# Contest-related debug settings
-CONTEST_REJOIN_DEBUG = True  # Allow users to rejoin contests after exiting (useful for testing)
-CONTEST_TEMPLATE_DEBUG = True  # Enable debug features in contest templates
+"""
+Debug Configuration for DMOJ Contest Platform
+==============================================
 
-# Proctoring debug settings
-PROCTORING_DEBUG = True  # Enable proctoring debug features
-PROCTORING_DISABLE_BACKEND = True # Disable backend connection (run in local-only mode)
+This module contains debug settings and feature toggles for the contest system.
+Set MASTER_DEBUG_ENABLED = False to disable all debug features for production.
+"""
 
-# HPE Contest Backend Connection
-HPE_CONTEST_BACKEND_CONNECT = False # Set to True to enable backend connection, False for frontend-only mode
-
-# General contest debug settings
-GENERAL_CONTEST_DEBUG = True  # General contest debugging features
-
-# Code editor security settings
-ALLOW_COPY_PASTE = True  # Set to True to allow copy/paste from external sources (for testing)
-
-# You can easily disable all debug features by setting this to False
+# =============================================================================
+# MASTER SWITCH - Set to False to disable all debug features for production
+# =============================================================================
 MASTER_DEBUG_ENABLED = True
 
+# =============================================================================
+# DEBUG SETTINGS (controlled by MASTER_DEBUG_ENABLED)
+# =============================================================================
+
+# Contest-related debug settings
+CONTEST_REJOIN_DEBUG = True    # Allow users to rejoin contests after exiting (useful for testing)
+CONTEST_TEMPLATE_DEBUG = True    # Enable debug features in contest templates
+GENERAL_CONTEST_DEBUG = True     # General contest debugging features
+
+# HPE Contest Backend Connection
+# True = enable backend connection, False = frontend-only mode
+HPE_BACKEND_CONNECT = True
+
+# Code editor security settings
+ALLOW_COPY_PASTE = False          # Allow copy/paste from external sources (for testing)
+
+
+# =============================================================================
+# GETTER FUNCTIONS
+# =============================================================================
+
 def get_contest_rejoin_debug():
-    """Get the contest rejoin debug setting"""
+    """Allow users to rejoin contests after exiting."""
     return MASTER_DEBUG_ENABLED and CONTEST_REJOIN_DEBUG
 
 def get_contest_template_debug():
-    """Get the contest template debug setting"""
+    """Enable debug features in contest templates."""
     return MASTER_DEBUG_ENABLED and CONTEST_TEMPLATE_DEBUG
 
-def get_proctoring_debug():
-    """Get the proctoring debug setting"""
-    return MASTER_DEBUG_ENABLED and PROCTORING_DEBUG
-
-def get_proctoring_disable_backend():
-    """Get the proctoring backend disable setting"""
-    return MASTER_DEBUG_ENABLED and PROCTORING_DISABLE_BACKEND
-
 def get_general_contest_debug():
-    """Get the general contest debug setting"""
+    """Enable general contest debugging features."""
     return MASTER_DEBUG_ENABLED and GENERAL_CONTEST_DEBUG
 
 def get_allow_copy_paste():
-    """Get the allow copy/paste setting. Returns True to allow external copy/paste, False to block it."""
+    """Allow copy/paste from external sources. 
+    Returns True to allow external copy/paste, False to block it."""
     return MASTER_DEBUG_ENABLED and ALLOW_COPY_PASTE
 
-def get_hpe_contest_backend_connect():
-    """Get the HPE contest backend connection setting.
+def get_hpe_backend_connect():
+    """Get the HPE backend connection setting.
     Returns True if backend connection is enabled, False for frontend-only mode.
-    Note: This is not affected by MASTER_DEBUG_ENABLED since it's a feature toggle, not a debug setting.
+    Controlled by MASTER_DEBUG_ENABLED.
     """
-    return HPE_CONTEST_BACKEND_CONNECT
-
-def get_disable_copy_paste_blocking():
-    """Get the copy/paste blocking disable setting"""
-    return MASTER_DEBUG_ENABLED and ALLOW_COPY_PASTE
+    return MASTER_DEBUG_ENABLED and HPE_BACKEND_CONNECT

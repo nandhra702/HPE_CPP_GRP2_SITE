@@ -31,7 +31,7 @@ from reversion import revisions
 
 from judge import event_poster as event
 from judge.comments import CommentedDetailView
-from judge.debug import get_contest_rejoin_debug, get_contest_template_debug, get_proctoring_disable_backend
+from judge.debug import get_contest_rejoin_debug, get_contest_template_debug, get_hpe_backend_connect
 from judge.forms import ContestCloneForm
 from judge.models import Contest, ContestMoss, ContestParticipation, ContestProblem, ContestTag, \
     Problem, Profile, Submission
@@ -498,7 +498,7 @@ class ContestJoin(LoginRequiredMixin, ContestMixin, SingleObjectMixin, View):
                 'username': profile.user.username,
                 'contestKey': contest.key,
                 'contestName': contest.name,
-                'disableBackend': get_proctoring_disable_backend(),
+                'disableBackend': not get_hpe_backend_connect(),
             },
             'proctor_api_url': getattr(settings, 'PROCTOR_API_URL', 'http://127.0.0.1:8000'),
         })
@@ -625,7 +625,7 @@ class ContestProctoredJoin(LoginRequiredMixin, ContestMixin, SingleObjectMixin, 
                 'username': profile.user.username,
                 'contestKey': contest.key,
                 'contestName': contest.name,
-                'disableBackend': get_proctoring_disable_backend(),
+                'disableBackend': not get_hpe_backend_connect(),
             },
             'proctor_api_url': getattr(settings, 'PROCTOR_API_URL', 'http://127.0.0.1:8000'),
         })

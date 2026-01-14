@@ -178,3 +178,98 @@ class MiscConfigMiddleware:
         domain = get_current_site(request).domain
         request.misc_config = MiscConfigDict(language=request.LANGUAGE_CODE, domain=domain)
         return self.get_response(request)
+
+
+class HPEAccessRestrictionMiddleware:
+    """
+    Restricts non-admin users to only access HPE contest pages.
+    Admin/staff users can access the full site.
+    Also handles login from the access restricted page.
+    """
+    
+    # Paths that are always allowed for all users
+    ALLOWED_PATH_PREFIXES = (
+        '/hpe/',           # HPE contest pages
+        '/accounts/',      # Login, logout, password reset
+        '/login/',         # Social auth login (Google, etc.)
+        '/complete/',      # Social auth completion
+        '/static/',        # Static files
+        '/favicon',        # Favicon
+        '/api/',           # API endpoints (have their own auth)
+        '/ajax/',          # AJAX endpoints 
+        '/problem/',       # Problem pages (needed for contest submissions)
+        '/src/',           # Submission source
+        '/submission/',    # Submission status
+    )
+    
+    def __init__(self, get_response):
+        self.get_response = get_response
+    
+    def __call__(self, request):
+        path = request.path
+        
+        # Always allow certain paths
+        for prefix in self.ALLOWED_PATH_PREFIXES:
+            if path.startswith(prefix):
+                return self.get_response(request)
+        
+        # Allow static files
+        if hasattr(settings, 'STATIC_URL') and path.startswith(settings.STATIC_URL):
+            return self.get_response(request)
+        
+        # If user is not authenticated, show access restricted page with login form
+        # (continues to the access restricted logic below)
+        
+        # Allow admins, staff, and superusers everywhere (only for authenticated users)
+        if request.user.is_authenticated:
+            if request.user.is_staff or request.user.is_superuser:
+                return self.get_response(request)
+            
+            # Check if user has admin-level permissions
+            if request.user.has_perm('judge.edit_all_contest'):
+                return self.get_response(request)
+        
+        # For regular users, show access restricted page or handle login/logout
+        from django.shortcuts import render
+        from django.contrib.auth import authenticate, login, logout
+        
+        error = None
+        
+        # Handle form submissions
+        if request.method == 'POST':
+            action = request.POST.get('action', '')
+            
+            if action == 'logout':
+                # Logout current user and show login form
+                logout(request)
+                return HttpResponseRedirect(request.get_full_path())
+            
+            elif action == 'login':
+                username = request.POST.get('username', '').strip()
+                password = request.POST.get('password', '')
+                
+                if username and password:
+                    # Authenticate the new user
+                    new_user = authenticate(request, username=username, password=password)
+                    
+                    if new_user is not None:
+                        # Login new user
+                        login(request, new_user)
+                        
+                        # Check if new user has access
+                        if new_user.is_staff or new_user.is_superuser or new_user.has_perm('judge.edit_all_contest'):
+                            # Redirect to the originally requested page
+                            return HttpResponseRedirect(request.get_full_path())
+                        else:
+                            # User logged in but doesn't have admin access
+                            # Logout them and show error
+                            logout(request)
+                            error = 'This account does not have admin access. Please use an admin account.'
+                    else:
+                        error = 'Invalid username or password.'
+                else:
+                    error = 'Please enter both username and password.'
+        
+        return render(request, 'hpe_admin/access_restricted.html', {'error': error}, status=403)
+
+

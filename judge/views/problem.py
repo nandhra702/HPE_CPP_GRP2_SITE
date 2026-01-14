@@ -893,8 +893,8 @@ class ProblemUnified(ProblemDetail):
         context['ACE_URL'] = settings.ACE_URL if hasattr(settings, 'ACE_URL') else '/static/ace'
         
         # Add debug setting for copy/paste blocking
-        from judge.debug import get_disable_copy_paste_blocking
-        context['DISABLE_COPY_PASTE_BLOCKING'] = get_disable_copy_paste_blocking()
+        from judge.debug import get_allow_copy_paste
+        context['DISABLE_COPY_PASTE_BLOCKING'] = get_allow_copy_paste()
         
         return context
 
@@ -946,6 +946,7 @@ class SubmissionStatusAjax(View):
                 'memory': str(submission.memory) if submission.memory else None,
                 'points': float(submission.points) if submission.points is not None else None,
                 'language': submission.language.name,
+                'error': submission.error if submission.error else None,
             }
             
             # Add test case results if available
@@ -956,6 +957,8 @@ class SubmissionStatusAjax(View):
                         'status': case.status,
                         'time': str(case.time) if case.time else None,
                         'memory': str(case.memory) if case.memory else None,
+                        'feedback': case.feedback if case.feedback else None,
+                        'extended_feedback': case.extended_feedback if case.extended_feedback else None,
                     })
                 data['test_cases'] = test_cases
             
