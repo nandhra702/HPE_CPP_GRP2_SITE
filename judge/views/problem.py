@@ -946,6 +946,7 @@ class SubmissionStatusAjax(View):
                 'memory': str(submission.memory) if submission.memory else None,
                 'points': float(submission.points) if submission.points is not None else None,
                 'language': submission.language.name,
+                'error': submission.error if submission.error else None,
             }
             
             # Add test case results if available
@@ -956,6 +957,8 @@ class SubmissionStatusAjax(View):
                         'status': case.status,
                         'time': str(case.time) if case.time else None,
                         'memory': str(case.memory) if case.memory else None,
+                        'feedback': case.feedback if case.feedback else None,
+                        'extended_feedback': case.extended_feedback if case.extended_feedback else None,
                     })
                 data['test_cases'] = test_cases
             

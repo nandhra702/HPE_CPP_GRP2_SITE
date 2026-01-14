@@ -3186,13 +3186,25 @@
                         const statusLabel = isAC ? 'Completed' : (data.status_display || data.status);
                         html = '<div class="result-item ' + (isAC ? 'pass' : 'fail') + '"><strong>' + statusLabel + '</strong></div>';
 
-                        if (data.test_cases) {
+                        // Show detailed error message for compile errors or other failures
+                        if (data.error && !isAC) {
+                            html += '<div class="error-details">';
+                            html += '<div class="error-label">Error Details:</div>';
+                            html += '<pre class="error-message">' + escapeHtml(data.error) + '</pre>';
+                            html += '</div>';
+                        }
+
+                        if (data.test_cases && data.test_cases.length > 0) {
                             const maxCases = mode === 'sample' ? 2 : data.test_cases.length;
                             data.test_cases.slice(0, maxCases).forEach((tc, idx) => {
                                 const tcPassed = tc.status === 'AC';
-                                const statusText = tcPassed ? 'Accepted' : (tc.status === 'WA' ? 'Wrong Answer' : (tc.status === 'TLE' ? 'Time Limit Exceeded' : (tc.status === 'MLE' ? 'Memory Limit Exceeded' : (tc.status === 'RTE' ? 'Runtime Error' : tc.status))));
+                                const statusText = tcPassed ? 'Accepted' : (tc.status === 'WA' ? 'Wrong Answer' : (tc.status === 'TLE' ? 'Time Limit Exceeded' : (tc.status === 'MLE' ? 'Memory Limit Exceeded' : (tc.status === 'RTE' ? 'Runtime Error' : (tc.status === 'CE' ? 'Compile Error' : tc.status)))));
                                 let tcDetails = 'Test ' + (idx + 1) + ': ' + statusText;
                                 html += '<div class="result-item ' + (tcPassed ? 'pass' : 'fail') + '">' + tcDetails + '</div>';
+                                // Show feedback if available for failed test cases
+                                if (!tcPassed && tc.extended_feedback) {
+                                    html += '<div class="error-details"><pre class="error-message">' + escapeHtml(tc.extended_feedback) + '</pre></div>';
+                                }
                             });
                             if (mode === 'sample' && data.test_cases.length > 2) {
                                 html += '<div class="result-item" style="color:#888;">... and ' + (data.test_cases.length - 2) + ' more</div>';
@@ -3236,6 +3248,13 @@
         function showResults(html) {
             document.getElementById('results-content').innerHTML = html;
             document.getElementById('results-panel').classList.add('open');
+        }
+
+        // Helper function to escape HTML special characters
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         function getCookie(name) {
