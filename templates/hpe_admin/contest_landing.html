@@ -3173,17 +3173,26 @@
                     if (!data.is_graded) {
                         html = '<div class="result-item pending"><span class="exam-spinner"></span> Judging... (' + (data.status_display || data.status) + ')</div>';
                     } else {
-                        const isAC = data.status === 'AC';
-                        html = '<div class="result-item ' + (isAC ? 'pass' : 'fail') + '"><strong>' + (data.status_display || data.status) + '</strong>';
-                        if (data.points != null) html += ' • ' + data.points + ' points';
-                        if (data.time) html += ' • ' + parseFloat(data.time).toFixed(3) + 's';
-                        if (data.memory) html += ' • ' + Math.round(parseFloat(data.memory)) + 'KB';
-                        html += '</div>';
+                        // Check if ALL test cases passed (not just overall status)
+                        let allTestsPassed = true;
+                        if (data.test_cases && data.test_cases.length > 0) {
+                            allTestsPassed = data.test_cases.every(tc => tc.status === 'AC');
+                        } else {
+                            allTestsPassed = data.status === 'AC';
+                        }
+                        const isAC = allTestsPassed;
+
+                        // Build status label based on result
+                        const statusLabel = isAC ? 'Completed' : (data.status_display || data.status);
+                        html = '<div class="result-item ' + (isAC ? 'pass' : 'fail') + '"><strong>' + statusLabel + '</strong></div>';
 
                         if (data.test_cases) {
                             const maxCases = mode === 'sample' ? 2 : data.test_cases.length;
                             data.test_cases.slice(0, maxCases).forEach((tc, idx) => {
-                                html += '<div class="result-item ' + (tc.status === 'AC' ? 'pass' : 'fail') + '">Test ' + (idx + 1) + ': ' + tc.status + '</div>';
+                                const tcPassed = tc.status === 'AC';
+                                const statusText = tcPassed ? 'Accepted' : (tc.status === 'WA' ? 'Wrong Answer' : (tc.status === 'TLE' ? 'Time Limit Exceeded' : (tc.status === 'MLE' ? 'Memory Limit Exceeded' : (tc.status === 'RTE' ? 'Runtime Error' : tc.status))));
+                                let tcDetails = 'Test ' + (idx + 1) + ': ' + statusText;
+                                html += '<div class="result-item ' + (tcPassed ? 'pass' : 'fail') + '">' + tcDetails + '</div>';
                             });
                             if (mode === 'sample' && data.test_cases.length > 2) {
                                 html += '<div class="result-item" style="color:#888;">... and ' + (data.test_cases.length - 2) + ' more</div>';
