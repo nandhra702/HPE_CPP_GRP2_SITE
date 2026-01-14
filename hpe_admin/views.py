@@ -742,6 +742,16 @@ class HPEContestJoinView(HPEContestAccessMixin, View):
             participation.real_start = timezone.now()
             participation.has_exited = False  # Reset exit status
             participation.save(update_fields=['real_start', 'has_exited'])
+            
+            # Clear previous MCQ answers when rejoining (user gets a fresh start)
+            from judge.models.contest import ContestMCQSubmission
+            deleted_count, _ = ContestMCQSubmission.objects.filter(
+                participation=participation
+            ).delete()
+            if deleted_count > 0:
+                import logging
+                logger = logging.getLogger('judge.contest')
+                logger.info(f'[HPE-CONTEST] Cleared {deleted_count} MCQ submissions for user {profile.user.username} rejoining contest {contest.key}')
         except ContestParticipation.DoesNotExist:
             participation = ContestParticipation.objects.create(
                 contest=contest, user=profile, virtual=LIVE,

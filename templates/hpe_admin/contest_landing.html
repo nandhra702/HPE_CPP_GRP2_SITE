@@ -2540,6 +2540,9 @@
                         console.error('[MCQ] Failed to save answers before submission:', err);
                     }
 
+                    // Clear saved code from localStorage (no longer needed after submission)
+                    clearContestCodeData();
+
                     try {
                         // Clear frame sending interval immediately
                         if (window.frameIntervalId) {
@@ -2764,6 +2767,26 @@
             codeSaveTimer = setTimeout(() => {
                 saveCodeToStorage();
             }, CODE_SAVE_DELAY);
+        }
+
+        // Clear all saved code for this contest from localStorage
+        function clearContestCodeData() {
+            const prefix = `hpe_code_${CONTEST_KEY}_`;
+            const keysToRemove = [];
+
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(prefix)) {
+                    keysToRemove.push(key);
+                }
+            }
+
+            keysToRemove.forEach(key => {
+                localStorage.removeItem(key);
+                console.log('[HPE-CODE] Cleared saved code:', key);
+            });
+
+            console.log('[HPE-CODE] Cleared', keysToRemove.length, 'saved code entries for contest', CONTEST_KEY);
         }
 
         // ===== Question Submission Tracking =====

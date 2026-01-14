@@ -1,7 +1,7 @@
-id: judge
+id: judge_test
 key: fANX/FBRlQDHTppYH9x9G0GuZ6bfvjSHeuQYxcf4lzbxX6pNaoih+//UBEYHOInCMIqQdg29e4sUFwisqpNongSLuy0oOPvlc6mf
 problem_storage_globs:
-  - /home/Lalith/HPE/Contest_hosting/site/problems/*  
+  - /home/lalith/Desktop/Test_demoj_1/site/problems/*  
 
 runtime:
     as_x64: /usr/bin/x86_64-linux-gnu-as
