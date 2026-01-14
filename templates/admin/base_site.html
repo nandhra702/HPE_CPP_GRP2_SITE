@@ -5,11 +5,15 @@
         {% csrf_token %}
     </form>
     <script>
-        django.jQuery(function ($) {
-            $('.action-link').on('click', function () {
-                $('#empty-action-form').attr('action', this.href).trigger('submit');
-                return false;
-            });
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof django !== 'undefined' && typeof django.jQuery !== 'undefined') {
+                django.jQuery(function ($) {
+                    $('.action-link').on('click', function () {
+                        $('#empty-action-form').attr('action', this.href).trigger('submit');
+                        return false;
+                    });
+                });
+            }
         });
     </script>
 {% endblock %}

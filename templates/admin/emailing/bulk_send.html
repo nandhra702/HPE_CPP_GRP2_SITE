@@ -31,21 +31,20 @@
     .template-selection {
         margin-bottom: 20px;
     }
-    .custom-email-fields {
+    .email-content-fields {
         border: 1px solid #ddd;
         padding: 15px;
         margin-top: 10px;
         background-color: #f9f9f9;
     }
-    .template-preview {
-        display: none;
+    .email-content-fields.template-mode {
         border: 1px solid #79aec8;
-        padding: 15px;
-        margin-top: 10px;
         background-color: #e8f4fd;
     }
-    .template-preview h4 {
+    .email-content-fields h3 {
         margin-top: 0;
+    }
+    .email-content-fields.template-mode h3 {
         color: #0c4b7a;
     }
     .file-upload-section {
@@ -116,42 +115,10 @@
                 {% endif %}
             </div>
             
-            <!-- Custom Email Fields (shown when custom is selected) -->
-            <div class="custom-email-fields" id="custom-email-fields">
-                <h3>Custom Email Content</h3>
-                <div class="form-row">
-                    {{ form.subject.label_tag }}
-                    {{ form.subject }}
-                    {% if form.subject.help_text %}
-                        <div class="helptext">{{ form.subject.help_text }}</div>
-                    {% endif %}
-                    {% if form.subject.errors %}
-                        <div class="errorlist">{{ form.subject.errors }}</div>
-                    {% endif %}
-                </div>
-                <div class="form-row">
-                    {{ form.body.label_tag }}
-                    {{ form.body }}
-                    {% if form.body.help_text %}
-                        <div class="helptext">{{ form.body.help_text }}</div>
-                    {% endif %}
-                    {% if form.body.errors %}
-                        <div class="errorlist">{{ form.body.errors }}</div>
-                    {% endif %}
-                </div>
-                <div class="form-row">
-                    {{ form.is_html }}
-                    {{ form.is_html.label_tag }}
-                    {% if form.is_html.help_text %}
-                        <div class="helptext">{{ form.is_html.help_text }}</div>
-                    {% endif %}
-                </div>
-            </div>
-            
-            <!-- Template Preview Fields (shown when existing template is selected) -->
-            <div class="template-preview" id="template-preview">
-                <h4>Template Content (Editable)</h4>
-                <p><em>You can edit the template content below. Changes will only apply to this campaign.</em></p>
+            <!-- Email Content Fields (shared between custom and template editing) -->
+            <div class="email-content-fields" id="email-content-fields">
+                <h3 id="email-content-header">Custom Email Content</h3>
+                <p id="template-edit-note" style="display: none;"><em>You can edit the template content below. Changes will only apply to this campaign.</em></p>
                 <div class="form-row">
                     {{ form.subject.label_tag }}
                     {{ form.subject }}
@@ -230,47 +197,58 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const templateSelect = document.getElementById('id_template');
-    const customFields = document.getElementById('custom-email-fields');
-    const templatePreview = document.getElementById('template-preview');
+    const emailContentFields = document.getElementById('email-content-fields');
+    const emailContentHeader = document.getElementById('email-content-header');
+    const templateEditNote = document.getElementById('template-edit-note');
     const subjectField = document.getElementById('id_subject');
     const bodyField = document.getElementById('id_body');
     const isHtmlField = document.getElementById('id_is_html');
     const enableEditingCheckbox = document.getElementById('id_enable_template_editing');
     
-    function toggleEmailFields() {
+    // Track the last selected template to avoid clearing fields unnecessarily
+    let lastSelectedValue = templateSelect.value;
+    let isInitialLoad = true;
+    
+    function updateEmailFieldsUI() {
         const selectedValue = templateSelect.value;
         const editingEnabled = enableEditingCheckbox.checked;
         
         if (selectedValue === 'custom') {
-            customFields.style.display = 'block';
-            templatePreview.style.display = 'none';
-            // Clear fields for custom email
-            subjectField.value = '';
-            bodyField.value = '';
-            isHtmlField.checked = true;
-        } else if (selectedValue && selectedValue !== 'custom') {
-            if (editingEnabled) {
-                customFields.style.display = 'none';
-                templatePreview.style.display = 'block';
-                // Load template data for editing
-                loadTemplateData(selectedValue);
-            } else {
-                // Hide both editing interfaces when template editing is disabled
-                customFields.style.display = 'none';
-                templatePreview.style.display = 'none';
-                // Clear fields so they don't interfere with template
+            // Show fields for custom email
+            emailContentFields.style.display = 'block';
+            emailContentFields.classList.remove('template-mode');
+            emailContentHeader.textContent = 'Custom Email Content';
+            templateEditNote.style.display = 'none';
+            
+            // Only clear fields when switching FROM a template TO custom (not on initial load if already custom)
+            if (!isInitialLoad && lastSelectedValue !== 'custom') {
                 subjectField.value = '';
                 bodyField.value = '';
                 isHtmlField.checked = true;
             }
+        } else if (selectedValue && selectedValue !== 'custom') {
+            if (editingEnabled) {
+                // Show fields for template editing
+                emailContentFields.style.display = 'block';
+                emailContentFields.classList.add('template-mode');
+                emailContentHeader.textContent = 'Template Content (Editable)';
+                templateEditNote.style.display = 'block';
+                
+                // Load template data when switching to a different template or enabling editing
+                if (!isInitialLoad && (lastSelectedValue !== selectedValue || lastSelectedValue === 'custom')) {
+                    loadTemplateData(selectedValue);
+                }
+            } else {
+                // Hide editing interface when template editing is disabled
+                emailContentFields.style.display = 'none';
+            }
         } else {
-            customFields.style.display = 'none';
-            templatePreview.style.display = 'none';
-            // Clear fields
-            subjectField.value = '';
-            bodyField.value = '';
-            isHtmlField.checked = true;
+            // No selection - hide fields
+            emailContentFields.style.display = 'none';
         }
+        
+        lastSelectedValue = selectedValue;
+        isInitialLoad = false;
     }
     
     function loadTemplateData(templateId) {
@@ -317,12 +295,19 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
     
-    // Initial toggle
-    toggleEmailFields();
+    // Initial UI update
+    updateEmailFieldsUI();
     
-    // Toggle on changes
-    templateSelect.addEventListener('change', toggleEmailFields);
-    enableEditingCheckbox.addEventListener('change', toggleEmailFields);
+    // Update UI on changes
+    templateSelect.addEventListener('change', updateEmailFieldsUI);
+    enableEditingCheckbox.addEventListener('change', function() {
+        // When enabling editing for a template, load the template data
+        const selectedValue = templateSelect.value;
+        if (enableEditingCheckbox.checked && selectedValue && selectedValue !== 'custom') {
+            loadTemplateData(selectedValue);
+        }
+        updateEmailFieldsUI();
+    });
 });
 </script>
 {% endblock %}
