@@ -896,30 +896,26 @@
 
         if (items.length === 0 || count <= 0) return;
 
-        // FIX: First, remove ALL previously selected items from this category
-        const itemsToRemove = [];
-        state.selectedProblems.forEach((item, id) => {
-            if (item.group === category || (item.group && item.group.toLowerCase().includes(category.toLowerCase()))) {
-                itemsToRemove.push(id);
-            }
-        });
-        itemsToRemove.forEach(id => {
-            state.selectedProblems.delete(id);
-            const cb = document.getElementById(`p-${id}`);
-            if (cb) cb.checked = false;
-        });
-
-        // Now select exactly 'count' random items from this category
-        const availableItems = [...items]; // Clone array
-        const toSelect = [];
-
-        const actualCount = Math.min(count, availableItems.length);
-        for (let i = 0; i < actualCount; i++) {
-            const idx = Math.floor(Math.random() * availableItems.length);
-            toSelect.push(availableItems[idx]);
-            availableItems.splice(idx, 1);
+        // Filter out items that are already selected - only pick from unselected items
+        const availableItems = items.filter(item => !state.selectedProblems.has(item.id));
+        
+        if (availableItems.length === 0) {
+            alert(`All ${category} problems on this page are already selected. Try navigating to another page or deselecting some problems.`);
+            return;
         }
 
+        // Select up to 'count' random items from available (unselected) items
+        const toSelect = [];
+        const pool = [...availableItems]; // Clone array
+
+        const actualCount = Math.min(count, pool.length);
+        for (let i = 0; i < actualCount; i++) {
+            const idx = Math.floor(Math.random() * pool.length);
+            toSelect.push(pool[idx]);
+            pool.splice(idx, 1);
+        }
+
+        // Add newly selected items to existing selections
         toSelect.forEach(item => {
             const difficultyScore = getDifficultyScore(category);
 
@@ -938,6 +934,11 @@
             const cb = document.getElementById(`p-${item.id}`);
             if (cb) cb.checked = true;
         });
+
+        // Show feedback about what was added
+        if (actualCount < count) {
+            alert(`Added ${actualCount} random ${category} problems (only ${availableItems.length} unselected problems were available on this page).`);
+        }
 
         updateSummary();
         state.isDirty = true;
