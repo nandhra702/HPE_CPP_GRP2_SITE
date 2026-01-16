@@ -227,7 +227,6 @@ window.updateContestSelections = function(problems, mcqs, randomization) {{
     document.getElementById("id_contest_problems_json").value = JSON.stringify(problems);
     document.getElementById("id_contest_mcqs_json").value = JSON.stringify(mcqs);
     document.getElementById("id_contest_randomization_json").value = JSON.stringify(randomization);
-    alert("Selections updated! Click Save to persist.");
 }};
 
 window.getContestSelections = function() {{
