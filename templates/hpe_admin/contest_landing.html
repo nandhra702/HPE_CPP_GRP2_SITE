@@ -1779,6 +1779,13 @@
                 }
                 console.log('[HPE-CONTEST] Joined contest:', joinData);
 
+                // Clear any previously cached code from localStorage
+                // This ensures users start fresh when they rejoin/restart the contest
+                if (typeof clearContestCodeData === 'function') {
+                    clearContestCodeData();
+                    console.log('[HPE-CONTEST] Cleared cached code for fresh start');
+                }
+
                 // Only connect to backend if toggle is enabled
                 if (HPE_BACKEND_CONNECT) {
                     // Step 1: Start proctoring session with backend (persists to DB)
@@ -2723,35 +2730,38 @@
         let currentProblemCode = null;
         let currentProblemIndex = -1;
         let currentQuestionIndex = -1;  // Index in ALL_QUESTIONS array
+        let currentLangId = null;  // Track current language ID for proper code saving
 
         // ===== Code Persistence Helper Functions =====
         let codeSaveTimer = null;
         const CODE_SAVE_DELAY = 1000;  // Save after 1 second of no changes
 
-        function getCodeStorageKey(problemCode) {
-            return `hpe_code_${CONTEST_KEY}_${problemCode}`;
+        function getCodeStorageKey(problemCode, langId) {
+            return `hpe_code_${CONTEST_KEY}_${problemCode}_${langId}`;
         }
 
-        function saveCodeToStorage() {
+        function saveCodeToStorage(langIdOverride) {
             if (!currentProblemCode || !window.editor) return;
             const code = window.editor.getValue();
-            const langId = document.getElementById('language-select')?.value;
+            // Use override if provided, otherwise use tracked currentLangId
+            const langId = langIdOverride || currentLangId;
+            if (!langId) return;
+
             const data = {
                 code: code,
-                langId: langId,
                 timestamp: Date.now()
             };
             try {
-                localStorage.setItem(getCodeStorageKey(currentProblemCode), JSON.stringify(data));
-                console.log('[HPE-CODE] Saved code for', currentProblemCode);
+                localStorage.setItem(getCodeStorageKey(currentProblemCode, langId), JSON.stringify(data));
+                console.log('[HPE-CODE] Saved code for', currentProblemCode, 'lang:', langId);
             } catch (e) {
                 console.warn('[HPE-CODE] Failed to save code:', e);
             }
         }
 
-        function getSavedCode(problemCode) {
+        function getSavedCode(problemCode, langId) {
             try {
-                const data = localStorage.getItem(getCodeStorageKey(problemCode));
+                const data = localStorage.getItem(getCodeStorageKey(problemCode, langId));
                 return data ? JSON.parse(data) : null;
             } catch (e) {
                 console.warn('[HPE-CODE] Failed to retrieve saved code:', e);
@@ -2865,51 +2875,60 @@
                     langSelect.appendChild(opt);
                 });
 
-                // Try to restore saved code and language from localStorage
-                const savedData = getSavedCode(problemCode);
-                if (savedData && savedData.code) {
-                    // Restore saved language selection if exists
-                    let langRestored = false;
-                    if (savedData.langId) {
-                        for (let i = 0; i < langSelect.options.length; i++) {
-                            if (langSelect.options[i].value == savedData.langId) {
-                                langSelect.selectedIndex = i;
-                                const opt = langSelect.options[i];
-                                window.editor.session.setMode('ace/mode/' + opt.dataset.aceMode);
-                                langRestored = true;
-                                break;
-                            }
-                        }
-                    }
-                    // If language not found, use first available
-                    if (!langRestored && data.languages.length > 0) {
-                        const firstLang = data.languages[0];
-                        window.editor.session.setMode('ace/mode/' + firstLang.ace_mode);
-                    }
-                    // Restore saved code
-                    window.editor.setValue(savedData.code, -1);
-                    console.log('[HPE-CODE] Restored saved code for', problemCode);
-                } else if (data.languages.length > 0) {
-                    // No saved code, use template
+                // Try to restore saved code for the first language from localStorage
+                if (data.languages.length > 0) {
                     const firstLang = data.languages[0];
                     window.editor.session.setMode('ace/mode/' + firstLang.ace_mode);
-                    window.editor.setValue(firstLang.template || '', -1);
+
+                    // Track the current language ID
+                    currentLangId = firstLang.id;
+
+                    // Check if we have saved code for this language
+                    const savedData = getSavedCode(problemCode, firstLang.id);
+                    if (savedData && savedData.code) {
+                        window.editor.setValue(savedData.code, -1);
+                        console.log('[HPE-CODE] Restored saved code for', problemCode, 'lang:', firstLang.id);
+                    } else {
+                        // No saved code, use template
+                        window.editor.setValue(firstLang.template || '', -1);
+                        console.log('[HPE-CODE] Loaded initial template for', firstLang.name);
+                    }
                 }
 
                 langSelect.onchange = function () {
                     const opt = this.options[this.selectedIndex];
-                    window.editor.session.setMode('ace/mode/' + opt.dataset.aceMode);
-                    // When changing language, check if we have saved code for this language
-                    const savedData = getSavedCode(currentProblemCode);
-                    if (savedData && savedData.langId == opt.value && savedData.code) {
-                        // Same language saved - restore code
-                        window.editor.setValue(savedData.code, -1);
-                    } else if (opt.dataset.template) {
-                        // Different language - use template
-                        window.editor.setValue(opt.dataset.template, -1);
+                    const newLangId = opt.value;
+                    const newLangName = opt.textContent;
+                    const template = opt.dataset.template || '';
+
+                    console.log('[HPE-LANG] Switching from lang', currentLangId, 'to', newLangName, '(id:', newLangId, ')');
+
+                    // Save current code for the OLD language BEFORE switching
+                    // Pass currentLangId explicitly since the select has already changed
+                    if (currentLangId) {
+                        saveCodeToStorage(currentLangId);
                     }
-                    // Save the language change
-                    saveCodeToStorage();
+
+                    console.log('[HPE-LANG] Template available:', template ? 'YES (' + template.substring(0, 50) + '...)' : 'NO (empty)');
+
+                    // Set editor mode for new language
+                    window.editor.session.setMode('ace/mode/' + opt.dataset.aceMode);
+
+                    // Load saved code for new language, or use template
+                    const savedData = getSavedCode(currentProblemCode, newLangId);
+                    if (savedData && savedData.code) {
+                        window.editor.setValue(savedData.code, -1);
+                        console.log('[HPE-CODE] Restored saved code for', currentProblemCode, 'lang:', newLangId);
+                    } else if (template) {
+                        window.editor.setValue(template, -1);
+                        console.log('[HPE-CODE] Loaded template for', newLangName);
+                    } else {
+                        window.editor.setValue('', -1);
+                        console.log('[HPE-CODE] No saved code or template, starting empty for', newLangName);
+                    }
+
+                    // Update current language ID to the new one
+                    currentLangId = newLangId;
                 };
 
                 toggleResults(false);
@@ -2986,6 +3005,11 @@
                 mcqView.querySelectorAll('input[name="mcq_answer"]').forEach(input => {
                     input.addEventListener('change', () => debouncedSaveMCQ(mcqId));
                 });
+
+                // Render MathJax for LaTeX in question and options
+                if (window.MathJax && MathJax.typesetPromise) {
+                    MathJax.typesetPromise([mcqView]);
+                }
             } catch (err) {
                 mcqView.innerHTML = '<div style="color:#f44336;padding:40px;">Error loading MCQ: ' + err.message + '</div>';
             }
@@ -2997,7 +3021,9 @@
             const selectedInputs = document.querySelectorAll('input[name="mcq_answer"]:checked');
 
             if (selectedInputs.length === 0) {
-                alert('Please select an answer!');
+                // Show toast and move on without blocking
+                showToast('No answer was selected');
+                navigateToNextQuestion();
                 return;
             }
 
@@ -3290,6 +3316,37 @@
                 }
             }
             return cookieValue;
+        }
+
+        // Toast notification function
+        function showToast(message, duration = 2000) {
+            let toast = document.getElementById('hpe-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'hpe-toast';
+                toast.style.cssText = `
+                    position: fixed;
+                    bottom: 30px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: rgba(50, 50, 50, 0.95);
+                    color: #fff;
+                    padding: 12px 24px;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    z-index: 10001;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                    pointer-events: none;
+                `;
+                document.body.appendChild(toast);
+            }
+            toast.textContent = message;
+            toast.style.opacity = '1';
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, duration);
         }
 
         // Save MCQ on page unload (browser close, refresh, etc.)

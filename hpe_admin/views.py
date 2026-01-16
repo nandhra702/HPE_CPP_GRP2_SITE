@@ -536,11 +536,37 @@ class HPEMCQContentView(HPEContestAccessMixin, View):
         shuffler = random.Random(seed)
         shuffler.shuffle(options)
         
+        # Render question text with markdown  
+        from judge.jinja2.markdown import markdown
+        from django.conf import settings
+        from django.utils.html import escape
+        
+        try:
+            math_engine = getattr(settings, 'MATH_ENGINE', None)
+            question_html = str(markdown(
+                mcq.description or '',
+                'problem',  # Use problem style for consistent rendering
+                math_engine=math_engine
+            ))
+        except Exception:
+            question_html = f"<p>{escape(mcq.description or '')}</p>"
+        
+        # Render options with markdown
         options_data = []
         for opt in options:
+            try:
+                option_html = str(markdown(
+                    opt.option_text or '',
+                    'problem',
+                    math_engine=math_engine,
+                    strip_paragraphs=True  # Remove wrapping <p> tags for inline options
+                ))
+            except Exception:
+                option_html = escape(opt.option_text or '')
+            
             options_data.append({
                 'id': opt.id,
-                'text': opt.option_text,
+                'text': option_html,
             })
         
         # Get previously saved answer (if any)
@@ -569,7 +595,7 @@ class HPEMCQContentView(HPEContestAccessMixin, View):
         return JsonResponse({
             'id': mcq.id,
             'title': mcq.code,
-            'question_text': mcq.description,
+            'question_text': question_html,
             'question_type': mcq.question_type,  # 'SINGLE' or 'MULTIPLE'
             'points': contest_mcq.points,
             'options': options_data,

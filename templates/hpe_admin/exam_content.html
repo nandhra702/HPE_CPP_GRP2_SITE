@@ -545,6 +545,78 @@
         border-top: 1px solid #404040;
     }
 
+    /* MCQ Markdown Content Styles */
+    .mcq-question pre,
+    .option-text pre {
+        background: #2d2d2d;
+        padding: 14px;
+        border-radius: 6px;
+        overflow-x: auto;
+        border: 1px solid #404040;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 13px;
+        line-height: 1.5;
+        margin: 12px 0;
+    }
+
+    .mcq-question code,
+    .option-text code {
+        background: #3c3c3c;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 13px;
+    }
+
+    .mcq-question pre code,
+    .option-text pre code {
+        background: none;
+        padding: 0;
+    }
+
+    .mcq-question p,
+    .option-text p {
+        margin-bottom: 10px;
+    }
+
+    .mcq-question p:last-child,
+    .option-text p:last-child {
+        margin-bottom: 0;
+    }
+
+    .mcq-question ul,
+    .mcq-question ol {
+        margin: 10px 0;
+        padding-left: 24px;
+    }
+
+    .mcq-question li {
+        margin-bottom: 6px;
+    }
+
+    .mcq-question img,
+    .option-text img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 6px;
+        margin: 10px 0;
+    }
+
+    .mcq-question blockquote {
+        border-left: 3px solid var(--hpe-green);
+        padding: 10px 15px;
+        margin: 10px 0;
+        background: #2d2d2d;
+        color: #bbb;
+    }
+
+    /* MathJax display math centering */
+    .mcq-question .MathJax_Display,
+    .option-text .MathJax_Display {
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
     /* --- Problem Editor View --- */
     .editor-view {
         display: none;
