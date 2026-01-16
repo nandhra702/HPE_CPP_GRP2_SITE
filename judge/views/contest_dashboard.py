@@ -180,10 +180,38 @@ def contest_dashboard_upload(request):
 
 
 def _process_problem_upload(rows, request):
-    """Process Problem CSV upload."""
-    from judge.models import Problem, Language
+    """Process Problem CSV upload with test case file creation."""
+    from judge.models import Problem, Language, Solution
+    from judge.models.problem import ProblemGroup
+    from django.contrib.auth.models import User
+    import os
+    import io
+    import zipfile
+    from django.conf import settings
     
-    difficulty_map = {'easy': 2, 'medium': 3, 'hard': 4}
+    # Get or create difficulty groups dynamically (matching HPE bulk upload)
+    easy_group, _ = ProblemGroup.objects.get_or_create(
+        name='easy', defaults={'full_name': 'Easy'}
+    )
+    medium_group, _ = ProblemGroup.objects.get_or_create(
+        name='medium', defaults={'full_name': 'Medium'}
+    )
+    hard_group, _ = ProblemGroup.objects.get_or_create(
+        name='hard', defaults={'full_name': 'Hard'}
+    )
+    
+    difficulty_map = {
+        'easy': easy_group.id,
+        'medium': medium_group.id,
+        'hard': hard_group.id,
+    }
+    
+    # Get all admin users as authors
+    admin_profiles = []
+    admin_users = User.objects.filter(is_staff=True, is_active=True)
+    for user in admin_users:
+        if hasattr(user, 'profile'):
+            admin_profiles.append(user.profile)
     
     created = []
     duplicates = []
@@ -229,6 +257,12 @@ def _process_problem_upload(rows, request):
             continue
         group_id = difficulty_map[difficulty_value]
         
+        # Solution (column 6 - optional)
+        solution_content = row[6].strip() if len(row) > 6 and row[6] else ''
+        
+        # Test cases start at column 7 (after solution)
+        test_cases_data = row[7:] if len(row) > 7 else []
+        
         # Check for duplicate
         existing = Problem.objects.filter(name=name).first()
         if existing:
@@ -251,8 +285,7 @@ def _process_problem_upload(rows, request):
             code = f"{base_code}{suffix}"
             suffix += 1
         
-        # Build description with examples
-        test_cases_data = row[6:] if len(row) > 6 else []
+        # Build description with examples (first 2 test cases)
         examples_md = ""
         example_num = 1
         
@@ -286,10 +319,82 @@ def _process_problem_upload(rows, request):
                 date=timezone.now()
             )
             
-            # Add default languages
-            all_languages = Language.objects.filter(common_name__in=['Python 3', 'C++', 'Java', 'C'])
+            # Add ALL languages (per user request)
+            all_languages = Language.objects.all()
             if all_languages.exists():
                 problem.allowed_languages.set(all_languages)
+            
+            # Add admin users as authors
+            if admin_profiles:
+                problem.authors.set(admin_profiles)
+            
+            # Create Solution if provided
+            if solution_content:
+                Solution.objects.create(
+                    problem=problem,
+                    content=solution_content,
+                    is_public=False,
+                    publish_on=timezone.now()
+                )
+            
+            # Create test case files (matching HPE bulk upload structure)
+            if test_cases_data:
+                problems_dir = os.path.join(settings.BASE_DIR, 'problems')
+                problem_dir = os.path.join(problems_dir, code)
+                os.makedirs(problem_dir, exist_ok=True)
+                
+                # Build init.yml content
+                init_yml_cases = []
+                zip_buffer = io.BytesIO()
+                
+                with zipfile.ZipFile(zip_buffer, 'w') as zf:
+                    case_idx = 1
+                    for i in range(0, len(test_cases_data), 2):
+                        if i + 1 >= len(test_cases_data):
+                            break
+                        
+                        in_data = test_cases_data[i]
+                        out_data = test_cases_data[i+1]
+                        
+                        in_name = f"{case_idx}.in"
+                        out_name = f"{case_idx}.out"
+                        
+                        # Write individual files to folder
+                        with open(os.path.join(problem_dir, in_name), 'w') as f:
+                            f.write(str(in_data))
+                        with open(os.path.join(problem_dir, out_name), 'w') as f:
+                            f.write(str(out_data))
+                        
+                        # Add to zip
+                        zf.writestr(in_name, str(in_data))
+                        zf.writestr(out_name, str(out_data))
+                        
+                        init_yml_cases.append({'in': in_name, 'out': out_name})
+                        case_idx += 1
+                
+                if init_yml_cases:
+                    # Write init.yml
+                    yml_lines = [
+                        f"name: {name}",
+                        f"code: {code}",
+                        "type: standard",
+                        "validator: token",
+                        "limits:",
+                        f"  time: {time_limit}",
+                        f"  memory: {memory_limit}",
+                        "archive: testcases.zip",
+                        "cases:",
+                    ]
+                    for case in init_yml_cases:
+                        yml_lines.append(f"  - in: {case['in']}")
+                        yml_lines.append(f"    out: {case['out']}")
+                    
+                    with open(os.path.join(problem_dir, 'init.yml'), 'w') as f:
+                        f.write('\n'.join(yml_lines) + '\n')
+                    
+                    # Write testcases.zip
+                    with open(os.path.join(problem_dir, 'testcases.zip'), 'wb') as f:
+                        f.write(zip_buffer.getvalue())
             
             created.append({
                 'id': problem.id,

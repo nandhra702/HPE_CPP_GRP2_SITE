@@ -22,7 +22,7 @@ GENERAL_CONTEST_DEBUG = True     # General contest debugging features
 
 # HPE Contest Backend Connection
 # True = enable backend connection, False = frontend-only mode
-HPE_BACKEND_CONNECT = True
+HPE_BACKEND_CONNECT = False
 
 # Code editor security settings
 ALLOW_COPY_PASTE = False          # Allow copy/paste from external sources (for testing)
