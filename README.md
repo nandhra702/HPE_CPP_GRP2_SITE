@@ -17,8 +17,7 @@
 
 A modern open-source online judge and contest platform system. It has been used to host thousands of competitions, including several national olympiads.
 
-See it live at [dmoj.ca](https://dmoj.ca/)!
-
+See our demos and docs at [Hackathon platform](https://docs-hpe.vercel.app/)
 ## Features
 
 * [Support for over **60 language runtimes**](https://github.com/DMOJ/online-judge#supported-languages)
